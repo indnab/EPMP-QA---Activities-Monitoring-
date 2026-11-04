@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIS-P Approval</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* Layout: Maruti indigo side nav on a soft peach-to-lavender canvas; white 12px cards: filters → tiles → two charts side by side → table. Light mode only, matching the Figma reference. */
+:root{
+  color-scheme:light;
+  --heading:#101828; --body:#4A5565; --subtle:#6A7282; --border:#E5E7EB; --surface:#FFFFFF; --surface-2:#F9FAFB;
+  --brand:#1447E6; --brand-soft:#DBEAFE; --brand-softer:#EEF6FF; --thead:#DCE8FB;
+  --nav:#2A2E93; --nav-deep:#23277F;
+  --ok:#1F8A55; --ok-bg:#ECFAF2; --ok-bd:#B7E7CB; --ok-bar:#9FDDBC; --ok-bar-bd:#5DBE8C;
+  --bad:#C0343F; --bad-bg:#FFF1F2; --bad-bd:#FBC9CE; --bad-bar:#F7B4B9; --bad-bar-bd:#E57C85;
+  --tbc:#A56A0A; --tbc-bg:#FFF8EB; --tbc-bd:#F6DDA8; --tbc-bar:#F6D79A; --tbc-bar-bd:#E0AE4C;
+  --na:#4A5565; --na-bg:#F3F4F6; --na-bd:#D8DBE1; --na-bar:#D3D7DF; --na-bar-bd:#A5ACB9;
+  --tot:#1447E6; --tot-bg:#EEF4FF; --tot-bd:#C3D5FB; --tot-bar:#AFC8F8; --tot-bar-bd:#6E98EE;
+  --shadow-xs:0 1px .5px .05px rgba(29,41,61,.04),0 1px 3px rgba(29,41,61,.04);
+  --font:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:12px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{font-family:var(--font);font-size:14px;line-height:1.43;color:var(--body);
+  background-color:#F6F3F7;
+  background-image:
+    radial-gradient(60% 55% at 0% 100%, rgba(255,98,0,.10), rgba(255,98,0,0) 70%),
+    radial-gradient(55% 60% at 100% 0%, rgba(23,29,155,.09), rgba(23,29,155,0) 70%),
+    radial-gradient(45% 40% at 30% 0%, rgba(255,98,0,.06), rgba(255,98,0,0) 70%),
+    linear-gradient(180deg,#FBF6F6,#F3F2F9);
+  background-attachment:fixed}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+svg{flex:none}
+
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+
+/* Side navigation */
+.nav{background:var(--nav);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding-left:env(safe-area-inset-left,0px)}
+.logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;align-items:center;gap:14px}
+.logo .mk-img{width:220px;max-width:100%;height:auto;display:block}
+.logo .de-img{width:172px;max-width:80%;height:auto;display:block}
+.menu{display:flex;flex-direction:column;gap:6px;padding:28px 0 0 18px}
+.menu a{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:14px;padding:14px 18px;border-radius:999px 0 0 999px;opacity:.92}
+.menu a svg{width:19px;height:19px}
+.nav .grow{flex:1}
+.collapse{align-self:flex-end;margin:0 22px 18px;color:#fff;opacity:.9}
+.logout{border-top:1px solid rgba(255,255,255,.12);padding:22px 0;display:flex;justify-content:center;gap:10px;align-items:center;font-size:14px}
+
+/* Main column */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:20px;padding-block:14px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+.search{flex:1;max-width:420px;margin:0 auto;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.85);border:1px solid #F1E6E6;border-radius:16px;padding:11px 18px;box-shadow:0 2px 8px rgba(255,98,0,.06)}
+.search input{border:0;background:transparent;outline:0;flex:1;min-width:0;font-size:14px;color:var(--heading)}
+.search input::placeholder{color:var(--body)}
+.bell{width:40px;height:40px;border-radius:10px;background:#fff;border:1px solid var(--border);display:grid;place-items:center;color:var(--heading)}
+.user{display:flex;align-items:center;gap:12px}
+.avatar{width:46px;height:46px;border-radius:50%;background:#FDE7D6;color:#B4501A;display:grid;place-items:center;font-weight:700;border:2px solid #fff;box-shadow:var(--shadow-xs)}
+.user b{display:block;font-size:16px;font-weight:500;color:var(--heading)}
+.user span{font-size:14px;color:var(--subtle)}
+
+.content{display:flex;flex-direction:column;gap:16px;padding-block:6px 36px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+.crumbs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--body);font-weight:500}
+.crumbs svg{color:var(--subtle)}
+.head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+h1{margin:0;font-size:24px;line-height:1.25;font-weight:600;color:var(--heading);text-wrap:balance}
+
+/* Alert launchers (compact versions of the reference alert bars) */
+.launchers{display:flex;gap:8px;flex-wrap:wrap}
+.launch{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:9px 12px 9px 12px;color:#fff;font-weight:600;box-shadow:0 2px 6px rgba(16,24,40,.08)}
+.launch .n{background:rgba(255,255,255,.25);border-radius:999px;padding:0 8px;font-variant-numeric:tabular-nums}
+.launch.crit{background:linear-gradient(120deg,#E8676B,#C7323C)}
+.launch.mgmt{background:linear-gradient(120deg,#F2B06A,#E07B14)}
+.launch.ins{background:linear-gradient(120deg,#3D6FE8,#7EA4F2)}
+.launch:hover{filter:brightness(1.04)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-xs);padding:20px;min-width:0}
+.card h2{margin:0;font-size:16px;font-weight:600;color:var(--heading)}
+.card .sub{margin:2px 0 0;font-size:14px;color:var(--body)}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.link{border:0;background:none;color:var(--brand);font-weight:500;padding:4px 0}
+.link[hidden]{display:none}
+
+/* Filter bar: one bordered group of dropdowns, like the reference */
+.fbar{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.fbar select{border:0;border-left:1px solid var(--border);background:#fff;padding:6px 8px;white-space:nowrap;overflow:hidden;color:var(--heading);min-width:0;width:100%;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 3.8 5 6.2l2.5-2.4' fill='none' stroke='%236A7282' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:18px;letter-spacing:-.005em;text-overflow:ellipsis}
+.fbar select:first-child{border-left:0}
+.fbar select.set{background-color:var(--brand-softer);color:var(--brand);font-weight:500}
+
+/* Tabs + tiles */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);overflow:visible;width:max-content;max-width:100%}
+.tab{display:inline-flex;align-items:center;gap:7px;border:0;background:none;padding:6px 10px 12px;color:var(--body);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-size:14px}
+.tab.on{color:var(--brand);border-bottom-color:var(--brand)}
+.tab svg{width:15px;height:15px}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:16px}
+.tile span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile{position:relative;text-align:left;border:1px solid var(--bd);background:var(--bg);color:var(--fg);border-radius:8px;padding:12px 14px 11px;display:flex;flex-direction:column;gap:2px;transition:box-shadow .15s,border-color .15s}
+.tile b{font-size:24px;line-height:1.2;font-weight:700;font-variant-numeric:tabular-nums}
+.tile span{font-size:14px;font-weight:500;color:var(--heading)}
+.tile em{position:absolute;top:13px;right:14px;font-style:normal;font-size:14px;color:var(--subtle);font-variant-numeric:tabular-nums}
+.tile:hover{border-color:var(--fg)}
+.tile.on{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.tile.on em{color:var(--fg);font-weight:500}
+.t-total{--fg:var(--tot);--bg:var(--tot-bg);--bd:var(--tot-bd)}
+.t-ok{--fg:var(--ok);--bg:var(--ok-bg);--bd:var(--ok-bd)}
+.t-bad{--fg:var(--bad);--bg:var(--bad-bg);--bd:var(--bad-bd)}
+.t-tbc{--fg:var(--tbc);--bg:var(--tbc-bg);--bd:var(--tbc-bd)}
+.t-na{--fg:var(--na);--bg:var(--na-bg);--bd:var(--na-bd)}
+.helper{margin-top:12px;color:var(--subtle)}
+.hint{margin-top:12px;color:var(--subtle)}
+
+/* Charts */
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.seg{display:inline-flex;background:#F3F4F6;border-radius:10px;padding:4px;gap:2px}
+.seg button{border:0;background:none;border-radius:7px;padding:5px 12px;color:var(--body);font-weight:500;white-space:nowrap}
+.seg button.on{background:#fff;color:var(--heading);box-shadow:var(--shadow-xs),0 0 0 1px var(--border)}
+.ctx{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;min-height:28px;align-items:center}
+.tag{display:inline-flex;align-items:center;border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 8px;color:var(--heading);font-weight:500}
+.tag.brand{border-color:#C3D5FB;background:var(--brand-softer);color:var(--brand)}
+.chart-box{position:relative;height:280px;margin-top:10px}
+.chart-cap{text-align:center;font-size:14px;font-weight:500;color:var(--body);margin-top:8px}
+.legend{display:flex;justify-content:center;gap:16px;margin-top:6px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;border:1px solid}
+.note{text-align:center;color:var(--subtle);margin-top:6px;min-height:20px}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;border:1px dashed #D1D5DB;border-radius:10px;background:var(--surface-2);padding:24px;color:var(--body)}
+.empty b{display:block;color:var(--heading);font-size:14px;font-weight:600;margin:10px 0 4px}
+.empty svg{color:#9CA3AF}
+
+/* Table (matches reference: light blue header, sort carets, wrapped cells) */
+.qlabel{display:flex;align-items:center;gap:6px;color:var(--heading);font-weight:500;margin-top:18px}
+.qrow{display:flex;gap:12px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.qsearch{flex:1;min-width:220px;max-width:610px;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:9px 12px;color:var(--subtle)}
+.qsearch input{border:0;outline:0;background:transparent;flex:1;min-width:0;color:var(--heading)}
+.qsearch input::placeholder{color:var(--subtle)}
+.fbtn{position:relative}
+.fbtn > button{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border);background:#fff;border-radius:8px;padding:9px 14px;color:var(--heading)}
+.fbtn > button.set{border-color:#C3D5FB;background:var(--brand-softer);color:var(--brand)}
+.menu-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:5;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.1);padding:6px;min-width:200px}
+.menu-pop button{display:flex;width:100%;justify-content:space-between;border:0;background:none;text-align:left;padding:8px 10px;border-radius:6px;color:var(--heading)}
+.menu-pop button:hover{background:var(--surface-2)}
+.menu-pop button.on{color:var(--brand);font-weight:500}
+.count{margin-left:auto;color:var(--subtle);font-variant-numeric:tabular-nums}
+.tbl-wrap{overflow-x:auto;margin-top:18px;border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th{background:var(--thead);color:var(--body);font-weight:500;text-align:left;padding:13px 12px;white-space:nowrap}
+th:first-child{border-top-left-radius:8px}th:last-child{border-top-right-radius:8px}
+th button{border:0;background:none;padding:0;font-weight:500;color:inherit;display:inline-flex;align-items:center;gap:8px}
+th.sorted button{color:var(--heading)}
+td{padding:12px 12px;border-bottom:1px solid var(--border);color:var(--heading);vertical-align:middle;line-height:1.2}
+td.id{color:var(--brand);font-variant-numeric:tabular-nums}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td.wrap{max-width:120px}
+tbody tr:hover td{background:#FAFBFF}
+.st{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.st i{width:7px;height:7px;border-radius:50%}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;color:var(--body)}
+.pager .pg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pager .pg button{border:0;border-left:1px solid var(--border);background:#fff;padding:7px 12px;color:var(--body);min-width:38px}
+.pager .pg button:first-child{border-left:0}
+.pager .pg button.on{background:var(--brand-softer);color:var(--brand);font-weight:600}
+.pager .pg button:disabled{color:#C4C8D0;cursor:default}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(16,24,40,.28);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:#fff;z-index:21;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(16,24,40,.14);
+  padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.dr-band{padding:18px 20px;color:#fff;display:flex;align-items:center;gap:10px}
+.dr-band h2{margin:0;font-size:18px;font-weight:600;flex:1}
+.dr-band.crit{background:linear-gradient(120deg,#E8676B,#C7323C)}
+.dr-band.mgmt{background:linear-gradient(120deg,#F2B06A,#E07B14)}
+.dr-band.ins{background:linear-gradient(120deg,#2F5FE0,#7EA4F2)}
+.dr-x{border:0;background:rgba(255,255,255,.2);color:#fff;width:32px;height:32px;border-radius:8px;font-size:20px;line-height:1}
+.dr-tabs{padding:14px 20px 4px}
+.dr-tabs .seg{display:flex}.dr-tabs .seg button{flex:1}
+.dr-body{overflow:auto;padding:4px 20px 12px;flex:1}
+.item{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border)}
+.item p{margin:0;color:var(--heading)}
+.item p span{display:block;color:var(--subtle);margin-top:2px}
+.item .own{flex:none;border:1px solid var(--border);border-radius:999px;padding:2px 10px;color:var(--body);font-weight:500;background:var(--surface-2)}
+.dr-empty{padding:20px 0;color:var(--subtle)}
+.disclaim{margin:0 20px 18px;padding:10px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--body)}
+
+@media (max-width:860px){.app{grid-template-columns:1fr}.nav{display:none}}
+@media (max-width:720px){.fbar{grid-template-columns:repeat(2,minmax(0,1fr))}.fbar select:nth-child(odd){border-left:0}.fbar select:nth-child(n+3){border-top:1px solid var(--border)}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.user div,.bell{display:none}.top{gap:12px}h1{font-size:22px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Active nav group with page links */
+.menu .on{display:flex;flex-direction:column;gap:8px;color:#fff;padding:14px 18px;border-radius:24px;margin-right:-14px;background:linear-gradient(135deg,#2F49F0,#2338D6);box-shadow:inset 0 0 0 2px rgba(255,214,230,.75);font-size:14px;font-weight:600}
+.menu .on .row{display:flex;align-items:center;gap:12px;width:100%}
+.menu .on .row svg{width:19px;height:19px}
+.menu .on .chev{width:16px!important;height:16px!important;margin-left:auto;margin-right:10px}
+.menu .subs{display:flex;flex-direction:column;gap:2px;padding-left:31px}
+.menu .subs a{padding:4px 0;border-radius:0;font-weight:500;opacity:.78;font-size:14px}
+.menu .subs a.cur{opacity:1;font-weight:600;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.menu .subs a:hover{opacity:1}
+
+/* MRD checkpoint selector */
+.ctx .mrd{margin-left:auto}
+.mrd{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
+.mrd span{padding:5px 10px;background:var(--surface-2);border-right:1px solid var(--border);color:var(--body);font-weight:500}
+.mrd select{border:0;padding:5px 26px 5px 10px;color:var(--heading);font-weight:500;cursor:pointer;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 3.8 5 6.2l2.5-2.4' fill='none' stroke='%236A7282' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center}
+.mrd select:disabled{color:var(--subtle);cursor:default}
+.legend i.plan{background:transparent!important;border-width:1.5px;border-style:dashed}
+.mockline{margin:0;color:var(--subtle);text-align:center}
+
+/* Spec meeting tile tones */
+:root{
+  --pt:#4F58C9; --pt-bg:#F1F2FD; --pt-bd:#CDD1F6; --pt-bar:#C3C8F3; --pt-bar-bd:#8790DF;
+  --po:#14726E; --po-bg:#ECF8F7; --po-bd:#B4E1DE; --po-bar:#A9DEDA; --po-bar-bd:#5BB8B1;
+  --dup:#A8481A; --dup-bg:#FFF4EE; --dup-bd:#F7CFB8; --dup-bar:#F7C8AE; --dup-bar-bd:#E3946A;
+  --ini:#1E5FD8; --ini-bg:#EEF4FF; --ini-bd:#C3D5FB; --ini-bar:#B6CDF8; --ini-bar-bd:#6E98EE;
+  --mt:#4F58C9; --mt-bg:#F1F2FD; --mt-bd:#CDD1F6; --mt-bar:#C3C8F3; --mt-bar-bd:#8790DF;
+  --ok-plan:#F3FBF6; --bad-plan:#FFF6F7;
+}
+.t-pt{--fg:var(--pt);--bg:var(--pt-bg);--bd:var(--pt-bd)}
+.t-po{--fg:var(--po);--bg:var(--po-bg);--bd:var(--po-bd)}
+.t-dup{--fg:var(--dup);--bg:var(--dup-bg);--bd:var(--dup-bd)}
+.t-ini{--fg:var(--ini);--bg:var(--ini-bg);--bd:var(--ini-bd)}
+.t-mt{--fg:var(--mt);--bg:var(--mt-bg);--bd:var(--mt-bd)}
+
+/* Tiles: column count set per page/segment; brighter semantic tones; selected tile lifts */
+.tiles{grid-template-columns:repeat(var(--cols,5),minmax(0,1fr))}
+@media (max-width:720px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile.on{box-shadow:inset 0 0 0 1px var(--fg),0 1px 3px rgba(0,0,0,.1)}
+.tile span{white-space:normal;overflow:visible;line-height:1.3}
+:root{
+  --tot-bg:#E9F0FF;--tot-bd:#B9CDFA; --ok-bg:#E6F7EE;--ok-bd:#A9E0C3; --bad-bg:#FFEBEE;--bad-bd:#F8BCC3; --tbc-bg:#FFF4DC;--tbc-bd:#F1D08F; --na-bg:#F0F1F4;--na-bd:#D3D7DF;
+  --pt-bg:#ECEEFE;--pt-bd:#C2C8F5; --po-bg:#E4F6F4;--po-bd:#A6DCD7; --dup-bg:#FFEFE6;--dup-bd:#F5C2A5; --ini-bg:#E9F0FF;--ini-bd:#B9CDFA; --mt-bg:#ECEEFE;--mt-bd:#C2C8F5;
+  /* chart fills: light, each with a darker 1px border */
+  --ok-bar:#B9E8CF;--ok-bar-bd:#52B588; --bad-bar:#F9C3C7;--bad-bar-bd:#E0707A; --tbc-bar:#F8DDA6;--tbc-bar-bd:#D9A33F; --na-bar:#DCDFE5;--na-bar-bd:#9AA2B1;
+  --tot-bar:#C6D8FB;--tot-bar-bd:#5F8CE6; --pt-bar:#CFD3F7;--pt-bar-bd:#7D86DB; --po-bar:#BCE7E3;--po-bar-bd:#4BAEA6; --dup-bar:#F9D5C1;--dup-bar-bd:#DE8A5C;
+  --ini-bar:#C6D8FB;--ini-bar-bd:#5F8CE6; --mt-bar:#CFD3F7;--mt-bar-bd:#7D86DB;
+}
+/* Top-level "As of" + per-graph Planned vs Actual switch */
+.fhead-r{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.perf{display:inline-flex;align-items:center;gap:8px;color:var(--heading);font-weight:500;cursor:pointer;white-space:nowrap;margin-left:auto}
+.perf input{appearance:none;width:34px;height:20px;border-radius:999px;background:#D1D5DB;position:relative;cursor:pointer;margin:0;transition:background .15s;flex:none}
+.perf input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);transition:transform .15s}
+.perf input:checked{background:var(--brand)}
+.perf input:checked::after{transform:translateX(14px)}
+.perf input:disabled{opacity:.45;cursor:default}
+.perf:has(input:disabled){color:var(--subtle);cursor:default}
+/* Grouped table headers */
+thead tr.grp th{background:#C9DAF7;color:var(--heading);font-weight:600;text-align:center;padding:9px 12px;border-left:2px solid #fff}
+thead tr.grp th:first-child{border-left:0}
+thead tr:not(:first-child) th{border-radius:0}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+td.n.sum{font-weight:600}
+
+/* ===== Round 5: Flowbite icons, badges, gray selection base, export, scrolling charts ===== */
+.ic{flex:none;width:20px;height:20px;color:currentColor}
+.ic.subtle{color:var(--subtle)}
+.menu a .ic,.menu .on .row .ic{width:20px;height:20px}
+.menu .on .chev{width:20px!important;height:20px!important}
+.collapse{width:28px;height:28px}
+.crumbs .ic{color:var(--subtle)}
+.tab .ic{width:20px;height:20px}
+th button .ic{width:16px;height:16px;color:var(--subtle)}
+.dr-x{display:grid;place-items:center}
+
+/* Tiles: brighter semantic tints, a little taller, labelled percentage badge */
+:root{
+  --tot-bg:#E4EDFF;--tot-bd:#AFC6FA; --ok-bg:#DFF6E9;--ok-bd:#9BDBB8; --bad-bg:#FFE6EA;--bad-bd:#F6B2BB; --tbc-bg:#FFF1D3;--tbc-bd:#EFC97A; --na-bg:#EEF0F4;--na-bd:#CDD2DB;
+  --pt-bg:#E9EBFF;--pt-bd:#B9C0F6; --po-bg:#DDF4F1;--po-bd:#97D7D0; --dup-bg:#FFEADD;--dup-bd:#F3B996; --ini-bg:#E4EDFF;--ini-bd:#AFC6FA; --mt-bg:#E9EBFF;--mt-bd:#B9C0F6;
+  --r3:#7A4FC9;--r3-bg:#F2EBFF;--r3-bd:#D3C1F6;--r3-bar:#DCCDFA;--r3-bar-bd:#9C78DE;
+  --r4:#B0418F;--r4-bg:#FDE9F6;--r4-bd:#F3BEE1;--r4-bar:#F6CBE7;--r4-bar-bd:#D671B7;
+  --r5:#C2410C;--r5-bg:#FFEDE3;--r5-bd:#F8C3A6;--r5-bar:#FAD0B9;--r5-bar-bd:#E8875A;
+}
+.t-r3{--fg:var(--r3);--bg:var(--r3-bg);--bd:var(--r3-bd)}
+.t-r4{--fg:var(--r4);--bg:var(--r4-bg);--bd:var(--r4-bd)}
+.t-r5{--fg:var(--r5);--bg:var(--r5-bg);--bd:var(--r5-bd)}
+.tile{padding:13px 14px 12px;gap:3px;justify-content:flex-start}
+.tile em.badge{position:static;align-self:flex-start;margin-top:6px;display:inline-flex;align-items:baseline;gap:4px;padding:2px 8px;border-radius:999px;
+  background:rgba(255,255,255,.75);border:1px solid var(--bd);color:var(--body);font-size:14px;font-weight:500;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tile em.badge b{font-size:14px;font-weight:700;color:var(--fg);line-height:1.43}
+.tile em.badge.plain{color:var(--subtle)}
+
+/* Selection controls: light-gray base, brand tint when set */
+.fbar select,.mrd select,.fbtn>button{background-color:#F3F4F6}
+.fbar select:hover,.mrd select:hover,.fbtn>button:hover{background-color:#E9EBEF}
+.fbar select.set,.mrd select.set{background-color:var(--brand-softer)}
+.mrd span{background:#E9EBEF}
+.fbtn>button .ic{width:20px;height:20px}
+
+/* Export */
+.head-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-left:auto}
+.head-tools .perf{margin-left:0}
+.xwrap{position:relative;margin-left:auto}
+.head-tools .xwrap{margin-left:0}
+.xbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;color:var(--heading);font-weight:500}
+.xbtn:hover{border-color:#C3D5FB;color:var(--brand)}
+.xmenu{left:auto;right:0;min-width:260px}
+.xnone{margin:0;padding:8px 10px;color:var(--subtle)}
+
+/* Charts scroll sideways when categories need more room */
+.chart-scroll{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden}
+.chart-inner{position:relative;height:100%;min-width:100%}
+.chart-box.scrolls::after{content:"Scroll for more";position:absolute;right:0;top:-2px;color:var(--subtle);background:rgba(255,255,255,.9);padding:0 4px}
+.legend i.dia{width:9px;height:9px;transform:rotate(45deg);border-radius:1px;border-width:1.5px;border-style:solid}
+
+/* ===== Round 6 ===== */
+/* Tiles: value + label only, left aligned, vertically centred, roomier padding */
+.tile{padding:16px 18px;min-height:88px;justify-content:center;align-items:flex-start;text-align:left;gap:4px}
+.tile b{line-height:1.15}
+.tile span{font-weight:500}
+
+/* Calendar "As of" control */
+.dsel{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dsel .seg button{padding:4px 12px}
+.dsel .mrd span{display:inline-flex;align-items:center;gap:6px}
+.mrdhint{color:var(--subtle);white-space:nowrap}
+
+/* Table filters */
+.fbtn>button.set{background-color:var(--brand-softer);border-color:#C3D5FB;color:var(--brand)}
+.fpanel{margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);padding:14px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 14px}
+.fcell{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fcell>span{color:var(--body);font-weight:500}
+.fcell select,.fcell input{width:100%;min-width:0;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:#F3F4F6;color:var(--heading)}
+.fcell select.set,.fcell input.set{background:var(--brand-softer);border-color:#C3D5FB}
+.fcell .range{display:flex;gap:6px}
+.fcell .range input{background:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;border-radius:999px;background:var(--brand-softer);border:1px solid #C3D5FB;color:var(--brand);font-weight:500}
+.chip button{border:0;background:none;color:inherit;display:grid;place-items:center;padding:2px;border-radius:999px}
+.chip button:hover{background:#DBE7FF}
+th button[data-k]{cursor:pointer}
+th.sorted button .ic{color:var(--brand)}
+td.none:only-child{text-align:center;color:var(--subtle);padding:32px}
+
+/* Sticky first two columns: later columns slide underneath */
+table{border-collapse:separate;border-spacing:0}
+.stk{position:sticky;z-index:2}
+.stk.s0{left:0}
+.stk.s1{left:var(--c1,0px);box-shadow:inset -1px 0 0 var(--border),6px 0 8px -6px rgba(0,0,0,.12)}
+tbody td.stk{background:#fff}
+tbody tr:hover td.stk{background:#FAFBFF}
+thead th.stk{z-index:3;background:var(--thead)}
+thead tr.grp th.stk{background:#C9DAF7;box-shadow:6px 0 8px -6px rgba(0,0,0,.12)}
+
+/* ===== Round 7 ===== */
+/* Chart colours from the Figma tile component: light fills with a darker 1px border */
+:root{
+  --tot-bar:#D6E6FF;--tot-bar-bd:#6E9BF5;   /* blue  · fill ref #EEF6FF, text #1447E6 */
+  --ini-bar:#DBEAFE;--ini-bar-bd:#78A9FF;   /* MSIL blue · #DBEAFE / #78A9FF */
+  --ok-bar:#D3F6DD;--ok-bar-bd:#42BE65;     /* green · #DEFBE6 / #42BE65 / #16A34A */
+  --bad-bar:#FFDDE2;--bad-bar-bd:#F08A96;   /* red   · #FEF0F2 / #FFCCD3 / #DC2626 */
+  --tbc-bar:#FFEBD6;--tbc-bar-bd:#E9A23B;   /* amber · #FFF8F1 / #FCD9BD / #CA8A04 */
+  --na-bar:#E0E0E0;--na-bar-bd:#A8A8A8;     /* gray  · #E0E0E0 / #A8A8A8 */
+  --ok-plan:#F1FCF4;--bad-plan:#FFF7F8;
+}
+/* More air between chart, caption, legend and summary */
+.chart-cap{margin-top:18px}
+.legend{margin-top:12px;gap:20px}
+.note{margin-top:12px}
+/* Radio choice (SES NR / ECR data) */
+.radios{display:inline-flex;align-items:center;gap:18px;flex-wrap:wrap}
+.radios label{display:inline-flex;align-items:center;gap:8px;color:var(--heading);font-weight:500;cursor:pointer}
+.radios input{appearance:none;width:18px;height:18px;margin:0;border:1.5px solid #9CA3AF;border-radius:50%;background:#F3F4F6;display:grid;place-items:center;cursor:pointer;flex:none}
+.radios input::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--brand);transform:scale(0);transition:transform .12s}
+.radios input:checked{border-color:var(--brand);background:#fff}
+.radios input:checked::after{transform:scale(1)}
+
+/* ===== Round 8 ===== */
+/* More room between section headings and the segmented controls below them */
+.ctx{margin-top:20px}
+.tabs{margin-top:2px}
+.dr-tabs{padding-top:18px}
+.charts+.charts{margin-top:0}
+td.wrap.long{max-width:220px;min-width:160px;white-space:normal}
+/* Table view radio sits in the table header, before Export */
+.card-head .radios.tv{margin-left:auto}
+.card-head .radios.tv+.xwrap{margin-left:0}
+td.reason{min-width:280px;max-width:340px;white-space:normal;color:var(--heading)}
+td.reason.none{color:var(--subtle)}
+.legend i.hatch{background-image:repeating-linear-gradient(135deg,var(--bad-bar-bd) 0 2px,transparent 2px 6px)!important}
+/* ===== Round 9 ===== */
+.card-head{flex-wrap:nowrap}
+.card-head>div:first-child{flex:1 1 auto;min-width:0}
+.card-head>.xwrap,.card-head>.head-tools,.card-head>.radios{flex:none}
+.legend{display:grid;grid-template-columns:repeat(var(--lc,3),auto);justify-content:center;column-gap:24px;row-gap:8px}
+/* ===== Round 10 ===== */
+/* No visible scrollbars on charts; they still scroll with trackpad/drag */
+.chart-scroll{scrollbar-width:none;-ms-overflow-style:none}
+.chart-scroll::-webkit-scrollbar{display:none;width:0;height:0}
+.chart-box.scrolls::after{content:none;display:none}
+/* Dashboard switch beside the page title */
+.h1wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.viewsw button{padding:6px 14px}
+/* Evidence file chip */
+.file{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 6px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--heading);white-space:nowrap}
+.file .ic{color:var(--brand)}
+/* ===== Round 11 ===== */
+/* Secondary chart control (radio) sits directly below the Model / Department selector */
+.ctx:has(.radios){flex-direction:column;align-items:flex-start;gap:12px}
+/* Parent tile with sub-tiles */
+.tile.tgroup{flex-direction:row;align-items:stretch;gap:12px;padding:12px;cursor:default}
+.tile.tgroup:hover{border-color:var(--bd)}
+.tile.tgroup.on{border-color:var(--fg)}
+.tg-main{display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:120px;padding:4px 6px;cursor:pointer;border-radius:6px}
+.tg-main b{font-size:24px;line-height:1.15;font-weight:700;font-variant-numeric:tabular-nums}
+.tg-main span{font-weight:500;color:var(--heading)}
+.tg-subs{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-left:12px;border-left:1px solid var(--bd)}
+.tile.sub{min-height:0;padding:10px 12px}
+.tile.sub b{font-size:20px}
+.tile.tgroup.t-plain{background:#fff;border:1px solid var(--na-bd)}
+.tile.tgroup.t-plain:hover{border-color:var(--na-bar-bd)}
+.tile.tgroup.t-plain .tg-main b{color:var(--fg)}
+/* ===== Side navigation: activity dashboards only, collapsible ===== */
+.app{transition:grid-template-columns .2s ease}
+.nav{overflow:hidden}
+.nav .menu{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:18px 0 12px 14px;gap:2px}
+.nav .menu::-webkit-scrollbar{display:none}
+.mhead{margin:0 0 8px 14px;font-size:14px;font-weight:600;opacity:.7;white-space:nowrap}
+.nav .menu a{padding:9px 14px;gap:12px;opacity:.85;border-radius:999px;margin-right:14px;white-space:nowrap;font-weight:500}
+.nav .menu a span{white-space:normal;line-height:1.3}
+.nav .menu a:hover{opacity:1;background:rgba(255,255,255,.08)}
+.nav .menu a.cur{opacity:1;font-weight:600;background:linear-gradient(135deg,#2F49F0,#2338D6);box-shadow:inset 0 0 0 2px rgba(255,214,230,.75)}
+.nav .menu a .ic{flex:none}
+.navtog{display:flex;align-items:center;gap:10px;margin:8px 14px 12px;padding:9px 14px;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+.navtog:hover{background:rgba(255,255,255,.14)}
+.navtog .nexp{display:none}
+.logout{white-space:nowrap}
+.app.navc{grid-template-columns:76px minmax(0,1fr)}
+.navc .logo{padding:20px 0 16px}
+.navc .logo .de-img{display:none}
+.navc .logo .mk-img{width:26px;height:24px;object-fit:cover;object-position:left center}
+.navc .mhead,.navc .menu a span,.navc .navtog span,.navc .logout span{display:none}
+.navc .nav .menu{padding:14px 0}
+.navc .nav .menu a{justify-content:center;padding:11px 0;margin:0 12px;border-radius:12px}
+.navc .navtog{justify-content:center;margin:8px 12px 12px;padding:9px 0}
+.navc .navtog .ncol{display:none}
+.navc .navtog .nexp{display:block}
+/* ===== Dashboard-level view switch: own row under the page header, brand outlined pill ===== */
+.viewrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:-4px}
+.vlabel{display:inline-flex;align-items:center;gap:6px;color:var(--body);font-weight:500}
+.viewsw{display:inline-flex;border:1px solid var(--brand);border-radius:999px;padding:3px;gap:2px;background:#fff}
+.viewsw button{border:0;background:none;border-radius:999px;padding:6px 16px;color:var(--brand);font-weight:500;white-space:nowrap;cursor:pointer}
+.viewsw button.on{background:var(--brand);color:#fff}
+/* table selections from tiles and graph categories */
+.chip.sel{background:var(--ini-bg);border-color:var(--ini-bd)}
+canvas.clickable{cursor:pointer}
+/* alerts and insights: compact launchers in their own row under the page header; items open in the side drawer */
+.alerts-row{margin-top:-4px}
+/* ===== Key Alerts / Management Summary / Key Insights: segmented row of outlined info tiles ===== */
+.card.ai{padding-top:16px}
+.aitabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.aitabs button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
+.aitabs button .n{border-radius:999px;padding:0 8px;font-variant-numeric:tabular-nums;background:var(--surface-2)}
+.aitabs .crit{color:#C7323C}.aitabs .mgmt{color:#C2680E}.aitabs .ins{color:#2F5FE0}
+.aitabs button.on{color:#fff;border-color:transparent;box-shadow:0 2px 6px rgba(16,24,40,.08)}
+.aitabs button.on .n{background:rgba(255,255,255,.25)}
+.aitabs .crit.on{background:linear-gradient(120deg,#E8676B,#C7323C)}
+.aitabs .mgmt.on{background:linear-gradient(120deg,#F2B06A,#E07B14)}
+.aitabs .ins.on{background:linear-gradient(120deg,#3D6FE8,#7EA4F2)}
+.airow{display:flex;gap:12px;align-items:stretch}
+.aitiles{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;--ac:#C7323C;--acb:#FFF6F7}
+.aitiles.mgmt{--ac:#E07B14;--acb:#FFF9F2}.aitiles.ins{--ac:#2F5FE0;--acb:#F5F8FF}
+.aitile{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--border);border-left:4px solid var(--ac);border-radius:10px;background:linear-gradient(180deg,var(--acb),#fff 60%);min-height:96px}
+.aitile b{font-weight:600;color:var(--heading);line-height:1.35}
+.aitile span{color:var(--body);line-height:1.35}
+.aitile em{margin-top:auto;align-self:flex-start;font-style:normal;font-weight:500;color:var(--body);border:1px solid var(--border);border-radius:999px;padding:1px 10px;background:#fff}
+.aitile.none{border-left-color:var(--border);border-style:dashed;background:none;color:var(--subtle);justify-content:center}
+.viewmore{flex:none;display:inline-flex;align-items:center;gap:6px;align-self:center;border:1px solid var(--border);background:#fff;color:var(--heading);border-radius:10px;padding:9px 14px;font-weight:500;cursor:pointer;white-space:nowrap}
+.viewmore:hover{background:var(--surface-2)}
+@media (max-width:1100px){.aitiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.aitile b,.aitile span{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.aitile b{-webkit-line-clamp:3}.aitile span{-webkit-line-clamp:2}
+/* chart caption now lives in the card subtitle */
+.chart-cap{display:none}
+.card-head p.sub{color:var(--body);font-weight:500}
+.legend.nw span{white-space:nowrap}
+.legend{margin-top:14px}
+/* alert tiles: KPI + one-line overview + Details */
+.aitile{gap:4px;min-height:0;padding:12px 12px 8px 14px}
+.aitile strong{font-size:22px;line-height:1.2;font-weight:700;color:var(--ac)}
+.aitile b{font-weight:500;color:var(--heading);-webkit-line-clamp:2}
+.aidet{margin-top:auto;align-self:flex-end;border:0;background:none;padding:4px 2px;color:var(--brand);font-weight:600;cursor:pointer}
+.aidet:hover{text-decoration:underline}
+.viewmore{border:0;background:none;color:var(--brand);font-weight:700;font-size:16px;padding:8px 6px;gap:8px}
+.viewmore:hover{background:none;text-decoration:underline}
+.viewmore .ic{width:22px;height:22px}
+.item.hl{background:var(--brand-softer);margin:0 -20px;padding-left:20px;padding-right:20px;box-shadow:inset 3px 0 0 var(--brand)}
+/* Management Summary uses green */
+.aitabs .mgmt{color:#1E8A4C}
+.aitabs .mgmt.on{background:linear-gradient(120deg,#4FBF7E,#1E8A4C)}
+.aitiles.mgmt{--ac:#1E8A4C;--acb:#F2FBF5}
+.dr-band.mgmt{background:linear-gradient(120deg,#4FBF7E,#1E8A4C)}
+/* alert tiles: number, then a fixed two-line text area, then Details at the bottom left (aligned across tiles) */
+.aitile{display:grid;grid-template-rows:auto calc(2 * 1.35em) auto;align-content:start;gap:6px}
+.aitile strong{font-size:22px}
+.aitile b{-webkit-line-clamp:2;align-self:start}
+.aidet{align-self:end;justify-self:start;margin-top:2px;padding:2px 0}
+/* development stage bar (header right, model selected) */
+.head{align-items:flex-end}
+.stagebar{flex:0 1 520px;min-width:360px;display:flex;flex-direction:column;gap:10px}
+.sb-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sb-col{position:relative;display:flex;flex-direction:column;gap:2px;padding-top:30px}
+.sb-col b{font-size:16px;font-weight:600;color:var(--heading)}
+.sb-col span{color:var(--subtle)}
+.sb-col.cur b{color:var(--brand)}
+.sb-pill{position:absolute;top:0;left:0;background:#1E8A4C;color:#fff!important;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.sb-pill.late{background:#C7323C}
+.sb-track{height:8px;border-radius:999px;background:#EAF1FF;overflow:hidden}
+.sb-track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#1447E6,#9B4DFF 55%,#12B3A8);box-shadow:0 4px 10px rgba(20,71,230,.25)}
+/* compact stage bar: fits the height of the page title */
+.head{align-items:center}
+.stagebar{flex:0 1 460px;min-width:340px;flex-direction:row;align-items:center;gap:12px}
+.sb-main{flex:1;display:flex;flex-direction:column;gap:5px}
+.sb-cols{gap:8px}
+.sb-col{flex-direction:row;align-items:baseline;gap:6px;padding-top:0;white-space:nowrap}
+.sb-col b{font-size:14px}
+.sb-pill{position:static;flex:none;padding:2px 10px}
+.sb-track{height:5px}
+/* stage bar: wider, MRD flag floats above the current stage (into the breadcrumb row) without adding height */
+.stagebar{flex:0 1 680px;min-width:480px}
+.sb-cols{gap:24px}
+.sb-col{position:relative}
+.sb-col .sb-pill{position:absolute;left:0;bottom:calc(100% + 6px)}
+.sb-col .sb-pill{top:auto;line-height:20px}
+/* nav: text only when expanded; short codes when collapsed */
+.nav .menu a .ab{display:none;font-style:normal;font-weight:700;font-size:14px;letter-spacing:.02em}
+.navc .nav .menu a .ab{display:block}
+.nav .menu a{padding:10px 16px}
+.navc .nav .menu a{padding:10px 0}
+.viewsw a{border-radius:999px;padding:6px 16px;color:var(--brand);font-weight:500;white-space:nowrap;text-decoration:none}
+.viewsw a.on{background:var(--brand);color:#fff}
+/* sub-tiles share the parent's width whatever their number */
+.tg-subs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+/* MPP parent group in the side nav */
+.mgrp{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 28px);margin:0 14px 8px;padding:6px 10px 6px 14px;background:rgba(255,255,255,.08);border:0;border-radius:8px;color:#fff;font-family:inherit;font-size:14px;font-weight:600;line-height:1.3;cursor:pointer;opacity:.9}
+.mgrp:hover{opacity:1;background:rgba(255,255,255,.14)}
+.mgrp .mchev{stroke:#fff;transition:transform .15s}
+.mgrp[aria-expanded="false"] .mchev{transform:rotate(-90deg)}
+.msub{margin-left:14px;padding-left:6px;border-left:1px solid rgba(255,255,255,.18)}
+.msub[hidden]{display:none}
+.navc .mgrp{width:auto;margin:0 12px 8px;padding:6px 0;justify-content:center;font-size:14px}
+.navc .mgrp .mchev{display:none}
+.navc .msub{margin-left:0;padding-left:0;border-left:0}
+/* date range */
+.mrd input[type=date]{border:0;padding:4px 8px;color:var(--heading);font-family:inherit;font-size:14px;font-weight:500;background:#F3F4F6;cursor:pointer;min-height:30px}
+.mrd input[type=date]:hover{background:#E9EBEF}
+.mrd input[type=date].set{background:var(--brand-softer)}
+.drange .mrdhint.err{color:var(--bad)}
+.drange .mrd{margin-left:0}
+/* cumulative Total row */
+tfoot td{font-weight:700;background:var(--surface-2,#F3F4F6);border-top:2px solid var(--border);color:var(--heading)}
+tfoot td.stk{background:#EEF0F3}
+.msub{display:flex;flex-direction:column;gap:2px}
+.mgrp .mab{display:none}
+.navc .mgrp .mfull{display:none}
+.navc .mgrp .mab{display:inline}
+.msub+.mgrp{margin-top:14px}
+.ylabs{position:absolute;left:0;top:0;bottom:0;width:188px;pointer-events:none}
+.ylabs span{position:absolute;right:8px;transform:translateY(-50%);font-weight:500;color:var(--heading);text-align:right;line-height:1.25}
+.callout{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok);font-weight:600;white-space:nowrap}
+.callout:empty{display:none}
+.tvrow{margin:12px 0 16px}
+.tile .tnote{display:block;margin-top:2px;color:var(--body);font-weight:500;font-size:14px}
+.tvrow{align-items:center;gap:12px}
+.tag.scope{background:var(--brand-softer);border-color:#C3D5FB;color:var(--brand,#1447E6);font-weight:600}
+.ctx.tvrow{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px}
+.tile .tval{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
+.tile .tbadge{font-style:normal;font-size:14px;font-weight:600;line-height:1.2;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--bd);color:var(--fg);white-space:nowrap}
+.tile .tval b{flex:none}.tile .tbadge{flex:none}
+.tile .tval .tbadge{position:static;top:auto;right:auto}
+.tile .tval{flex-wrap:wrap;row-gap:4px;max-width:100%}
+.tile .tval .tbadge{border-radius:4px;font-weight:400;padding:2px 7px}
+/* IFM Completeness donut row (Figma: Combined Inspection Status card) */
+.dsec{margin:0}
+.dsec-h{font-size:18px;font-weight:700;color:var(--heading);margin:4px 0 14px}
+.dgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px}
+@media(max-width:1100px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.dgrid{grid-template-columns:1fr}}
+.dcard{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 14px rgba(16,24,40,.06);padding:18px 18px 16px;display:flex;flex-direction:column;align-items:stretch;min-width:0}
+.dcard h3{margin:0 0 6px;font-size:16px;font-weight:500;color:var(--heading)}
+.dwrap{position:relative;width:170px;height:170px;margin:6px auto 12px;filter:drop-shadow(0 6px 10px rgba(16,24,40,.08))}
+.dwrap svg{display:block;width:100%;height:100%}
+.dctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.dctr b{font-size:30px;font-weight:700;color:#101828;line-height:1.05}
+.dctr span{color:var(--body);font-size:14px;margin-top:2px}
+.dctr em{font-style:normal;font-weight:600;font-size:14px;margin-top:6px}
+.dleg{display:flex;flex-direction:column;align-items:center;gap:6px}
+.dleg button{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;background:none;border-radius:6px;padding:2px 8px;font:inherit;font-size:14px;color:var(--body);cursor:pointer}
+.dleg button:hover{background:var(--surface-2,#F3F4F6)}
+.dleg button.on{border-color:#1447E6;background:#EEF6FF}
+.dleg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.dleg b{color:#101828;font-weight:700}
+.dcard h3{min-height:2.6em;line-height:1.3}
+.dwrap{width:128px;height:128px;margin:2px auto 8px}
+.dctr b{font-size:24px}
+.dctr span,.dctr em{font-size:14px}
+.dctr em{margin-top:2px}
+.dcard{padding:14px 16px 12px}
+.dcard h3{min-height:0;margin-bottom:4px}
+.dleg{gap:2px}
+/* dials: compact, aligned donuts whatever the title length */
+.dcard{padding:14px 16px 14px;gap:0}
+.dcard h3{min-height:2.6em;line-height:1.3;margin:0 0 6px;font-size:16px;font-weight:600}
+.dwrap{width:116px;height:116px;margin:0 auto 10px}
+.dctr b{font-size:22px;line-height:1.1}
+.dctr span{font-size:14px;margin-top:0;line-height:1.2}
+.dctr em{font-size:14px;margin-top:1px;line-height:1.2}
+.dleg{gap:0}
+.dleg button{padding:1px 8px;line-height:1.5}
+.dsec .dgrid{margin-top:14px;gap:16px}
+.dsec .dcard{box-shadow:none;border:1px solid var(--border);border-radius:10px;background:#fff}
+.dcard h3{min-height:0;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dwrap{width:128px;height:128px;margin:6px auto 10px}
+.dcard h3{white-space:normal;overflow:visible;text-overflow:clip;min-height:2.6em;display:flex;align-items:center;justify-content:center;text-align:center;margin:0 0 4px}
+/* multi-select top-level filters */
+.fbar{overflow:visible}
+.msel{position:relative;min-width:0;border-left:1px solid var(--border)}
+.fbar .msel:first-child{border-left:0}
+.msel-btn{display:flex;align-items:center;width:100%;height:100%;min-height:36px;border:0;background:#F3F4F6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 3.8 5 6.2l2.5-2.4' fill='none' stroke='%236A7282' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;padding:6px 26px 6px 10px;color:var(--heading);font:inherit;font-size:14px;text-align:left;cursor:pointer;min-width:0}
+.msel-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msel-btn:hover{background-color:#E9EBEF}
+.msel-btn.set{background-color:var(--brand-softer);color:var(--brand);font-weight:500}
+.fbar .msel:first-child .msel-btn{border-radius:8px 0 0 8px}
+.fbar .msel:last-child .msel-btn{border-radius:0 8px 8px 0}
+.msel-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:max(100%,240px);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.12);padding:8px}
+.fbar .msel:nth-child(n+6) .msel-pop{left:auto;right:0}
+.msel-q{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;margin-bottom:6px}
+.msel-acts{display:flex;justify-content:space-between;padding:0 4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.msel-acts button{border:0;background:none;color:var(--brand);font:inherit;font-size:14px;font-weight:500;cursor:pointer;padding:2px 0}
+.msel-acts button:disabled{color:var(--subtle);cursor:default}
+.msel-list{max-height:260px;overflow:auto}
+.msel-list label{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:6px;cursor:pointer;color:var(--heading);font-size:14px}
+.msel-list label:hover{background:var(--surface-2,#F3F4F6)}
+.msel-list input{accent-color:#1447E6;width:16px;height:16px;flex:none}
+.msel-none{margin:6px;color:var(--subtle)}
+/* IFM dials: larger ring, lighter centre text with more breathing room */
+.dwrap{width:156px;height:156px;margin:8px auto 12px}
+.dctr{gap:3px}
+.dctr b{font-size:20px;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+.dctr span{font-size:14px;line-height:1.25;margin:0;max-width:96px}
+.dctr em{font-size:14px;font-weight:500;line-height:1.25;margin:0}
+/* status cells in wrapping columns may break onto two lines (long readiness statuses) */
+td.wrap .st{white-space:normal;align-items:flex-start;min-width:150px}
+td.wrap .st i{flex:none;margin-top:.45em}
+</style>
+</head>
+<body style="margin:0">
+<div class="app">
+  <nav class="nav" aria-label="Main">
+    <div class="logo"><img class="mk-img" alt="Maruti Suzuki" src="data:image/png;base64,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"><img class="de-img" alt="Powered by DE" src="data:image/png;base64,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"></div>
+    <div class="menu" aria-label="Dashboards"><button class="mgrp" aria-expanded="true" aria-controls="msub-pp"><span class="mfull">PP Trial Dashboards</span><span class="mab">PP</span><svg class="ic mchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m8 10 4 4 4-4"/></svg></button><div class="msub" id="msub-pp" role="group" aria-label="PP Trial Dashboards"><a href="parts-drawing-confirmation_1.html" class="" title="Parts Drawing Confirmation" aria-label="Parts Drawing Confirmation"><em class="ab" aria-hidden="true">PDC</em><span>Parts Drawing Confirmation</span></a><a href="spec-meeting-confirmation_1.html" class="" title="Spec Meeting Confirmation" aria-label="Spec Meeting Confirmation"><em class="ab" aria-hidden="true">SMC</em><span>Spec Meeting Confirmation</span></a><a href="sor-status.html" class="" title="SOR Status" aria-label="SOR Status"><em class="ab" aria-hidden="true">SOR</em><span>SOR Status</span></a><a href="tier-2-compilation.html" class="" title="Tier 2 Compilation" aria-label="Tier 2 Compilation"><em class="ab" aria-hidden="true">T2</em><span>Tier 2 Compilation</span></a><a href="newness-mizenboshi-status.html" class="" title="Newness & Mizenboshi" aria-label="Newness & Mizenboshi"><em class="ab" aria-hidden="true">NMZ</em><span>Newness & Mizenboshi</span></a><a href="newness-benchmarking.html" class="" title="Newness Benchmarking" aria-label="Newness Benchmarking"><em class="ab" aria-hidden="true">NCB</em><span>Newness Benchmarking</span></a><a href="dmu-status.html" class="" title="DMU" aria-label="DMU"><em class="ab" aria-hidden="true">DMU</em><span>DMU</span></a><a href="ses-nr-status.html" class="" title="SES NR" aria-label="SES NR"><em class="ab" aria-hidden="true">SES</em><span>SES NR</span></a><a href="otop-status.html" class="" title="OT Status" aria-label="OT Status"><em class="ab" aria-hidden="true">OT</em><span>OT Status</span></a><a href="sheet-metal-parts-accuracy-status.html" class="" title="Sheet Metal & Parts Accuracy" aria-label="Sheet Metal & Parts Accuracy"><em class="ab" aria-hidden="true">SMA</em><span>Sheet Metal & Parts Accuracy</span></a><a href="part-inspection-deviation-status.html" class="" title="Part Inspection & Deviation" aria-label="Part Inspection & Deviation"><em class="ab" aria-hidden="true">PID</em><span>Part Inspection & Deviation</span></a><a href="mis-p-approval.html" class="cur" title="MIS-P Approval" aria-label="MIS-P Approval" aria-current="page"><em class="ab" aria-hidden="true">MIS</em><span>MIS-P Approval</span></a><a href="lab-testing-status.html" class="" title="Lab Testing Status" aria-label="Lab Testing Status"><em class="ab" aria-hidden="true">LAB</em><span>Lab Testing Status</span></a><a href="bcf-status.html" class="" title="BCF Status" aria-label="BCF Status"><em class="ab" aria-hidden="true">BCF</em><span>BCF Status</span></a><a href="colour-parts-check-status.html" class="" title="Colour Parts Check" aria-label="Colour Parts Check"><em class="ab" aria-hidden="true">CPC</em><span>Colour Parts Check</span></a><a href="part-list-deviation-special-parts.html" class="" title="Part List With Deviation" aria-label="Part List With Deviation"><em class="ab" aria-hidden="true">PLD</em><span>Part List With Deviation</span></a></div><button class="mgrp" aria-expanded="true" aria-controls="msub-mpp"><span class="mfull">MPP</span><span class="mab">MPP</span><svg class="ic mchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m8 10 4 4 4-4"/></svg></button><div class="msub" id="msub-mpp" role="group" aria-label="MPP"><a href="sheet-metal-parts-accuracy-status-mpp.html" class="" title="Sheet Metal & Parts Accuracy" aria-label="Sheet Metal & Parts Accuracy"><em class="ab" aria-hidden="true">SMA</em><span>Sheet Metal & Parts Accuracy</span></a><a href="part-inspection-deviation-status-mpp.html" class="" title="Part Inspection & Deviation" aria-label="Part Inspection & Deviation"><em class="ab" aria-hidden="true">PID</em><span>Part Inspection & Deviation</span></a><a href="bcf-status-mpp.html" class="" title="BCF Status" aria-label="BCF Status"><em class="ab" aria-hidden="true">BCF</em><span>BCF Status</span></a><a href="hinkai-monitoring-closure-status.html" class="" title="PP Trial Hinkai Monitoring & Closure" aria-label="PP Trial Hinkai Monitoring & Closure"><em class="ab" aria-hidden="true">HNK</em><span>PP Trial Hinkai Monitoring & Closure</span></a><a href="sor-adherence-confirmation.html" class="" title="SOR Adherence Confirmation" aria-label="SOR Adherence Confirmation"><em class="ab" aria-hidden="true">SAC</em><span>SOR Adherence Confirmation</span></a><a href="lab-testing-status-mpp.html" class="" title="Lab Testing Status" aria-label="Lab Testing Status"><em class="ab" aria-hidden="true">LAB</em><span>Lab Testing Status</span></a><a href="process-audit.html" class="" title="Process Audit Status" aria-label="Process Audit Status"><em class="ab" aria-hidden="true">PAU</em><span>Process Audit Status</span></a><a href="process-capability.html" class="" title="Process Capability" aria-label="Process Capability"><em class="ab" aria-hidden="true">PCP</em><span>Process Capability</span></a><a href="homologation-marking-confirmation.html" class="" title="Homologation Marking Confirmation" aria-label="Homologation Marking Confirmation"><em class="ab" aria-hidden="true">HMC</em><span>Homologation Marking Confirmation</span></a><a href="set-parts-semi-finished-status.html" class="" title="Set Part Status" aria-label="Set Part Status"><em class="ab" aria-hidden="true">SET</em><span>Set Part Status</span></a><a href="spare-kit-part-status.html" class="" title="Spare Kit Part Status" aria-label="Spare Kit Part Status"><em class="ab" aria-hidden="true">SPK</em><span>Spare Kit Part Status</span></a><a href="misp-revision.html" class="" title="MISP Revision" aria-label="MISP Revision"><em class="ab" aria-hidden="true">MRV</em><span>MISP Revision</span></a><a href="part-list-deviation-special-parts-mpp.html" class="" title="Part List With Deviation & Special Parts List" aria-label="Part List With Deviation & Special Parts List"><em class="ab" aria-hidden="true">PLD</em><span>Part List With Deviation & Special Parts List</span></a><a href="otop-status-mpp.html" class="" title="OTOP Status" aria-label="OTOP Status"><em class="ab" aria-hidden="true">OTP</em><span>OTOP Status</span></a></div><button class="mgrp" aria-expanded="true" aria-controls="msub-pilot"><span class="mfull">Pilot/SOP Trial</span><span class="mab">SOP</span><svg class="ic mchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m8 10 4 4 4-4"/></svg></button><div class="msub" id="msub-pilot" role="group" aria-label="Pilot/SOP Trial"><a href="otop-status-ecn-cases.html" class="" title="OTOP Status for ECN Cases" aria-label="OTOP Status for ECN Cases"><em class="ab" aria-hidden="true">ECN</em><span>OTOP Status for ECN Cases</span></a><a href="sheet-metal-parts-accuracy-status-sop.html" class="" title="Sheet Metal & Parts Accuracy" aria-label="Sheet Metal & Parts Accuracy"><em class="ab" aria-hidden="true">SMA</em><span>Sheet Metal & Parts Accuracy</span></a><a href="part-inspection-deviation-status-sop.html" class="" title="Part Inspection & Deviation" aria-label="Part Inspection & Deviation"><em class="ab" aria-hidden="true">PID</em><span>Part Inspection & Deviation</span></a><a href="mpp-trial-hinkai-monitoring-closure.html" class="" title="MPP Trial Hinkai Monitoring & Closure" aria-label="MPP Trial Hinkai Monitoring & Closure"><em class="ab" aria-hidden="true">HNK</em><span>MPP Trial Hinkai Monitoring & Closure</span></a><a href="bcf-status-sop.html" class="" title="BCF Status" aria-label="BCF Status"><em class="ab" aria-hidden="true">BCF</em><span>BCF Status</span></a><a href="ppap-file-approval-status.html" class="" title="PPAP File Approval Status" aria-label="PPAP File Approval Status"><em class="ab" aria-hidden="true">PPAP</em><span>PPAP File Approval Status</span></a><a href="ppvt-confirmation.html" class="" title="PPVT Confirmation" aria-label="PPVT Confirmation"><em class="ab" aria-hidden="true">PPV</em><span>PPVT Confirmation</span></a><a href="lab-testing-status-sop.html" class="" title="Lab Testing Status" aria-label="Lab Testing Status"><em class="ab" aria-hidden="true">LAB</em><span>Lab Testing Status</span></a><a href="homologation-status-sop.html" class="" title="Homologation Status" aria-label="Homologation Status"><em class="ab" aria-hidden="true">HMS</em><span>Homologation Status</span></a><a href="list-of-limit-sample.html" class="" title="List of Limit Sample" aria-label="List of Limit Sample"><em class="ab" aria-hidden="true">LMS</em><span>List of Limit Sample</span></a><a href="ifm-mail-initiation-checklist.html" class="" title="IFM Mail Initiation & Checklist" aria-label="IFM Mail Initiation & Checklist"><em class="ab" aria-hidden="true">IFM</em><span>IFM Mail Initiation & Checklist</span></a><a href="sop-readiness.html" class="" title="Are You Ready Confirmation" aria-label="Are You Ready Confirmation"><em class="ab" aria-hidden="true">SOP</em><span>Are You Ready Confirmation</span></a><a href="part-updation-regulatory-app.html" class="" title="Part Updation in Regulatory App" aria-label="Part Updation in Regulatory App"><em class="ab" aria-hidden="true">REG</em><span>Part Updation in Regulatory App</span></a><a href="part-updation-smir-system.html" class="" title="Part Updation in SMIR System" aria-label="Part Updation in SMIR System"><em class="ab" aria-hidden="true">SMR</em><span>Part Updation in SMIR System</span></a><a href="part-updation-cpm-system.html" class="" title="Part Updation in CPM Portal" aria-label="Part Updation in CPM Portal"><em class="ab" aria-hidden="true">CPM</em><span>Part Updation in CPM Portal</span></a></div></div>
+    <button class="navtog" id="navtog" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation"><svg class="ic ncol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m17 16-4-4 4-4m-6 8-4-4 4-4"/></svg><svg class="ic nexp" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m7 16 4-4-4-4m6 8 4-4-4-4"/></svg><span>Collapse</span></button>
+    <div class="logout" title="Log Out"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16 12H4m12 0-4 4m4-4-4-4m3-4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2"/></svg><span>Log Out</span></div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg><input id="gsearch" placeholder="Search anything to begin..." aria-label="Global search"></label>
+      <button class="bell" aria-label="Notifications"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12 5.365V3m0 2.365a5.34 5.34 0 0 1 5.133 5.368v1.8c0 2.386 1.867 2.982 1.867 4.175 0 .593 0 1.292-.538 1.292H5.538C5 18 5 17.301 5 16.708c0-1.193 1.867-1.789 1.867-4.175v-1.8A5.34 5.34 0 0 1 12 5.365M8.733 18c.094.852.306 1.54.944 2.112a3.48 3.48 0 0 0 4.646 0c.638-.572 1.236-1.26 1.33-2.112z"/></svg></button>
+      <div class="user"><div class="avatar">RC</div><div><b>Rudra Chanda</b><span>Business Partner</span></div></div>
+    </header>
+    <main class="content">
+      <div class="crumbs"><span>PP Trial Dashboards</span><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m10 16 4-4-4-4"/></svg><span>MIS-P Approval</span></div>
+      <div class="head">
+        <div class="h1wrap"><h1>MIS-P Approval Dashboard</h1></div>
+        <div class="stagebar" id="stagebar" hidden aria-live="polite"></div>
+
+      </div>
+
+
+      <section class="card" aria-labelledby="f-h">
+        <div class="card-head"><div><h2 id="f-h">Filter Dashboard Data</h2><p class="sub">Fine tunes dashboard data by your top level selections</p></div><div class="fhead-r"><button class="link" id="clear" hidden>Clear all filters</button></div></div>
+        <div class="fbar">
+          <select id="f-model" aria-label="Model"></select><select id="f-dept" aria-label="Department"></select><select id="f-trial" aria-label="Trial Stage"></select><select id="f-pic" aria-label="PIC Name"></select>
+          <select id="f-pname" aria-label="Part Name"></select><select id="f-pcode" aria-label="Part Code"></select><select id="f-vcode" aria-label="Vendor Code"></select><select id="f-vname" aria-label="Vendor Name"></select>
+        </div>
+      </section>
+      <section class="card ai" aria-label="Key alerts, management summary and key insights">
+        <div class="aitabs" role="tablist" aria-label="Alerts and insights">
+          <button class="mgmt on" data-a="mgmt" role="tab" aria-selected="true"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 4v16M6 4H5m13 0v16m0-16h1m-1 16H6m12 0h1M6 20H5M9 7h1v1H9zm5 0h1v1h-1zm-5 4h1v1H9zm5 0h1v1h-1zm-3 4h2a1 1 0 0 1 1 1v4h-4v-4a1 1 0 0 1 1-1"/></svg>Management Summary<span class="n" id="n-mgmt">0</span></button>
+          <button class="crit" data-a="crit" role="tab" aria-selected="false"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>Key Alerts<span class="n" id="n-crit">0</span></button>
+          <button class="ins" data-a="ins" role="tab" aria-selected="false"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16.872 9.687 20 6.56 17.44 4 4 17.44 6.56 20 16.873 9.687Zm0 0-2.56-2.56M6 7v2m0 0v2m0-2H4m2 0h2m7 7v2m0 0v2m0-2h-2m2 0h2M8 4h.01v.01H8zm2 2h.01v.01H10zm2-2h.01v.01H12zm8 8h.01v.01H20zm-2 2h.01v.01H18zm2 2h.01v.01H20z"/></svg>Key Insights<span class="n" id="n-ins">0</span></button>
+        </div>
+        <div class="airow"><div class="aitiles" id="aitiles"></div><button class="viewmore" id="ai-more" aria-haspopup="dialog">View More<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"/></svg></button></div>
+      </section>
+      <section class="card" aria-label="Summary">
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="tiles" id="tiles"></div>
+        <div class="helper" id="tab-helper" hidden></div>
+        <div class="hint" id="tile-hint"></div>
+      </section>
+      <div class="charts">
+        <section class="card">
+          <div class="card-head"><div><h2 id="lt-h">Model and Department Summary</h2><p class="sub" id="lt-s">Approval status across all models and departments</p></div><div class="xwrap"><button class="xbtn" data-x="L" aria-haspopup="true" aria-label="Export overall chart"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12 13V4M7 14H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2m-1-5-4 5-4-5m9 8h.01"/></svg>Export</button><div class="menu-pop xmenu" data-xm="L" hidden></div></div></div>
+          <div class="ctx"><div class="seg" role="group" aria-label="Group overall chart by"><button data-by="model" class="on">Model Wise Breakup</button><button data-by="dept">Department Wise Breakup</button></div></div>
+          <div class="chart-box"><div class="chart-scroll"><div class="chart-inner"><canvas id="c-left" role="img" aria-label="Overall chart"></canvas></div></div></div>
+          <div class="chart-cap" id="cap-left"></div><div class="legend" id="lg-left"></div><div class="note" id="n-left"></div>
+        </section>
+        <section class="card">
+          <div class="card-head"><div><h2>Data Breakdown</h2><p class="sub">Detailed visualisation per top level selection</p></div><div class="head-tools"><div class="xwrap"><button class="xbtn" data-x="R" aria-haspopup="true" aria-label="Export breakdown chart"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12 13V4M7 14H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2m-1-5-4 5-4-5m9 8h.01"/></svg>Export</button><div class="menu-pop xmenu" data-xm="R" hidden></div></div></div></div>
+          <div class="ctx" id="ctx-right"></div>
+          <div class="chart-box"><div class="chart-scroll"><div class="chart-inner"><canvas id="c-right" role="img" aria-label="Contextual breakdown chart"></canvas></div></div><div class="empty" id="e-right" hidden></div></div>
+          <div class="chart-cap" id="cap-right"></div><div class="legend" id="lg-right"></div><div class="note" id="n-right"></div>
+        </section>
+      </div>
+
+
+
+
+
+      <section class="card" aria-labelledby="t-h">
+        <div class="card-head"><div><h2 id="t-h">Part Wise MIS-P Approval</h2><p class="sub">Follows your top level selections</p></div><div class="xwrap"><button class="xbtn" data-x="T" aria-haspopup="true" aria-label="Export table"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12 13V4M7 14H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2m-1-5-4 5-4-5m9 8h.01"/></svg>Export</button><div class="menu-pop xmenu" data-xm="T" hidden></div></div></div>
+        <div class="ctx tvrow"><div class="radios tv" role="radiogroup" aria-label="Table shown"><label><input type="radio" name="tview" value="adept" checked>By Department</label><label><input type="radio" name="tview" value="parts">By Parts</label></div><span class="tag scope" id="t-scope" hidden></span></div>
+        <label class="qlabel" for="t-q">Enter search term to query the table <svg class="ic subtle" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M9.529 9.988a2.502 2.502 0 1 1 5 .191A2.44 2.44 0 0 1 12 12.582V14m-.01 3.008H12M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg></label>
+        <div class="qrow">
+          <div class="qsearch"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg><input id="t-q" type="search" placeholder="Search by Part Number, Model, Part Name & More"></div>
+          <div class="fbtn"><button id="t-fbtn" aria-expanded="false" aria-controls="t-fpanel"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" d="M18.796 4H5.204a1 1 0 0 0-.753 1.659l5.302 6.058a1 1 0 0 1 .247.659v4.874a.5.5 0 0 0 .2.4l3 2.25a.5.5 0 0 0 .8-.4v-7.124a1 1 0 0 1 .247-.659l5.302-6.059c.566-.646.106-1.658-.753-1.658Z"/></svg><span id="t-flabel">Filters</span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m8 10 4 4 4-4"/></svg></button></div>
+          <span class="count" id="t-count"></span>
+        </div>
+        <div class="chips" id="t-chips" hidden></div><div class="fpanel" id="t-fpanel" hidden></div><div class="tbl-wrap"><table><thead id="t-thead"><tr id="t-head"></tr></thead><tbody id="t-body"></tbody></table></div>
+        <div class="pager"><span id="t-page"></span><div class="pg" id="t-pg"></div></div>
+      </section>
+
+      <p class="mockline">Prototype · all figures are generated sample data</p>
+    </main>
+  </div>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Alerts and insights">
+  <div class="dr-band" id="dr-band"><h2 id="dr-title">Alerts</h2><button class="dr-x" id="dr-x" aria-label="Close"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M6 18 17.94 6M18 18 6.06 6"/></svg></button></div>
+  <div class="dr-tabs"><div class="seg" role="tablist"><button data-d="mgmt">Management</button><button data-d="crit">Key Alerts</button><button data-d="ins">Insights</button></div></div>
+  <div class="dr-body" id="dr-body"></div>
+  <p class="disclaim">Sample alerts generated by simple rules over the prototype data, not by AI. They follow your top level filters.</p>
+</aside>
+<script>
+const FB_ICONS={"users": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"M16 19h4a1 1 0 0 0 1-1v-1a3 3 0 0 0-3-3h-2m-2.236-4a3 3 0 1 0 0-4M3 18v-1a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Zm8-10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z\"/>", "clipboard-list": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15 4h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3m0 3h6m-3 5h3m-6 0h.01M12 16h3m-6 0h.01M10 3v4h4V3z\"/>", "chart-line-up": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 4.5V19a1 1 0 0 0 1 1h15M7 14l4-4 4 4 5-5m0 0h-3.207M20 9v3.207\"/>", "desktop-pc": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 15v5m-3 0h6M4 11h16M5 15h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1\"/>", "file-lines": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1\"/>", "arrow-left-to-bracket": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M16 12H4m12 0-4 4m4-4-4-4m3-4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2\"/>", "bell": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 5.365V3m0 2.365a5.34 5.34 0 0 1 5.133 5.368v1.8c0 2.386 1.867 2.982 1.867 4.175 0 .593 0 1.292-.538 1.292H5.538C5 18 5 17.301 5 16.708c0-1.193 1.867-1.789 1.867-4.175v-1.8A5.34 5.34 0 0 1 12 5.365M8.733 18c.094.852.306 1.54.944 2.112a3.48 3.48 0 0 0 4.646 0c.638-.572 1.236-1.26 1.33-2.112z\"/>", "search": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z\"/>", "filter": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"M18.796 4H5.204a1 1 0 0 0-.753 1.659l5.302 6.058a1 1 0 0 1 .247.659v4.874a.5.5 0 0 0 .2.4l3 2.25a.5.5 0 0 0 .8-.4v-7.124a1 1 0 0 1 .247-.659l5.302-6.059c.566-.646.106-1.658-.753-1.658Z\"/>", "chevron-down": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m8 10 4 4 4-4\"/>", "chevron-right": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m10 16 4-4-4-4\"/>", "close": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6 18 17.94 6M18 18 6.06 6\"/>", "exclamation-circle": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0\"/>", "building": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6 4h12M6 4v16M6 4H5m13 0v16m0-16h1m-1 16H6m12 0h1M6 20H5M9 7h1v1H9zm5 0h1v1h-1zm-5 4h1v1H9zm5 0h1v1h-1zm-3 4h2a1 1 0 0 1 1 1v4h-4v-4a1 1 0 0 1 1-1\"/>", "wand-magic-sparkles": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M16.872 9.687 20 6.56 17.44 4 4 17.44 6.56 20 16.873 9.687Zm0 0-2.56-2.56M6 7v2m0 0v2m0-2H4m2 0h2m7 7v2m0 0v2m0-2h-2m2 0h2M8 4h.01v.01H8zm2 2h.01v.01H10zm2-2h.01v.01H12zm8 8h.01v.01H20zm-2 2h.01v.01H18zm2 2h.01v.01H20z\"/>", "download": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 13V4M7 14H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2m-1-5-4 5-4-5m9 8h.01\"/>", "question-circle": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9.529 9.988a2.502 2.502 0 1 1 5 .191A2.44 2.44 0 0 1 12 12.582V14m-.01 3.008H12M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0\"/>", "home": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m4 12 8-8 8 8M6 10.5V19a1 1 0 0 0 1 1h3v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h3a1 1 0 0 0 1-1v-8.5\"/>", "adjustments-horizontal": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"M20 6H10m0 0a2 2 0 1 0-4 0m4 0a2 2 0 1 1-4 0m0 0H4m16 6h-2m0 0a2 2 0 1 0-4 0m4 0a2 2 0 1 1-4 0m0 0H4m16 6H10m0 0a2 2 0 1 0-4 0m4 0a2 2 0 1 1-4 0m0 0H4\"/>", "user-circle": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18m0 0a8.95 8.95 0 0 0 4.951-1.488A3.987 3.987 0 0 0 13 16h-2a3.987 3.987 0 0 0-3.951 3.512A8.95 8.95 0 0 0 12 21m3-11a3 3 0 1 1-6 0 3 3 0 0 1 6 0\"/>", "calendar-month": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 10h16m-8-3V4M7 7V4m10 3V4M5 20h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1m3-7h.01v.01H8zm4 0h.01v.01H12zm4 0h.01v.01H16zm-8 4h.01v.01H8zm4 0h.01v.01H12zm4 0h.01v.01H16z\"/>", "check-circle": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0\"/>", "close-circle": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0\"/>", "star": "<path stroke=\"currentColor\" d=\"M11.083 5.104c.35-.8 1.485-.8 1.834 0l1.752 4.022a1 1 0 0 0 .84.597l4.463.342c.9.069 1.255 1.2.556 1.771l-3.33 2.723a1 1 0 0 0-.337 1.016l1.03 4.119c.214.858-.71 1.552-1.474 1.106l-3.913-2.281a1 1 0 0 0-1.008 0L7.583 20.8c-.764.446-1.688-.248-1.474-1.106l1.03-4.119A1 1 0 0 0 6.8 14.56l-3.33-2.723c-.698-.571-.342-1.702.557-1.771l4.462-.342a1 1 0 0 0 .84-.597z\"/>", "clipboard-check": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15 4h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3m0 3h6m-6 7 2 2 4-4m-5-9v4h4V3z\"/>", "bars-from-left": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"M5 7h14M5 12h14M5 17h10\"/>", "chevron-sort": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m8 15 4 4 4-4m0-6-4-4-4 4\"/>", "chevron-up": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m16 14-4-4-4 4\"/>", "file-chart-bar": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10 3v4a1 1 0 0 1-1 1H5m4 10v-2m3 2v-6m3 6v-3m4-11v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1\"/>", "eye-slash": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3.933 13.909A4.36 4.36 0 0 1 3 12c0-1 4-6 9-6m7.6 3.8A5.07 5.07 0 0 1 21 12c0 1-3 6-9 6q-.471 0-.918-.04M5 19 19 5m-4 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0\"/>", "layers": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M5.005 11.19V12l6.998 4.042L19 12v-.81M5 16.15v.81L11.997 21l6.998-4.042v-.81M12.003 3 5.005 7.042l6.998 4.042L19 7.042z\"/>", "eye": "<path stroke=\"currentColor\" d=\"M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6 4.03-6 9-6 9 4.8 9 6Z\"/><path stroke=\"currentColor\" d=\"M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z\"/>", "palette": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 7h.01m3.486 1.513h.01m-6.978 0h.01M6.99 12H7m9 4h2.706a1.96 1.96 0 0 0 1.883-1.325A9 9 0 1 0 3.043 12.89 9.1 9.1 0 0 0 8.2 20.1a8.6 8.6 0 0 0 3.769.9 2.013 2.013 0 0 0 2.03-2v-.857A2.036 2.036 0 0 1 16 16\"/>", "truck": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0m-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0\"/>", "cog": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M21 13v-2a1 1 0 0 0-1-1h-.757l-.707-1.707.535-.536a1 1 0 0 0 0-1.414l-1.414-1.414a1 1 0 0 0-1.414 0l-.536.535L14 4.757V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v.757l-1.707.707-.536-.535a1 1 0 0 0-1.414 0L4.929 6.343a1 1 0 0 0 0 1.414l.536.536L4.757 10H4a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h.757l.707 1.707-.535.536a1 1 0 0 0 0 1.414l1.414 1.414a1 1 0 0 0 1.414 0l.536-.535 1.707.707V20a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-.757l1.707-.708.536.536a1 1 0 0 0 1.414 0l1.414-1.414a1 1 0 0 0 0-1.414l-.535-.536.707-1.707H20a1 1 0 0 0 1-1\"/><path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6\"/>", "scale-balanced": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M5.5 21h13M12 21V7m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4m2-1.8c3.073.661 2.467 2.8 5 2.8M5 8c3.359 0 2.192-2.115 5.012-2.793M7 9.556V7.75m0 1.806-1.95 4.393a.773.773 0 0 0 .37.962.8.8 0 0 0 .362.089h2.436a.79.79 0 0 0 .643-.335.78.78 0 0 0 .09-.716zm10 0V7.313m0 2.243-1.95 4.393a.773.773 0 0 0 .37.962.8.8 0 0 0 .362.089h2.436a.79.79 0 0 0 .643-.335.78.78 0 0 0 .09-.716z\"/>", "bug": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10 5 9 4V3m5 2 1-1V3m-3 6v11m0-11a5 5 0 0 1 5 5m-5-5a5 5 0 0 0-5 5m5-5a4.96 4.96 0 0 1 2.973 1H15V8a3 3 0 0 0-6 0v2h.027A4.96 4.96 0 0 1 12 9m-5 5H5m2 0v2a5 5 0 0 0 10 0v-2m2.025 0H17m-9.975 4H6a1 1 0 0 0-1 1v2m12-3h1.025a1 1 0 0 1 1 1v2M16 11h1a1 1 0 0 0 1-1V8m-9.975 3H7a1 1 0 0 1-1-1V8\"/>", "rectangle-list": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M11 9h6m-6 3h6m-6 3h6M6.996 9h.01m-.01 3h.01m-.01 3h.01M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1\"/>", "file-shield": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 9V4a1 1 0 0 0-1-1H8.914a1 1 0 0 0-.707.293L4.293 7.207A1 1 0 0 0 4 7.914V20a1 1 0 0 0 1 1h6M9 3v4a1 1 0 0 1-1 1H4m11 13a11.4 11.4 0 0 1-3.637-3.99A11.14 11.14 0 0 1 10 11.833L15 10l5 1.833a11.14 11.14 0 0 1-1.363 5.176A11.4 11.4 0 0 1 15.001 21Z\"/>", "badge-check": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m8.032 12 1.984 1.984 4.96-4.96m4.55 5.272.893-.893a1.984 1.984 0 0 0 0-2.806l-.893-.893a1.98 1.98 0 0 1-.581-1.403V7.04a1.984 1.984 0 0 0-1.984-1.984h-1.262a1.98 1.98 0 0 1-1.403-.581l-.893-.893a1.984 1.984 0 0 0-2.806 0l-.893.893a1.98 1.98 0 0 1-1.403.581H7.04A1.984 1.984 0 0 0 5.055 7.04v1.262c0 .527-.209 1.031-.581 1.403l-.893.893a1.984 1.984 0 0 0 0 2.806l.893.893c.372.372.581.876.581 1.403v1.262a1.984 1.984 0 0 0 1.984 1.984h1.262c.527 0 1.031.209 1.403.581l.893.893a1.984 1.984 0 0 0 2.806 0l.893-.893a1.99 1.99 0 0 1 1.403-.581h1.262a1.984 1.984 0 0 0 1.984-1.984V15.7c0-.527.209-1.031.581-1.403Z\"/>", "atom": "<path stroke=\"currentColor\" stroke-linecap=\"round\" d=\"M8.737 8.737a21.5 21.5 0 0 1 3.308-2.724m0 0c3.063-2.026 5.99-2.641 7.331-1.3 1.827 1.828.026 6.591-4.023 10.64s-8.812 5.85-10.64 4.023c-1.33-1.33-.736-4.218 1.249-7.253m6.083-6.11c-3.063-2.026-5.99-2.641-7.331-1.3-1.827 1.828-.026 6.591 4.023 10.64m3.308-9.34a21.5 21.5 0 0 1 3.308 2.724m2.775 3.386c1.985 3.035 2.579 5.923 1.248 7.253-1.336 1.337-4.245.732-7.295-1.275M14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z\"/>", "shield-check": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9.5 11.5 11 13l4-3.5M12 20a16.4 16.4 0 0 1-5.092-5.804A16.7 16.7 0 0 1 5 6.666L12 4l7 2.667a16.7 16.7 0 0 1-1.908 7.529A16.4 16.4 0 0 1 12 20\"/>", "hammer": "<path stroke=\"currentColor\" stroke-linejoin=\"round\" d=\"m20.953 11.763-2.052-2.052-2.052 2.052 2.052 2.053zm-1.368-2.736L15.48 4.922l-3.42 3.42 4.105 4.105zm-4.105 2.736-2.736-2.736-8.21 8.21 2.737 2.736z\"/><path stroke=\"currentColor\" stroke-linejoin=\"round\" d=\"m12.93 3.74 1.866 1.867-2.052 2.052-1.555-1.555c-.995-.995-3.234-.497-3.918.187l2.737-2.737c.684-.684 1.99-.746 2.923.187Z\"/>", "lightbulb": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 9a3 3 0 0 1 3-3m-2 15h4m0-3c0-4.1 4-4.9 4-9A6 6 0 1 0 6 9c0 4 4 5 4 9z\"/>", "chart-pie": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10 6.025A7.5 7.5 0 1 0 17.975 14H10z\"/><path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13.5 3c-.169 0-.334.014-.5.025V11h7.975c.011-.166.025-.331.025-.5A7.5 7.5 0 0 0 13.5 3\"/>", "chart-mixed": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 15v4m6-6v6m6-4v4m6-6v6M3 11l6-5 6 5 5.5-5.5\"/>", "file-pen": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 5V4a1 1 0 0 0-1-1H8.914a1 1 0 0 0-.707.293L4.293 7.207A1 1 0 0 0 4 7.914V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5M9 3v4a1 1 0 0 1-1 1H4m11.383.772 2.745 2.746m1.215-3.906a2.09 2.09 0 0 1 0 2.953l-6.65 6.646L9 17.95l.739-3.692 6.646-6.646a2.087 2.087 0 0 1 2.958 0\"/>", "tag": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15.583 8.445h.01M10.86 19.71l-6.573-6.63a.993.993 0 0 1 0-1.4l7.329-7.394A.98.98 0 0 1 12.31 4l5.734.007A1.97 1.97 0 0 1 20 5.983v5.5a1 1 0 0 1-.316.727l-7.44 7.5a.974.974 0 0 1-1.384.001Z\"/>", "chevron-double-left": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m17 16-4-4 4-4m-6 8-4-4 4-4\"/>", "chevron-double-right": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m7 16 4-4-4-4m6 8 4-4-4-4\"/>", "grid": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9.143 4H4.857A.857.857 0 0 0 4 4.857v4.286c0 .473.384.857.857.857h4.286A.857.857 0 0 0 10 9.143V4.857A.857.857 0 0 0 9.143 4m10 0h-4.286a.857.857 0 0 0-.857.857v4.286c0 .473.384.857.857.857h4.286A.857.857 0 0 0 20 9.143V4.857A.857.857 0 0 0 19.143 4m-10 10H4.857a.857.857 0 0 0-.857.857v4.286c0 .473.384.857.857.857h4.286a.857.857 0 0 0 .857-.857v-4.286A.857.857 0 0 0 9.143 14m10 0h-4.286a.857.857 0 0 0-.857.857v4.286c0 .473.384.857.857.857h4.286a.857.857 0 0 0 .857-.857v-4.286a.857.857 0 0 0-.857-.857\"/>", "arrow-right": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 12H5m14 0-4 4m4-4-4-4\"/>", "ruler": "<path stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 7H7m2 3H7m2 3H7m4 2v2m3-2v2m3-2v2M4 5v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-9a1 1 0 0 1-1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1\"/>"};
+const ic=(n,sz=20,cls='ic')=>`<svg class="${cls}" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">${FB_ICONS[n]}</svg>`;
+// ===== Shared sample data (identical on both pages: same seed, same order) =====
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=rng(23);
+const MODELS=[1,2,3,4,5,6].map(i=>`Model ${i}`);
+const DEPTS={"NP1":["Anjali Mehrotra","Sita Mukherjee"],"NP2":["Arvind Sai","Rakesh Kumar"],"NP3":["Neha Kapoor","Vikram Rathore"],"NP4":["Priya Nair","Sandeep Yadav"],"NP5":["Kavita Rao","Manish Tiwari"],"NP6":["Deepak Sharma","Ritu Bansal"]};
+const DLIST=Object.keys(DEPTS);
+const NAMES={"NP1":["Engine Mount Bracket","Exhaust Manifold","Oil Pan","Timing Cover","Intake Manifold"],"NP2":["Roof Panel","Hood Inner","Dash Panel","Side Member","Floor Pan"],"NP3":["Front Bumper","Grille","Tail Lamp","ORVM Assembly","Fender Liner"],"NP4":["Instrument Panel","Door Trim","Console Box","Seat Frame","Glove Box"],"NP5":["Main Harness","ECU Bracket","Fuse Box","Headlamp Unit","Wiper Motor"],"NP6":["Lower Arm","Knuckle","Stabilizer Bar","Rear Axle Beam","Strut Mount"]};
+const VENDORS=[["VC-1021","Shree Auto Comp"],["VC-1048","Delta Pressings"],["VC-2210","Vardhman Plastics"],["VC-2375","Orion Electricals"],["VC-3102","Sahyadri Castings"],["VC-3388","Nova Rubber"],["VC-4051","Pinnacle Lighting"],["VC-4417","Kaveri Forgings"]];
+const VNAME=Object.fromEntries(VENDORS);
+const TRIALS=["PP","MPP","Pilot/SOP"];
+const PREFIX=["3200-1PQ00","4111-1ZT00","5210-2KM00","6120-3HB00","7400-1YL00","8100-2DX00"];
+const TODAY=-14; // sample "today" sits at MRD − 2 weeks
+const PARTS=[];
+MODELS.forEach((m,mi)=>DLIST.forEach((d,di)=>{
+  const n=7+Math.floor(R()*12);
+  const pAvail=.35+R()*.45,pNA=.04+R()*.08,pTBC=.04+R()*.1;
+  const pPT=.3+R()*.2,pPO=.2+R()*.2,pApp=.25+R()*.4,pIni=.15+R()*.3;
+  for(let k=0;k<n;k++){
+    const x=R(),i=PARTS.length+1,v=VENDORS[Math.floor(R()*VENDORS.length)];
+    const status=x<pNA?"Not Applicable":x<pNA+pTBC?"TBC":x<pNA+pTBC+pAvail?"Available":"Not Available";
+    const planned=status==="Not Applicable"?null:-120+Math.floor(R()*126);
+    let actual=null;
+    if(status==="Available")actual=Math.min(TODAY-Math.floor(R()*4),planned+Math.floor(R()*36)-12);
+    const y=R(),specCat=y<pPT?"Process + Tech":y<pPT+pPO?"Process Only":y<pPT+pPO+.12?"Not Applicable":"Data Update Pending";
+    const z=R(),meeting=(specCat==="Process + Tech"||specCat==="Process Only")?(z<pApp?"Approved":z<pApp+pIni?"Initiated":"Pending"):null;
+    PARTS.push({id:`P-${String(i).padStart(3,"0")}`,no:`${PREFIX[di]}-${800+Math.floor(R()*199)}`,name:NAMES[d][Math.floor(R()*5)],model:m,dept:d,pic:DEPTS[d][R()<.5?0:1],
+      trial:TRIALS[Math.floor(R()*3)],vcode:v[0],vname:v[1],cat:R()<.58?"MSIL":"Proprietary",status,planned,actual,specCat,meeting});
+  }
+}));
+
+// ===== State + shared filter layer =====
+// Top-level filters are multi-select: S.F holds the selected values per filter (empty = all).
+// S.f.<key> gives the single selected value when exactly one is chosen (used where one model is required, e.g. MRD charts), else "".
+const FKEYS=["model","dept","trial","pic","pname","pcode","vcode","vname"],FFIELD={pname:"name",pcode:"no"};
+const S={F:Object.fromEntries(FKEYS.map(k=>[k,[]])),f:{},cat:null,metric:null,leftBy:"model",ckL:TODAY,ckR:TODAY,
+  t:{q:"",cf:{},sort:{k:"id",dir:1},page:0},drawer:null};
+const PAGE=8;
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+FKEYS.forEach(k=>Object.defineProperty(S.f,k,{enumerable:true,get:()=>S.F[k].length===1?S.F[k][0]:"",set:v=>{S.F[k]=v?[v]:[]}}));
+const anyFilter=()=>FKEYS.some(k=>S.F[k].length);
+const picDept=pic=>DLIST.find(d=>DEPTS[d].includes(pic));
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+function scoped(){const F=S.F,act=FKEYS.filter(k=>F[k].length);return PARTS.filter(p=>act.every(k=>F[k].includes(p[FFIELD[k]||k])))}
+function groupCount(rows,key,groups,pred){const m=Object.fromEntries(groups.map(g=>[g,0]));rows.forEach(p=>{if(p[key] in m&&pred(p))m[p[key]]++});return groups.map(g=>m[g])}
+// grouping used by the contextual chart: one PIC or one department collapses to a single bar
+function rightGroups(){const F=S.F;return F.pic.length?{key:"pic",groups:[...F.pic],word:"PIC"}:F.dept.length?{key:"dept",groups:DLIST.filter(d=>F.dept.includes(d)),word:"Department"}:{key:"dept",groups:DLIST,word:"Department"}}
+function filterTags(){return FKEYS.flatMap(k=>S.F[k]).map(v=>`<span class="tag">${v}</span>`)}
+
+// ----- multi-select filter dropdowns (checkbox list; long lists get a search box) -----
+const FPH={model:"Model",dept:"Department",trial:"Trial Stage",pic:"PIC Name",pname:"Part Name",pcode:"Part Code",vcode:"Vendor Code",vname:"Vendor Name"};
+const FUI={open:null,q:""};
+const esc=v=>String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+function filterOptions(){const F=S.F,uniq=a=>[...new Set(a)].sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true})),inD=p=>!F.dept.length||F.dept.includes(p.dept),inM=p=>!F.model.length||F.model.includes(p.model);
+  return{model:MODELS,dept:DLIST,trial:TRIALS,pic:(F.dept.length?DLIST.filter(d=>F.dept.includes(d)):DLIST).flatMap(d=>DEPTS[d]),pname:uniq(PARTS.filter(inD).map(p=>p.name)),
+    pcode:uniq(PARTS.filter(p=>inM(p)&&inD(p)&&(!F.pname.length||F.pname.includes(p.name))).map(p=>p.no)),
+    vcode:VENDORS.filter(v=>!F.vname.length||F.vname.includes(v[1])).map(v=>v[0]),vname:VENDORS.filter(v=>!F.vcode.length||F.vcode.includes(v[0])).map(v=>v[1])}}
+function renderFilters(){const F=S.F,O=filterOptions();
+  FKEYS.forEach(k=>{let el=$("f-"+k);if(el.tagName==="SELECT"){const d=document.createElement("div");d.className="msel";d.id="f-"+k;el.replaceWith(d);el=d}
+    const sel=F[k],label=!sel.length?FPH[k]:sel.length===1?sel[0]:`${sel[0]} +${sel.length-1}`,open=FUI.open===k,q=open?FUI.q.toLowerCase():"";
+    const opts=O[k].filter(v=>!q||String(v).toLowerCase().includes(q)),long=O[k].length>12;
+    el.classList.toggle("open",open);
+    el.innerHTML=`<button type="button" class="msel-btn${sel.length?" set":""}" aria-haspopup="listbox" aria-expanded="${open}" aria-label="${FPH[k]} filter" title="${esc(sel.length?sel.join(", "):FPH[k])}"><span>${esc(label)}</span></button>`+
+      (open?`<div class="msel-pop" role="listbox" aria-multiselectable="true" aria-label="${FPH[k]}">${long?`<input class="msel-q" type="search" placeholder="Search ${FPH[k].toLowerCase()}…" value="${esc(FUI.q)}" aria-label="Search ${FPH[k]}">`:""}`+
+        `<div class="msel-acts"><button type="button" data-all="1">Select all${q?" shown":""}</button><button type="button" data-none="1"${sel.length?"":" disabled"}>Clear</button></div>`+
+        `<div class="msel-list">${opts.map((v,i)=>`<label><input type="checkbox" data-i="${O[k].indexOf(v)}"${sel.includes(v)?" checked":""}><span>${esc(v)}</span></label>`).join("")||'<p class="msel-none">No matches</p>'}</div></div>`:"")});
+  $("clear").hidden=!anyFilter();
+}
+// keep dependent filters consistent after a change (drop selections that are no longer in the narrowed lists)
+function pruneFilters(){const O=filterOptions();["pic","pname","pcode","vcode","vname"].forEach(k=>{S.F[k]=S.F[k].filter(v=>O[k].includes(v))})}
+function filterChanged(){if(S.gsel&&!S.gsel.canvas.includes("left"))S.gsel=null;pruneFilters();S.t.page=0;render()}
+function bindFilters(){const bar=document.querySelector(".fbar");
+  bar.addEventListener("click",e=>{const w=e.target.closest(".msel");if(!w)return;const k=w.id.slice(2);
+    if(e.target.closest(".msel-btn")){FUI.open=FUI.open===k?null:k;FUI.q="";renderFilters();const q=$("f-"+k).querySelector(".msel-q");if(q)q.focus();return}
+    if(e.target.closest("[data-all]")){const q=FUI.q.toLowerCase(),O=filterOptions()[k].filter(v=>!q||String(v).toLowerCase().includes(q));S.F[k]=[...new Set([...S.F[k],...O])];filterChanged();return}
+    if(e.target.closest("[data-none]")){S.F[k]=[];filterChanged()}});
+  bar.addEventListener("change",e=>{const c=e.target.closest(".msel-list input");if(!c)return;const k=c.closest(".msel").id.slice(2),val=filterOptions()[k][+c.dataset.i];
+    S.F[k]=c.checked?[...S.F[k],val]:S.F[k].filter(x=>x!==val);filterChanged()});
+  bar.addEventListener("input",e=>{const q=e.target.closest(".msel-q");if(!q)return;FUI.q=q.value;const pos=q.selectionStart;renderFilters();const n=$("f-"+FUI.open).querySelector(".msel-q");if(n){n.focus();n.setSelectionRange(pos,pos)}});
+  document.addEventListener("click",e=>{if(FUI.open&&!e.composedPath().some(n=>n.classList&&n.classList.contains("msel"))){FUI.open=null;FUI.q="";renderFilters()}});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&FUI.open){FUI.open=null;FUI.q="";renderFilters()}});
+  $("clear").onclick=()=>{FKEYS.forEach(k=>S.F[k]=[]);S.metric=null;S.cat=PAGECFG.defaultTab;S.t.page=0;render()};
+}
+
+
+// ===== Tabs + tiles (config comes from the page) =====
+function renderTiles(){
+  const rows=scoped(),cfg=PAGECFG;
+  $("tabs").innerHTML=cfg.tabs.map(c=>`<button class="tab${S.cat===c.k?" on":""}" role="tab" aria-selected="${S.cat===c.k}" data-cat="${c.k}">${c.icon}${c.label}</button>`).join("");
+  const tiles=cfg.tiles(S.cat),vals=cfg.tileValues(rows,S.cat);
+  $("tiles").style.setProperty("--cols",cfg.tileCols||tiles.length);
+  $("tiles").innerHTML=tiles.map(t=>{const v=vals[t.m],base=vals[t.of];const p=t.of?(base?Math.round(v/base*100):0)+"%":"";
+    const badge="";
+    // parent tile with sub-tiles (e.g. Audit Done → Green / Yellow / Red): one card, each part selectable
+    if(t.subs)return `<div class="tile tgroup ${t.c}${S.metric===t.m?" on":""}" data-m="${t.m}" style="grid-column:span ${t.span||t.subs.length}"><div class="tg-main" role="button" tabindex="0" aria-pressed="${S.metric===t.m}"><b>${v}</b><span>${t.l}</span></div>`+
+      `<div class="tg-subs"${t.subCols?` style="grid-template-columns:repeat(${t.subCols},minmax(0,1fr))"`:""}>${t.subs.map(s=>`<button class="tile sub ${s.c}${S.metric===s.m?" on":""}" data-m="${s.m}" aria-pressed="${S.metric===s.m}"><b>${vals[s.m]}</b><span>${s.l}</span></button>`).join("")}</div></div>`;
+    const nt=t.sec?t.sec(vals):"";return `<button class="tile ${t.c}${S.metric===t.m?" on":""}" data-m="${t.m}" aria-pressed="${S.metric===t.m}">${nt?`<div class="tval"><b>${v}</b><em class="tbadge">${nt}</em></div>`:`<b>${v}</b>`}<span>${t.l}</span>${badge}</button>`}).join("");
+  const h=$("tab-helper");h.hidden=!!rows.length;h.textContent="No parts match the current filters.";
+  const cur=tiles.flatMap(t=>[t,...(t.subs||[])]).find(t=>t.m===S.metric);
+  $("tile-hint").textContent=cur?`Showing ${cur.l} in the Data Breakdown chart and filtering the table. Select the tile again to clear it.`:"Select a tile to filter the table and break it down by department in the Data Breakdown chart. Select a graph column to filter the table by that model or department.";
+}
+function bindTiles(){
+  $("tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(b){if(S.cat!==b.dataset.cat)clearGraphSel("R");if(PAGECFG.clearMetricOnTab&&S.cat!==b.dataset.cat)S.metric=null;S.cat=b.dataset.cat;render()}});
+  $("tiles").addEventListener("click",e=>{const b=e.target.closest(".tile");if(b){if(S.gsel&&S.gsel.canvas==="c-right")S.gsel=null;S.metric=S.metric===b.dataset.m?null:b.dataset.m;S.t.page=0;render()}});
+}
+
+// ===== Charts =====
+Chart.defaults.font.family='"Inter",ui-sans-serif,system-ui,sans-serif';
+Chart.defaults.font.size=14;
+Chart.defaults.color="#4A5565";
+// Value labels: "values" = number above each bar, "pa" = "actual / planned" above the planned bar, "stack" = total above each stack
+const labelPlugin={id:"vl",beforeDatasetsDraw(ch){const c=ch.ctx;c.save();c.shadowColor="rgba(0,0,0,.1)";c.shadowBlur=3;c.shadowOffsetY=1},afterDatasetsDraw(ch,_,o){const{ctx}=ch,mode=o.mode||"values",V=(d,j)=>d._realT!=null&&j===ch.data.labels.length-1?d._realT:d.data[j];ctx.restore();ctx.save();ctx.font='500 14px "Inter",system-ui,sans-serif';ctx.fillStyle="#4A5565";ctx.textAlign="center";
+  const D=ch.data.datasets;
+  if(mode==="values")D.forEach((ds,i)=>ch.getDatasetMeta(i).data.forEach((b,j)=>{if(V(ds,j)>0&&!ds.noLabel)ctx.fillText(V(ds,j)+(ds.suffix||o.suffix||""),b.x,b.y-(ds.type==="line"?12:7))}));
+  if(mode==="pa"){const meta=ch.getDatasetMeta(0),act=D[1];meta.data.forEach((b,j)=>{const p=V(D[0],j);if(!p&&!(act&&V(act,j)))return;
+    const top=Math.min(b.y,act?ch.getDatasetMeta(1).data[j].y:b.y);ctx.fillText(act?`${V(act,j)} / ${p}`:`${p}`,b.x,top-7)})}
+  if(mode==="stack"){const n=ch.data.labels.length,stacks=[...new Set(D.map(d=>d.stack||"_"))];for(let j=0;j<n;j++)stacks.forEach(sk=>{let tot=0,top=Infinity,x=0;D.forEach((ds,i)=>{if((ds.stack||"_")!==sk)return;const m=ch.getDatasetMeta(i);if(m.hidden)return;tot+=V(ds,j)||0;const b=m.data[j];if(b&&V(ds,j)){top=Math.min(top,b.y);x=b.x}});if(tot)ctx.fillText(tot,x,top-7)})
+    ctx.font='500 14px "Inter",system-ui,sans-serif';ctx.fillStyle="#101828";
+    // segment values: 14px when the segment is tall enough, a smaller 11px label inside short segments (skipped only if it would collide with a neighbour)
+    const used={};D.forEach((ds,i)=>{if(D.filter(d=>(d.stack||"_")===(ds.stack||"_")).length<2)return;ch.getDatasetMeta(i).data.forEach((b,j)=>{const v=V(ds,j);if(!v||!b)return;
+      const h=Math.abs(b.base-b.y),cy=(b.y+b.base)/2,big=h>20,fs=big?14:11,k=Math.round(b.x),u=used[k]||(used[k]=[]);
+      if(u.some(y=>Math.abs(y-cy)<fs-1))return;u.push(cy);ctx.font=`500 ${fs}px "Inter",system-ui,sans-serif`;ctx.fillText(v,b.x,cy+(big?5:4))})})}
+  if(o.groups){const xs=ch.scales.x,y=xs.bottom+16;ctx.fillStyle="#101828";ctx.font='600 14px "Inter",system-ui,sans-serif';ctx.strokeStyle="#C9CED6";ctx.lineWidth=1;
+    o.groups.forEach(g=>{const half=(xs.getPixelForValue(1)-xs.getPixelForValue(0))/2,a=xs.getPixelForValue(g.from)-half+8,b=xs.getPixelForValue(g.to)+half-8;
+      ctx.beginPath();ctx.moveTo(a,y-12);ctx.lineTo(a,y-6);ctx.lineTo(b,y-6);ctx.lineTo(b,y-12);ctx.stroke();ctx.fillText(g.label,(a+b)/2,y+12)})}
+  ctx.restore()}};
+const PICS=DLIST.flatMap(d=>DEPTS[d]);
+function pickKey(ch){const L=ch.data.labels.filter(l=>l!=="Total");if(!L.length)return null;return L.every(l=>MODELS.includes(l))?"model":L.every(l=>DLIST.includes(l))?"dept":L.every(l=>PICS.includes(l))?"pic":null}
+// ===== Graph → table filtering =====
+// Clicking a column filters the table by its category (model / department / PIC; none for the Total group) AND by its series.
+// A series is matched to a row condition from the page's own data: a tile metric or a field value whose per-group counts (or sums)
+// reproduce the plotted values exactly. Series that cannot be matched (e.g. percentages) filter by category only, and the chip says so.
+function rowMetricTable(){const tabs=PAGECFG.tabs.map(t=>t.k),T=[];const seen=new Set();
+  tabs.forEach(k=>PAGECFG.tiles(k).flatMap(t=>[t,...(t.subs||[])]).forEach(t=>{if(!seen.has(t.m)){seen.add(t.m);T.push({m:t.m,l:t.l,k})}}));return T}
+function seriesPred(ch,d,key,idx){if(!d||d.type==="line")return null;if(d.fIdx&&d.fIdx[idx])return{desc:d.label,f:d.fIdx[idx]};if(d.f)return{desc:d.label,f:d.f};const labs=ch.data.labels,n=labs.length-(labs[labs.length-1]==="Total"?1:0),T=TBL();
+  const vals=d.data.slice(0,n).map(v=>+v||0),bases=[scoped(),PARTS],mets=rowMetricTable();
+  const cands=[];mets.forEach(t=>cands.push({desc:t.l,v:p=>{const x=PAGECFG.tileValues([p],t.k)[t.m];return typeof x==="number"?x:0},f:T.tileFilter&&T.tileFilter(t.m)}));
+  const fields=new Set();PARTS.forEach(p=>Object.keys(p).forEach(k=>{if(typeof p[k]==="string")fields.add(k)}));
+  fields.forEach(f=>{if(PARTS.some(p=>p[f]===d.label))cands.push({desc:d.label,v:p=>p[f]===d.label?1:0,fld:f})});
+  const lab=d.label.toLowerCase();cands.sort((a,b)=>(b.desc.toLowerCase()===lab)-(a.desc.toLowerCase()===lab));
+  for(const base of bases){const G=key?labs.slice(0,n).map(g=>base.filter(p=>p[key]===g)):null;
+    for(const cd of cands){const per=r=>{let s=0,c=0;r.forEach(p=>{const x=cd.v(p);s+=x;if(x>0)c++});return[c,s]};
+      if(G){const pr=G.map(per);if(vals.some(Boolean)&&(pr.every((x,i)=>x[0]===vals[i])||pr.every((x,i)=>x[1]===vals[i])))return{desc:cd.desc,f:cd.f||(cd.fld?(p=>p[cd.fld]===d.label):(p=>cd.v(p)>0))}}
+      else if(cd.desc.toLowerCase().includes(String(labs[idx]).toLowerCase())||String(labs[idx]).toLowerCase().includes(cd.desc.toLowerCase())){const[cn,sm]=per(base);if(cn===vals[idx]||sm===vals[idx])return{desc:cd.desc,f:cd.f||(p=>cd.v(p)>0)}}}}
+  return null}
+function graphPick(e,ch){if(ch.config.type!=="bar")return;const el=ch.getElementsAtEventForMode(e,"nearest",{intersect:true},true)[0];if(!el)return;
+  const d=ch.data.datasets[el.datasetIndex];if(!d||d.type==="line"||Array.isArray(d.data[el.index]))return;
+  const labs=ch.data.labels,lab=labs[el.index],isT=lab==="Total"&&el.index===labs.length-1,key=pickKey(ch),id=ch.canvas.id+"|"+el.datasetIndex+"|"+el.index;
+  if(S.gsel&&S.gsel.id===id){S.gsel=null}else{
+    const sp=isT&&d.fIdx?{desc:d.label,f:p=>d.fIdx.some(f=>f(p))}:seriesPred(ch,d,key,el.index),cat=key&&!isT?(p=>p[key]===lab):null;
+    if(!sp&&!cat){S.gsel={id,canvas:ch.canvas.id,di:el.datasetIndex,ix:el.index,desc:`${isT?"Total":lab} · ${d.label}`,note:"not filterable",preds:[]}}
+    else S.gsel={id,canvas:ch.canvas.id,di:el.datasetIndex,ix:el.index,key:isT?null:key,val:isT?null:lab,desc:`${isT?"All "+(key==="model"?"models":key==="dept"?"departments":"groups"):lab}${key||isT||(sp&&d.data.length>1&&ch.data.datasets.length>1)?" · "+d.label:""}`,
+      note:sp?"":(d.data.length>1?"series not filterable, category only":""),preds:[cat,sp&&sp.f].filter(Boolean)}}
+  // when the column counts points, records or vendors rather than parts, say what the table rows are
+  if(S.gsel&&S.gsel.preds.length&&!S.gsel.note){const T=TBL(),v=d._realT!=null&&el.index===labs.length-1?d._realT:d.data[el.index],P=T.agg?baseRows().filter(p=>selPreds().every(f=>f(p))).length:new Set(tableRows().map(r=>r.id)).size;if(v!==P||T.agg)S.gsel.note=T.agg?`table totals the ${P} parts behind this column`:`table lists the ${P} parts behind this column`}
+  S.t.page=0;renderTable();Object.values(CH).forEach(c=>c&&c.draw());PAGECFG.afterPick&&PAGECFG.afterPick()}
+function clearGraphSel(slot){if(!S.gsel)return;if(slot&&!S.gsel.canvas.includes({L:"left",R:"right",N:"ng",P:"pva"}[slot]))return;S.gsel=null;if($("t-body"))renderTable()}
+// selected column: light band behind its group (not for Total) and an outline around the clicked column
+Chart.register({id:"gband",beforeDatasetsDraw(ch){const g=S.gsel;if(!g||g.canvas!==ch.canvas.id||g.ix>=ch.data.labels.length)return;
+  const x=ch.scales.x,w=(x.right-x.left)/ch.data.labels.length,a=ch.chartArea,c=ch.ctx;c.save();c.fillStyle="rgba(20,71,230,.07)";c.fillRect(x.left+g.ix*w,a.top,w,a.bottom-a.top);c.restore()},
+  afterDatasetsDraw(ch){const g=S.gsel;if(!g||g.canvas!==ch.canvas.id)return;const b=ch.getDatasetMeta(g.di)?.data[g.ix];if(!b)return;const c=ch.ctx,h=b.base-b.y;
+    c.save();c.strokeStyle="#1447E6";c.lineWidth=2;c.setLineDash([]);c.strokeRect(b.x-b.width/2-2,Math.min(b.y,b.base)-2,b.width+4,Math.abs(h)+4);c.restore()}});
+function chartOpts(extra={}){const o={responsive:true,maintainAspectRatio:false,animation:false,onClick:(e,_,ch)=>graphPick(e,ch),onHover:(e,els,ch)=>ch.canvas.classList.toggle("clickable",ch.config.type==="bar"&&els.length>0),layout:{padding:{top:24,bottom:extra.groups?40:0}},
+  plugins:{legend:{display:false},vl:{mode:extra.mode||"values",groups:extra.groups,suffix:extra.suffix},tooltip:{backgroundColor:"#101828",titleFont:{size:14,weight:"600"},bodyFont:{size:14},footerFont:{size:14,weight:"500"},padding:10,cornerRadius:8,callbacks:extra.callbacks||{}}},
+  scales:{x:{stacked:!!extra.stacked,grid:{display:false},border:{color:"#E5E7EB"},ticks:{color:"#4A5565",autoSkip:false,maxRotation:0}},
+          y:{stacked:!!extra.stacked,beginAtZero:true,grid:{color:"#EEF0F3"},border:{display:false},ticks:{color:"#6A7282",precision:0,maxTicksLimit:6},max:extra.yMax,title:extra.yTitle?{display:true,text:extra.yTitle,color:"#6A7282"}:undefined}}};
+  if(extra.y2)o.scales.y2={position:"right",min:extra.y2Min||0,max:100,grid:{display:false},border:{display:false},ticks:{color:"#6A7282",callback:v=>v<0?"":v+"%",stepSize:25},afterBuildTicks:a=>{a.ticks=a.ticks.filter(t=>t.value>=0)},title:{display:true,text:extra.y2,color:"#6A7282"}};return o}
+const TOPR={topLeft:5,topRight:5,bottomLeft:0,bottomRight:0};
+// stacked: round only the topmost non-zero segment of each column
+const topOnly=c=>{const D=c.chart.data.datasets,j=c.dataIndex,sk=D[c.datasetIndex].stack;for(let k=c.datasetIndex+1;k<D.length;k++){if(D[k].stack===sk&&c.chart.isDatasetVisible(k)&&D[k].data[j]>0)return 0}return TOPR};
+const ds=(label,data,k,more={})=>Object.assign({label,data,backgroundColor:css(`--${k}-bar`),borderColor:css(`--${k}-bar-bd`),borderWidth:1,borderRadius:TOPR,borderSkipped:"bottom",maxBarThickness:32,categoryPercentage:.55,barPercentage:.88},more);
+const legendHtml=items=>items.map(([l,k,plan])=>`<span><i class="${plan?"plan":""}" style="background:var(--${k}-bar);border-color:var(--${k}-bar-bd)"></i>${l}</span>`).join("");
+function drawChart(slot,cfg){if(CH[slot])CH[slot].destroy();
+  // Every column chart ends with a "Total" group: each series summed over the groups shown (a series may give its own exact total, e.g. a percentage)
+  const tot=(cfg.type||"bar")==="bar"&&!cfg.noTotal&&cfg.data.labels.length&&!cfg.data.labels.includes("Total");
+  const barMax=()=>Math.max(0,...cfg.data.datasets.filter(d=>d.type!=="line").flatMap(d=>d.data.map(v=>+v||0)));const m0=tot?barMax():0;
+  if(tot){cfg.data.labels=[...cfg.data.labels,"Total"];cfg.data.datasets.forEach(d=>{const t=d.total!==undefined?d.total:d.type==="line"?null:d.data.reduce((a,b)=>a+(+b||0),0);d.data=[...d.data,t];if(Array.isArray(d.backgroundColor)){d.backgroundColor=[...d.backgroundColor.slice(0,d.data.length-1),d.totBg||"#DBEAFE"];if(Array.isArray(d.borderColor))d.borderColor=[...d.borderColor.slice(0,d.data.length-1),d.totBd||"#60A5FA"]}})}
+  const TI=cfg.data.labels.length-1;
+  // a page-fixed y maximum (not a 0–100% scale) grows in proportion so the Total group fits
+  // Any stack with more than 2 segments is drawn as clustered columns instead (each segment gets its own column); stacks of 1–2 stay stacked
+  if(cfg.stacked&&cfg.type!=="line"&&!cfg.keepStack){const by={};cfg.data.datasets.forEach(d=>(by[d.stack||"_"]=by[d.stack||"_"]||[]).push(d));
+    let conv=false;Object.values(by).forEach(a=>{if(a.length>2){conv=true;a.forEach((d,i)=>d.stack=(d.stack||"_")+"#"+i)}});
+    if(conv){cfg.data.datasets.forEach(d=>d.maxBarThickness=20);const ns=new Set(cfg.data.datasets.map(d=>d.stack||"_")).size;cfg.minPer=Math.max(cfg.minPer||0,ns*26+56)}}
+  // axis break: when the Total group is far taller than every other group, it is drawn shortened with a break mark and keeps its true labels
+  if(tot){const B=cfg.data.datasets.filter(d=>d.type!=="line"),key=(d,i)=>cfg.stacked?(d.stack||"_"):i,sums=j=>{const m={};B.forEach((d,i)=>{const k=key(d,i);m[k]=(m[k]||0)+(+d.data[j]||0)});return Object.values(m)};
+    const maxO=Math.max(0,...cfg.data.labels.slice(0,TI).flatMap((_,j)=>sums(j))),maxT=Math.max(0,...sums(TI));
+    if(maxO>0&&maxT>2*maxO){const k=1.25*maxO/maxT;B.forEach(d=>{d._realT=d.data[TI];d.data[TI]=(+d.data[TI]||0)*k})}}
+  const cv=$(CV[slot]),inner=cv.parentElement,box=inner.parentElement,n=cfg.data.labels.length;
+  const BD=cfg.data.datasets.filter(d=>d.type!=="line"),bars=cfg.stacked?new Set(BD.map(d=>d.stack||"_")).size||1:Math.max(1,BD.filter(d=>d.grouped!==false).length+(BD.some(d=>d.grouped===false)?1:0));
+  const need=n*Math.max(cfg.minPer||0,bars>1?bars*19+40:56)+60;inner.style.width=need>box.clientWidth?need+"px":"100%";box.parentElement.classList.toggle("scrolls",need>box.clientWidth);if(cfg.stacked)cfg.data.datasets.forEach(d=>{d.borderRadius=topOnly;d.borderSkipped=false});const opts=cfg.options||chartOpts(cfg);
+  if(tot){if(opts.scales&&opts.scales.x){opts.scales.x.ticks=opts.scales.x.ticks||{};opts.scales.x.ticks.font=c=>({weight:c.index===TI?"700":"400"})}
+    // the Total group gets no page-specific footer and shows its true (unshortened) values
+    const cb=opts.plugins.tooltip.callbacks=opts.plugins.tooltip.callbacks||{};if(!cb.label)cb.label=c=>` ${c.dataset.label}: ${c.formattedValue}${c.dataset.suffix||""}`;Object.keys(cb).forEach(k=>{const f=cb[k];cb[k]=function(x){const arr=Array.isArray(x)?x:[x];if(!arr[0])return f.call(this,x);
+      if(arr[0].dataIndex===TI){if(k==="footer"&&!cfg.totFooter)return"";const r=arr.map(i=>i.dataset&&i.dataset._realT!=null?Object.assign(Object.create(Object.getPrototypeOf(i)),i,{raw:i.dataset._realT,formattedValue:String(i.dataset._realT)}):i);return f.call(this,Array.isArray(x)?r:r[0])}
+      return f.call(this,x)}})}
+
+  // clustered columns: fixed 6px gap between columns of one label, the rest of the label's width becomes the gap between labels
+  if((cfg.type||"bar")==="bar"&&bars>1&&!BD.some(d=>d.grouped===false))opts.plugins.cfit={ns:bars,bar:Math.max(...BD.map(d=>d.maxBarThickness||32))};
+  CH[slot]=new Chart(cv,{type:cfg.type||"bar",data:cfg.data,options:opts,plugins:cfg.plugins||[labelPlugin]});syncPlots()}
+// Total group look (last group): light grey band and a dashed divider before it
+const isTot=ch=>ch.data.labels.length>1&&ch.data.labels[ch.data.labels.length-1]==="Total";
+Chart.register({id:"totband",beforeDatasetsDraw(ch){if(ch.config.type!=="bar"||!isTot(ch))return;const n=ch.data.labels.length,x=ch.scales.x,w=(x.right-x.left)/n,a=ch.chartArea,c=ch.ctx,x0=x.left+(n-1)*w;
+  c.save();c.fillStyle="#F3F4F6";c.fillRect(x0,a.top,w,a.bottom-a.top);c.strokeStyle="#9AA2B1";c.setLineDash([4,3]);c.beginPath();c.moveTo(x0,a.top);c.lineTo(x0,a.bottom);c.stroke();c.restore()}});
+Chart.register({id:"kink",afterDatasetsDraw(ch){if(!isTot(ch))return;const D=ch.data.datasets,st=ch.options.scales.x.stacked,top={},T=ch.data.labels.length-1;
+  D.forEach((d,i)=>{if(d._realT==null||!ch.isDatasetVisible(i))return;const b=ch.getDatasetMeta(i).data[T];if(!b||!d.data[T])return;const k=st?(d.stack||"_"):i;if(!top[k]||b.y<top[k].y)top[k]=b});
+  const c=ch.ctx;c.save();Object.values(top).forEach(b=>{const h=b.base-b.y;if(h<14)return;const y=b.y+Math.min(22,h*.35),x0=b.x-b.width/2-2,x1=b.x+b.width/2+2,n=3,w=(x1-x0)/n;
+    const zz=yy=>{c.beginPath();c.moveTo(x0,yy);for(let i=0;i<n;i++){c.lineTo(x0+w*(i+.5),yy-3);c.lineTo(x0+w*(i+1),yy)}c.stroke()};
+    c.strokeStyle="#fff";c.lineWidth=6;zz(y+3);c.strokeStyle="#9AA2B1";c.lineWidth=1;zz(y);zz(y+6)});c.restore()}});
+const CGAP=6;
+Chart.register({id:"cfit",afterLayout(ch,_,o){if(!o||!o.ns)return;const x=ch.scales.x,W=(x.right-x.left)/ch.data.labels.length;
+  const bar=Math.max(8,Math.min(o.bar,(W-Math.max(36,W*.28)-o.ns*CGAP)/o.ns)),slot=bar+CGAP,c=Math.min(1,o.ns*slot/W),b=bar/slot;
+  const D=ch.data.datasets.filter(d=>d.type!=="line");if(D.every(d=>Math.abs((d.categoryPercentage||0)-c)<1e-4&&Math.abs((d.barPercentage||0)-b)<1e-4))return;
+  D.forEach(d=>{d.categoryPercentage=c;d.barPercentage=b;d.maxBarThickness=bar+.01});if(!ch.$cfq){ch.$cfq=1;requestAnimationFrame(()=>{ch.$cfq=0;if(ch.canvas)ch.update("none")})}}});
+const CH={L:null,R:null};
+const CV={L:"c-left",R:"c-right",N:"c-ng",P:"c-pva"},CAP={L:"cap-left",R:"cap-right",N:"cap-ng",P:"cap-pva"};
+// ===== Export: chart as PNG or CSV, table as CSV (all filtered rows) =====
+function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+const csvCell=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v};
+const toCsv=rows=>rows.map(r=>r.map(csvCell).join(",")).join("\n");
+const slug=t=>t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+function chartCsv(slot){const c=CH[slot];if(!c)return null;const lab=c.data.labels.map(l=>Array.isArray(l)?l.join(" "):l);
+  return toCsv([["Group",...c.data.datasets.map(d=>d.label)],...lab.map((l,j)=>[l,...c.data.datasets.map(d=>d.data[j])])])}
+function chartPng(slot,title){const c=CH[slot];if(!c)return;const src=c.canvas,pad=24,w=src.width,h=src.height,o=document.createElement("canvas");o.width=w+pad*2;o.height=h+pad*2+40;
+  const x=o.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,o.width,o.height);x.fillStyle="#101828";x.font='600 28px "Inter",system-ui,sans-serif';x.fillText(title,pad,pad+24);x.drawImage(src,pad,pad+40);
+  o.toBlob(b=>download(slug(title)+".png",b))}
+function exportItems(k){if(k==="T2")return[["csv","Table as CSV (all filtered rows)"]];if(k==="T")return[["csv","Table as CSV (all filtered rows)"]];return CH[k]?[["png","Chart as PNG"],["csv","Chart data as CSV"]]:[]}
+function doExport(k,fmt){const page=document.querySelector("h1").textContent.trim();
+  if(k==="T2"){PAGECFG.exportT2&&PAGECFG.exportT2();return}
+  if(k==="T"){const T=TBL(),rows=tableRows();const cols=T.exportCols||T.cols;
+    download(slug(page)+"-table.csv",new Blob([toCsv([cols.map(c=>(c[2]&&c[2].fl)||c[1]),...rows.map(p=>cols.map(([f])=>T.cell?T.cell(p,f):p[f]))])],{type:"text/csv"}));return}
+  const cap=$(CAP[k]).textContent||page;
+  if(fmt==="png")chartPng(k,cap);else download(slug(cap)+".csv",new Blob([chartCsv(k)],{type:"text/csv"}))}
+function bindExport(){
+  document.querySelectorAll(".xbtn").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const k=b.dataset.x,m=document.querySelector(`[data-xm="${k}"]`),open=m.hidden;
+    document.querySelectorAll(".xmenu").forEach(x=>x.hidden=true);if(!open)return;const it=exportItems(k);
+    m.innerHTML=it.length?it.map(([f,l])=>`<button data-f="${f}">${l}</button>`).join(""):`<p class="xnone">Nothing to export yet</p>`;m.hidden=false}));
+  document.querySelectorAll(".xmenu").forEach(m=>m.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;e.stopPropagation();m.hidden=true;doExport(m.dataset.xm,b.dataset.f)}));
+  document.addEventListener("click",()=>document.querySelectorAll(".xmenu").forEach(x=>x.hidden=true));
+}
+function showEmpty(title,msg){if(CH.R){CH.R.destroy();CH.R=null;syncPlots()}$("e-right").hidden=false;$("c-right").hidden=true;$("cap-right").textContent="";$("lg-right").innerHTML="";$("n-right").textContent="";
+  $("e-right").innerHTML=`<div><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20h16M7 16v-5M12 16V7M17 16v-8"/></svg><b>${title}</b>${msg}</div>`}
+function showRight(){$("e-right").hidden=true;$("c-right").hidden=false}
+function bindLeftToggle(){document.querySelectorAll("input[name=ptype]").forEach(r=>r.onchange=()=>{if(r.checked){S.ptype=r.value;clearGraphSel("P");PAGECFG.renderRight()}});document.querySelectorAll("input[name=ltype]").forEach(r=>r.onchange=()=>{if(r.checked){S.leftType=r.value;clearGraphSel("L");PAGECFG.renderLeft()}});document.querySelectorAll("[data-by]").forEach(b=>b.onclick=()=>{S.leftBy=b.dataset.by;clearGraphSel("L");document.querySelectorAll("[data-by]").forEach(x=>x.classList.toggle("on",x===b));PAGECFG.renderLeft()})}
+
+// ===== Table: columns come from the page; filters and sorting are derived from column metadata =====
+// Column def: [key, label, {type:"text"|"cat"|"num", filter:false, sort:false}] — type is inferred from the data when omitted.
+const CARET=ic('chevron-sort',16);
+// rows a table works on: top-level filters, then the table view's own row filter (e.g. NG parts only)
+// a table may expand parts into several rows (e.g. one row per part-deviation record)
+const baseRows=()=>{const T=TBL(),src=T.expand?T.expand(scoped()):scoped();return T.filter?src.filter(T.filter):src};
+const tval=(p,k)=>{const T=TBL(),v=T.cell?T.cell(p,k):p[k];return v==null||v===""?"—":v};
+function colMeta(rows){const T=TBL();return T.cols.map(([k,l,o={}])=>{
+  if(o.filter===false)return{k,l,fl:o.fl||l,type:null,sort:o.sort!==false};
+  let type=o.type;const vals=rows.map(p=>tval(p,k)),real=vals.filter(v=>v!=="—");
+  if(!type)type=real.length&&real.every(v=>typeof v==="number")?"num":new Set(vals).size<=15?"cat":"text";
+  const opts=type==="cat"?[...new Set(vals.map(String))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})):null;
+  return{k,l,fl:o.fl||l,type,opts,sort:o.sort!==false}})}
+const numOf=v=>typeof v==="number"?v:parseFloat(v);
+function passCol(p,k,f){const v=tval(p,k);
+  if(f.type==="cat")return String(v)===f.v;
+  if(f.type==="text")return String(v).toLowerCase().includes(f.v.toLowerCase());
+  const n=numOf(v);if(isNaN(n))return false;return(f.min===""||n>=+f.min)&&(f.max===""||n<=+f.max)}
+const activeCF=()=>Object.entries(S.t.cf).filter(([,f])=>f.type==="num"?(f.min!==""||f.max!==""):f.v!=="");
+// rows the table shows: top-level filters + search + column filters, sorted (export uses all of them, not one page)
+// Table selections: the selected KPI tile and a clicked graph category (Model / Department / PIC) narrow the table rows
+const allTiles=()=>PAGECFG.tiles(S.cat).flatMap(t=>[t,...(t.subs||[])]);
+function tileSel(){const m=S.metric;if(!m)return null;const t=allTiles().find(x=>x.m===m);if(!t)return null;const T=TBL();
+  if(T.tileFilter){const f=T.tileFilter(m);if(f)return{t,f};if(f===false)return{t,f:null}}
+  if(t.f)return{t,f:t.f};const v0=PAGECFG.tileValues(scoped().slice(0,1),S.cat)[m];if(typeof v0!=="number")return{t,f:null};// percentages cannot be mapped to rows
+  return{t,f:p=>{const v=PAGECFG.tileValues([p],S.cat)[m];return typeof v==="number"&&v>0}}}
+function selPreds(){const out=[],ts=tileSel();if(ts&&ts.f)out.push(ts.f);const g=S.gsel;if(g)g.preds.forEach(f=>out.push(f));return out}
+function tableRows(){const t=S.t,q=t.q.toLowerCase().trim(),act=activeCF(),sp=selPreds();
+  const T0=TBL(),src=T0.agg?T0.agg(baseRows().filter(p=>sp.every(f=>f(p)))):baseRows().filter(p=>sp.every(f=>f(p)));
+  const rows=src.filter(p=>(!q||(T0.q?T0.q(p):[p.model,p.id,p.no,p.name,p.vcode,p.vname,p.pic,p.dept,p.trial]).join(" ").toLowerCase().includes(q))&&act.every(([k,f])=>passCol(p,k,f)));
+  const sv=p=>{const v=tval(p,t.sort.k);return v==="—"?(t.sort.dir>0?"￿":""):v};
+  return rows.sort((a,b)=>{const x=sv(a),y=sv(b);const c=typeof x==="number"&&typeof y==="number"?x-y:String(x).localeCompare(String(y),undefined,{numeric:true});return c*t.sort.dir})}
+function renderTable(){
+  const t=S.t,T=TBL(),rows=tableRows();
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE));t.page=Math.min(t.page,pages-1);
+  const meta=colMeta(TBL().agg?TBL().agg(baseRows()):baseRows());
+  const hcells=meta.map(({k,l,sort},i)=>{const on=t.sort.k===k,dir=on?(t.sort.dir>0?"ascending":"descending"):"none";
+    return `<th class="${i<2?"stk s"+i:""}${on?" sorted":""}" aria-sort="${dir}">${sort?`<button data-k="${k}" title="Sort by ${l}">${l}${on?ic(t.sort.dir>0?"chevron-up":"chevron-down",16):CARET}</button>`:l}</th>`}).join("");
+  let grp="";
+  if(T.groups){const g=T.groups.map(x=>[...x]);const first=g[0];
+    grp=`<tr class="grp"><th colspan="2" class="stk s0">${first[0]}</th>${first[1]>2?`<th colspan="${first[1]-2}"></th>`:""}${g.slice(1).map(([l,n])=>`<th colspan="${n}">${l}</th>`).join("")}</tr>`}
+  $("t-thead").innerHTML=grp+`<tr>${hcells}</tr>`;
+  const body=rows.slice(t.page*PAGE,t.page*PAGE+PAGE).map(T.row).join("");
+  $("t-body").innerHTML=body||`<tr><td colspan="${T.cols.length}" class="none">No parts match. Clear the search or table filters to see more.</td></tr>`;
+  if(body)$("t-body").querySelectorAll("tr").forEach(tr=>{tr.children[0]?.classList.add("stk","s0");tr.children[1]?.classList.add("stk","s1")});
+  {const tb=$("t-body").closest("table");let tf=tb.querySelector("tfoot");if(T.foot&&rows.length){if(!tf){tf=document.createElement("tfoot");tb.appendChild(tf)}tf.innerHTML=T.foot(rows);tf.querySelectorAll("tr").forEach(tr=>{tr.children[0]?.classList.add("stk","s0");tr.children[1]?.classList.add("stk","s1")})}else if(tf)tf.remove()}
+  const tbl=$("t-body").closest("table"),c1=tbl.querySelector("thead tr:last-child th");if(c1)tbl.style.setProperty("--c1",c1.getBoundingClientRect().width+"px");
+  PAGECFG.afterTable&&PAGECFG.afterTable();
+  {const sc=$("t-scope");if(sc){const g=S.gsel,ms=S.F.model.length?S.F.model:(g&&g.key==="model"?[g.val]:[]);sc.hidden=!T.agg;sc.textContent=ms.length&&ms.length<MODELS.length?`${ms.join(", ")} only`:"Across All Models"}}
+  $("t-count").textContent=TBL().count?TBL().count(rows):`${rows.length} parts`;
+  $("t-page").textContent=rows.length?`Showing ${t.page*PAGE+1}–${Math.min(rows.length,(t.page+1)*PAGE)} of ${rows.length}`:"";
+  let s=Math.max(0,Math.min(t.page-2,pages-5)),e=Math.min(pages,s+5),btn=[`<button data-p="${t.page-1}"${t.page===0?" disabled":""} aria-label="Previous page">‹</button>`];
+  for(let i=s;i<e;i++)btn.push(`<button data-p="${i}" class="${i===t.page?"on":""}">${i+1}</button>`);
+  btn.push(`<button data-p="${t.page+1}"${t.page>=pages-1?" disabled":""} aria-label="Next page">›</button>`);
+  $("t-pg").innerHTML=btn.join("");
+  const act=activeCF(),lab=k=>meta.find(m=>m.k===k)?.fl||k;
+  $("t-flabel").textContent=act.length?`Filters · ${act.length}`:"Filters";$("t-fbtn").classList.toggle("set",!!act.length);$("t-fbtn").setAttribute("aria-expanded",!$("t-fpanel").hidden);
+  const ts=tileSel(),g=S.gsel,sel=(ts?[`<span class="chip sel">${ts.f?"Tile":"Tile (not applied: percentage)"}: ${ts.t.l}<button data-rm="__tile" aria-label="Clear tile selection">${ic("close",16)}</button></span>`]:[])
+    .concat(g?[`<span class="chip sel">Graph: ${g.desc}${g.note?` (${g.note})`:""}<button data-rm="__g" aria-label="Clear graph selection">${ic("close",16)}</button></span>`]:[]).join("");
+  $("t-chips").innerHTML=sel+act.map(([k,f])=>`<span class="chip">${lab(k)}: ${f.type==="num"?`${f.min!==""?f.min:"…"}–${f.max!==""?f.max:"…"}`:f.v}<button data-rm="${k}" aria-label="Remove ${lab(k)} filter">${ic("close",16)}</button></span>`).join("")+(act.length>1?`<button class="link" data-rm="*">Clear all</button>`:"");
+  $("t-chips").hidden=!act.length&&!sel;
+}
+function renderFilterPanel(){const meta=colMeta(TBL().agg?TBL().agg(baseRows()):baseRows()).filter(m=>m.type),cf=S.t.cf;
+  $("t-fpanel").innerHTML=`<div class="fgrid">${meta.map(m=>{const f=cf[m.k]||{},id="cf-"+m.k;
+    if(m.type==="cat")return `<label class="fcell" for="${id}"><span>${m.fl}</span><select id="${id}" data-cf="${m.k}" data-t="cat" class="${f.v?"set":""}"><option value="">All</option>${m.opts.map(o=>`<option${o===f.v?" selected":""}>${o}</option>`).join("")}</select></label>`;
+    if(m.type==="text")return `<label class="fcell" for="${id}"><span>${m.fl}</span><input id="${id}" data-cf="${m.k}" data-t="text" placeholder="Contains…" value="${f.v||""}" class="${f.v?"set":""}"></label>`;
+    return `<div class="fcell"><span>${m.fl}</span><div class="range"><input id="${id}-min" data-cf="${m.k}" data-t="num" data-b="min" type="number" placeholder="Min" value="${f.min??""}" aria-label="${m.l} minimum"><input id="${id}-max" data-cf="${m.k}" data-t="num" data-b="max" type="number" placeholder="Max" value="${f.max??""}" aria-label="${m.l} maximum"></div></div>`}).join("")}</div>`}
+const stCell=(label,k)=>`<span class="st"><i style="background:var(--${k}-bar-bd)"></i>${label}</span>`;
+function bindTable(){
+  S.t.cf={};
+  document.querySelectorAll("input[name=tview]").forEach(r=>r.onchange=()=>{if(!r.checked)return;S.tview=r.value;S.t.cf={};S.t.page=0;S.t.sort={k:"id",dir:1};
+    $("t-h").textContent=TBL().title||$("t-h").textContent;if(!$("t-fpanel").hidden)renderFilterPanel();renderTable()});
+  $("t-thead").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const s=S.t.sort;s.dir=s.k===b.dataset.k?-s.dir:1;s.k=b.dataset.k;renderTable()});
+  $("t-q").addEventListener("input",e=>{S.t.q=e.target.value;S.t.page=0;renderTable()});
+  $("t-pg").addEventListener("click",e=>{const b=e.target.closest("button");if(b&&!b.disabled){S.t.page=+b.dataset.p;renderTable()}});
+  $("t-fbtn").onclick=()=>{const p=$("t-fpanel");p.hidden=!p.hidden;if(!p.hidden)renderFilterPanel();renderTable()};
+  const onCF=e=>{const el=e.target.closest("[data-cf]");if(!el)return;const k=el.dataset.cf,ty=el.dataset.t;
+    const f=S.t.cf[k]||(S.t.cf[k]=ty==="num"?{type:ty,min:"",max:""}:{type:ty,v:""});
+    if(ty==="num")f[el.dataset.b]=el.value;else{f.v=el.value;el.classList.toggle("set",!!el.value)}
+    S.t.page=0;renderTable()};
+  $("t-fpanel").addEventListener("input",onCF);$("t-fpanel").addEventListener("change",onCF);
+  $("t-chips").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(!b)return;
+    if(b.dataset.rm==="__tile"){S.metric=null;S.t.page=0;render();return}if(b.dataset.rm==="__g"){S.gsel=null;S.t.page=0;renderTable();Object.values(CH).forEach(c=>c&&c.draw());PAGECFG.afterPick&&PAGECFG.afterPick();return}
+    if(b.dataset.rm==="*")S.t.cf={};else delete S.t.cf[b.dataset.rm];
+    S.t.page=0;if(!$("t-fpanel").hidden)renderFilterPanel();renderTable()});
+}
+
+// ===== Alerts drawer (items come from the page) =====
+const DR={crit:{l:"Key Alerts",e:"No critical issues in the current selection."},mgmt:{l:"Management Summary",e:"Nothing needs management review in the current selection."},ins:{l:"Key Insights",e:"Not enough data in the current selection for insights."}};
+// Page rules give the first items; each segment is topped up to 5 with plain facts from the page's own tile metrics
+// (where a metric is highest by department or model in the current selection), so every statement comes from the data shown.
+function topUp(A0,rows){
+  // Key Alerts = page alert rules (incl. former management alerts); Management Summary = progress facts; Key Insights = page insights.
+  // Each is topped up to 5 with specific facts (named PICs, vendors, departments, models) computed from the current top-level selection.
+  const A={crit:[...A0.crit,...A0.mgmt],mgmt:[],ins:[...A0.ins]};if(!rows.length)return A;
+  const val=(r,t)=>{const v=PAGECFG.tileValues(r,t.k)[t.m];return typeof v==="number"?v:null},seen=new Set(),seenL=new Set(),T=[];
+  // a metric's base (for %): the smallest Total / Applicable tile in the same segment that is at least as large as the metric
+  PAGECFG.tabs.forEach(tb=>{const ts=PAGECFG.tiles(tb.k).flatMap(t=>[t,...(t.subs||[])]),bs=PAGECFG.tiles(tb.k).filter(t=>t.isBase||/t-pt/.test(t.c||"")||/t-total/.test(t.c||"")&&/total|applicable|all |count/i.test(t.l)).map(t=>({...t,k:tb.k}));
+    ts.forEach(t=>{if(seen.has(t.m)||seenL.has(t.l)||/t-(total|plain|pt)/.test(t.c||"")&&!t.good)return;seen.add(t.m);seenL.add(t.l);const me={...t,k:tb.k},v=val(rows,me);
+      const base=v==null?null:bs.filter(b=>{if(b.m===t.m)return false;const bv=val(rows,b);return bv!=null&&bv>=v&&bv>0}).sort((x,y)=>val(rows,x)-val(rows,y))[0]||null;T.push({...me,base})})});
+  const bad=T.filter(t=>/t-(bad|tbc|dup)/.test(t.c)&&val(rows,t)),good0=T.filter(t=>(/t-ok/.test(t.c)||t.good)&&val(rows,t)),good=good0.length?good0:T.filter(t=>/t-ini/.test(t.c)&&val(rows,t)),rest=T.filter(t=>!bad.includes(t)&&!good.includes(t)&&val(rows,t));
+  // dimensions that still vary under the current filters (a selected model hides the model comparison, etc.)
+  const dims=[["dept",DLIST,"department"],["model",MODELS,"model"],["pic",PICS,"PIC"],["vname",VENDORS.map(v=>v[1]),"vendor"]].map(([key,gs,w])=>({key,w,gs:gs.filter(g=>rows.some(p=>p[key]===g))})).filter(d=>d.gs.length>1);
+  const D=k=>dims.find(d=>d.key===k),sub=(key,g)=>rows.filter(p=>p[key]===g),scope=[S.F.model,S.F.dept,S.F.pic].map(a=>a.join(", ")).filter(Boolean).join(" · ")||"all models";
+  const who=(key,g)=>key==="pic"?`${g} (${picDept(g)})`:g;
+  const shr=(r,t)=>{const b=t.base?val(r,t.base):null,v=val(r,t);return b&&v!=null&&v<=b?v/b:null};
+  const topCnt=(t,d)=>{let g=null,v=0;d.gs.forEach(x=>{const y=val(sub(d.key,x),t)||0;if(y>v){v=y;g=x}});return g&&{g,v}};
+  const extShare=(t,d,hi)=>{let g=null,s=hi?-1:2;d.gs.forEach(x=>{const r=sub(d.key,x);if(r.length<3)return;const y=shr(r,t);if(y!=null&&(hi?y>s:y<s)){s=y;g=x}});return g&&{g,s:Math.round(s*100),r:sub(d.key,g)}};
+  const numN=k=>A[k].filter(i=>i.k||overview(i.t).k).length,push=(k,x)=>{if(x&&numN(k)<5)A[k].push(x)};
+  // --- Key Alerts: who/where the open issues sit
+  bad.forEach(t=>{const p=D("pic"),v=D("vname"),d=D("dept")||D("model");
+    if(p){const r=topCnt(t,p);r&&push("crit",{k:String(r.v),s:`${t.l} with ${r.g}, the most of any PIC`,t:`${who("pic",r.g)} holds ${r.v} ${t.l}`,d:`${pct(r.v,val(rows,t))}% of the ${val(rows,t)} in ${scope}.`,o:r.g})}
+    if(v){const r=topCnt(t,v);r&&push("crit",{k:String(r.v),s:`${t.l} from ${r.g}`,t:`${r.g} accounts for ${r.v} ${t.l}`,d:`Highest of ${v.gs.length} vendors in ${scope}.`,o:"Purchase"})}
+    if(d){const r=topCnt(t,d);r&&push("crit",{k:String(r.v),s:`${t.l} in ${r.g}, the most of any ${d.w}`,t:`${r.g} has the most ${t.l}: ${r.v}`,d:`${pct(r.v,val(rows,t))}% of ${val(rows,t)} in ${scope}.`,o:d.key==="dept"?`${r.g} Team`:"Programme Head"})}});
+  // --- Management Summary: where things stand and who is on track
+  const S5=[...(A0.sum||[])],g0=good[0],g1=good[1];
+  const overall=t=>{const v=val(rows,t),b=t.base&&val(rows,t.base);return b?{k:pct(v,b)+"%",s:`${t.l} for ${scope}`,t:`${pct(v,b)}% ${t.l} for ${scope}`,d:`${v} of ${b} ${t.base.l.toLowerCase()}.`,o:"Programme Head"}
+    :{k:String(v),s:`${t.l} for ${scope}`,t:`${v} ${t.l} for ${scope}`,d:"Across the current top-level selection.",o:"Programme Head"}};
+  const lead=(t,d)=>{if(!d||!t.base)return null;const r=extShare(t,d,true);if(!r)return null;const done=r.s===100;
+    const ph=[`${r.g} leads all ${d.w}s on ${t.l}`,`${r.g} sets the pace on ${t.l}`,`${t.l} highest at ${r.g}`,`${r.g} is the top-performing ${d.w}`][["dept","pic","vname","model"].indexOf(d.key)]||`${t.l} highest at ${r.g}`;
+    return{k:r.s+"%",s:done?`${t.l} complete for ${r.g}`:ph,t:`${who(d.key,r.g)}: ${r.s}% ${t.l}`,d:`${val(r.r,t)} of ${val(r.r,t.base)} ${t.base.l.toLowerCase()}${done?" — fully on track":" — best of "+d.gs.length+" "+d.w+"s"}.`,o:d.key==="pic"?r.g:"Programme Head"}};
+  const above=(t,d)=>{if(!d||!t.base)return null;const o=shr(rows,t);if(o==null)return null;const live=d.gs.filter(g=>shr(sub(d.key,g),t)!=null),n=live.filter(g=>shr(sub(d.key,g),t)>=o);if(live.length<2)return null;
+    return{k:`${n.length}/${live.length}`,s:`${d.w[0].toUpperCase()+d.w.slice(1)}s on track for ${t.l}`,t:`${n.length} of ${live.length} ${d.w}s at or above the ${Math.round(o*100)}% ${t.l} average`,d:n.join(", ")+".",o:"Programme Head"}};
+  const clean=(t,d)=>{if(!d)return null;const z=d.gs.filter(g=>!val(sub(d.key,g),t));return z.length?{k:`${z.length}/${d.gs.length}`,s:`${d.w[0].toUpperCase()+d.w.slice(1)}s with no ${t.l}`,t:`${z.length} of ${d.gs.length} ${d.w}s have no ${t.l}`,d:z.map(g=>who(d.key,g)).join(", ")+".",o:"Programme Head"}:null};
+  [g0&&overall(g0),g0&&lead(g0,D("dept")||D("model")),g0&&lead(g0,D("pic")),g0&&above(g0,D("dept")||D("model")),bad[0]&&clean(bad[0],D("pic")||D("dept")),g0&&lead(g0,D("vname")),
+   g1&&overall(g1),g1&&lead(g1,D("dept")||D("model")),g0&&lead(g0,D("model")&&D("dept")?D("model"):null),...rest.slice(0,3).map(overall)].forEach(x=>{if(x&&S5.length<5)S5.push(x)});A.mgmt=S5;
+  // --- Key Insights: comparisons and spread
+  const gap=(t,d)=>{if(!d||!t.base)return null;const hi=extShare(t,d,true),lo=extShare(t,d,false);if(!hi||!lo||hi.g===lo.g)return null;
+    return{k:`${hi.s-lo.s} pts`,s:`${t.l} gap: ${hi.g} ${hi.s}% vs ${lo.g} ${lo.s}%`,t:`${hi.s-lo.s}-point spread in ${t.l} across ${d.w}s`,d:`${who(d.key,hi.g)} is highest at ${hi.s}%, ${who(d.key,lo.g)} lowest at ${lo.s}%.`,o:"QA Team"}};
+  [g0&&gap(g0,D("dept")||D("model")),g0&&gap(g0,D("pic")),...[...good,...rest].map(t=>{const v=D("vname"),r=v&&topCnt(t,v);return r&&{k:String(r.v),s:`${t.l} from ${r.g}, the most of any vendor`,t:`${r.g} contributes ${r.v} ${t.l}`,d:`${pct(r.v,val(rows,t))}% of ${val(rows,t)} in ${scope}.`,o:"QA Team"}}),
+   bad[0]&&gap(bad[0],D("dept")||D("model")),g1&&gap(g1,D("dept")||D("model"))].forEach(x=>push("ins",x));
+  return A}
+// tile overview: the item's main number as the KPI, and its sentence without that number
+function overview(t){const num="\\d[\\d,]*(?:\\.\\d+)?%?";let m=t.match(new RegExp(":\\s*("+num+")$"));
+  if(m)return{k:m[1],s:t.slice(0,m.index)};m=t.match(new RegExp("^("+num+")\\s+"));if(m){const s=t.slice(m[0].length);return{k:m[1],s:s.charAt(0).toUpperCase()+s.slice(1)}}
+  m=t.match(new RegExp("(?<![\\w-]|Model |Rank |Tier )("+num+")(?![\\w-])"));return{k:m?m[1]:"",s:t}}
+function renderAlerts(){
+  const A=topUp(PAGECFG.alerts(scoped()),scoped());
+  ["crit","mgmt","ins"].forEach(k=>$("n-"+k).textContent=A[k].length);
+  // segmented alert tiles: up to 5 items of the selected segment; View More opens the drawer with the full list
+  const seg=S.aseg||"mgmt",ov=i=>i.k?{k:i.k,s:i.s}:overview(i.t),ord=A[seg].map((i,x)=>({i,x,o:ov(i)})).sort((a,b)=>(!a.o.k)-(!b.o.k)||a.x-b.x),it5=ord.slice(0,5);
+  document.querySelectorAll("[data-a]").forEach(b=>{const on=b.dataset.a===seg;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
+  $("aitiles").className="aitiles "+seg;
+  const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  $("aitiles").innerHTML=it5.map(({x,o})=>`<div class="aitile"><strong>${o.k||"–"}</strong><b>${cap(o.s)}</b><button class="aidet" data-i="${x}">Details</button></div>`).join("")+
+    Array.from({length:5-it5.length},(_,k)=>`<div class="aitile none">${k===0&&!it5.length?DR[seg].e:seg==="mgmt"?"Nothing more to report in this selection.":"Nothing more to flag in this selection."}</div>`).join("");
+  const open=!!S.drawer;$("drawer").hidden=!open;$("scrim").hidden=!open;
+  if(!open)return;
+  $("dr-band").className="dr-band "+S.drawer;$("dr-title").textContent=DR[S.drawer].l;
+  document.querySelectorAll("#drawer [data-d]").forEach(b=>b.classList.toggle("on",b.dataset.d===S.drawer));
+  const it=A[S.drawer];
+  $("dr-body").innerHTML=it.length?it.map((i,x)=>`<div class="item${S.hl===x?" hl":""}"><p>${i.t}<span>${i.d}</span></p><span class="own">${i.o}</span></div>`).join(""):`<p class="dr-empty">${DR[S.drawer].e}</p>`;
+}
+function bindAlerts(){
+  document.querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click",()=>{S.aseg=b.dataset.a;renderAlerts()}));
+  $("ai-more").onclick=()=>{S.drawer=S.aseg||"mgmt";S.hl=null;renderAlerts()};
+  $("aitiles").addEventListener("click",e=>{const b=e.target.closest(".aidet");if(!b)return;S.drawer=S.aseg||"mgmt";S.hl=+b.dataset.i;renderAlerts();
+    requestAnimationFrame(()=>document.querySelector("#dr-body .item.hl")?.scrollIntoView({block:"nearest"}))});
+  document.querySelectorAll("[data-d]").forEach(b=>b.addEventListener("click",()=>{S.drawer=b.dataset.d;S.hl=null;renderAlerts()}));
+  const close=()=>{S.drawer=null;S.hl=null;renderAlerts()};
+  $("dr-x").onclick=close;$("scrim").onclick=close;
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.drawer)close()});
+}
+
+// ===== Development stage bar (page header, only when a model is selected) =====
+// Sample schedule: every model is currently in PP. PP ends 8 weeks after the model's MRD, MPP 11 weeks later, Pilot/SOP 11 weeks after that.
+// The bar fills part-way through the PP third (never to its end, since PP is not finished).
+const STAGES=[["PP",56],["MPP",133],["Pilot/SOP",210]];
+function renderStage(){const el=$("stagebar");if(!el)return;const m=S.f.model;el.hidden=!m;if(!m)return;
+  const mrd=MODEL_MRD_DAYS[m],ends=STAGES.map(([n,o])=>[n,mrd+o]),cur=ends[0],frac=Math.max(.3,Math.min(.7,.5-mrd/100))/3;
+  const md=d=>{const x=dayDate(d);return x.toLocaleDateString("en-GB",{month:"short"})+" ’"+String(x.getFullYear()).slice(2)};
+  const pill=mrd>0?`${mrd} days to MRD`:mrd===0?"MRD today":`${-mrd} days past MRD`;
+  el.innerHTML=`<div class="sb-main"><div class="sb-cols">${ends.map(([n,e])=>`<div class="sb-col${n===cur[0]?" cur":""}">${n===cur[0]?`<span class="sb-pill${mrd<0?" late":""}">${pill}</span>`:""}<b>${n}</b><span>End ${md(e)}</span></div>`).join("")}</div>`+
+    `<div class="sb-track" role="progressbar" aria-label="${m} development stage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac*100)}" aria-valuetext="${m} is in ${cur[0]}"><i style="width:${(frac*100).toFixed(1)}%"></i></div></div>`}
+function render(){PAGECFG.beforeRender&&PAGECFG.beforeRender();renderFilters();renderStage();renderTiles();if(!$("t-fpanel").hidden)renderFilterPanel();PAGECFG.renderRight();renderTable();renderAlerts()}
+
+// ===== By Department view for pages whose table is a part list (tview "adept") =====
+// Built from the page's own By Parts table: one row per department; every status column becomes one count column per value
+// (e.g. Status → OK / NG / Pending), count columns are summed; part details, dates, percentages and free text are left out.
+// It uses the same rows, filters and tile / graph selections as the parts table, so its counts reconcile with it.
+const _autoT=new WeakMap(),A_SKIP=new Set(["model","no","name","dept","pic","vname","vcode","trial","id"]),A_DATE=/^\d{4}-\d{2}-\d{2}$|^\d{1,2} [A-Z][a-z]{2,4} \d{4}$/;
+function TBL(){const T=PAGECFG.table;if(S.tview!=="adept")return T;
+  const r=[...document.querySelectorAll("input[name=tview]")].map(x=>x.value).find(v=>v!=="adept"),sv=S.tview;S.tview=r||sv;let B;try{B=PAGECFG.table}finally{S.tview=sv}
+  return autoDept(B)}
+function autoDept(B){if(_autoT.has(B))return _autoT.get(B);
+  const val=(p,k)=>{const v=B.cell?B.cell(p,k):p[k];return v==null||v===""||v==="-"||v==="—"?null:v};
+  let all=B.expand?B.expand(PARTS):PARTS;if(B.filter)all=all.filter(B.filter);
+  const dc=B.cols.find(c=>c[0]==="dept"),dl=dc?dc[1]:"Department",gOf={};
+  if(B.groups){let i=0;B.groups.forEach(([l,n])=>{for(let j=0;j<n;j++){if(B.cols[i])gOf[B.cols[i][0]]=l;i++}})}
+  const out=[];B.cols.forEach(([k,l])=>{if(A_SKIP.has(k))return;const vs=all.map(p=>val(p,k)).filter(v=>v!==null);if(!vs.length)return;
+    if(vs.every(v=>typeof v==="number")){if(!/%|rank|rate/i.test(l))out.push({key:"s_"+k,label:l,group:gOf[k]||"",sum:true,src:k});return}
+    const S2=vs.map(String);if(S2.filter(v=>A_DATE.test(v)).length>S2.length/2)return;
+    const c={};S2.forEach(v=>c[v]=(c[v]||0)+1);const u=Object.keys(c);if(u.length>8)return;
+    u.sort((a,b)=>(b==="Yes")-(a==="Yes")||c[b]-c[a]);u.forEach((v,i)=>out.push({key:`c_${k}_${i}`,label:v,group:l,src:k,v}))});
+  const ex=!!B.expand,base=[["dept",dl],["parts","Parts"],...(ex?[["recs","Records"]]:[])],keys=["parts",...(ex?["recs"]:[]),...out.map(c=>c.key)];
+  const groups=[["Department",base.length]];out.forEach(c=>{const g=groups[groups.length-1];if(groups.length>1&&g[0]===c.group)g[1]++;else groups.push([c.group,1])});
+  const T={title:B.title,filter:B.filter,expand:B.expand,tileFilter:B.tileFilter,q:r=>[r.dept],groups,
+    cols:[...base,...out.map(c=>[c.key,c.label,{fl:c.sum?c.label:`${c.group} · ${c.label}`}])],
+    agg:rows=>DLIST.map(d=>{const r=rows.filter(p=>p.dept===d),o={dept:d,parts:ex?new Set(r.map(p=>p.model+"|"+p.no)).size:r.length,recs:r.length};
+      out.forEach(c=>o[c.key]=c.sum?r.reduce((a,p)=>a+(+val(p,c.src)||0),0):r.filter(p=>String(val(p,c.src))===c.v).length);return o}).filter(o=>o.recs),
+    cell:(r,f)=>r[f],
+    row:r=>`<tr><td class="id">${r.dept}</td>`+keys.map(k=>`<td class="num">${r[k]}</td>`).join("")+`</tr>`,
+    foot:rows=>`<tr><td>Total</td>`+keys.map(k=>`<td class="num">${rows.reduce((a,r)=>a+r[k],0)}</td>`).join("")+`</tr>`,
+    count:rows=>`${rows.length} departments · ${rows.reduce((a,r)=>a+r.parts,0)} parts${ex?` · ${rows.reduce((a,r)=>a+r.recs,0)} records`:""}`};
+  _autoT.set(B,T);return T}
+function boot(){{const r0=document.querySelector("input[name=tview]:checked");if(r0)S.tview=r0.value}S.cat=PAGECFG.defaultTab;bindExport();bindFilters();bindTiles();bindLeftToggle();bindTable();bindAlerts();PAGECFG.init&&PAGECFG.init();render();PAGECFG.renderLeft()}
+
+// Legend layout: up to 3 items in one row, otherwise two balanced rows (no single hanging item)
+// Legend: one row when it fits, otherwise two balanced rows (never one item hanging on its own)
+function fitLegend(el){const n=el.children.length;if(!n)return;el.classList.add("nw");el.style.setProperty("--lc",n);
+  if(n>1&&el.scrollWidth>el.clientWidth+1){el.style.setProperty("--lc",Math.ceil(n/2));if(el.scrollWidth>el.clientWidth+1)el.classList.remove("nw")}}
+window.addEventListener("resize",()=>document.querySelectorAll(".legend").forEach(fitLegend));
+// Y-axis title from what the chart counts (pages can set their own, which is kept)
+function axisTitle(slot,cap){const ch=slot&&CH[slot];if(!ch||!ch.options.scales||!ch.options.scales.y)return;const y=ch.options.scales.y;if(y.title&&y.title.display&&!y.title.auto)return;
+  const note=($({L:"n-left",R:"n-right",N:"n-ng",P:"n-pva"}[slot])||{}).textContent||"",pc=ch.options.plugins.vl&&ch.options.plugins.vl.suffix==="%"||(y.max===100&&ch.config.type==="line");
+  const u=pc?(ch.config.type==="line"?"Completion %":"Percentage (%)"):/vendors/i.test(cap)?"Vendors":/deviation records/i.test(cap)?"Deviation records":/ECR/.test(cap)?"ECR points":/observation analysis|observations agreed|observations implemented|observation count/i.test(cap)?"Observation points":
+    /observation/i.test(cap)?"Observations":/hinkai/i.test(cap)?"Hinkai":/Manpower Readiness$/.test(cap)?"Operators":/Wise Process Audit$/.test(cap)?"Audits":/· suppliers$/i.test(cap)?"Suppliers":/audits/i.test(cap)?"Audits":/NG concerns|NG closure/i.test(cap)?"NG concerns":/critical parameters|inspection for cpk/i.test(cap)?"Parameters":/meeting/i.test(cap)?"Meetings":/mizenboshi items/i.test(cap)?"Mizenboshi items":/points/i.test(cap)||/^Category Wise SOR/i.test(cap)&&/points/i.test(note)?"Points":"Parts";
+  y.title={display:true,text:u,color:"#6A7282",font:{size:14},auto:true};ch.update("none")}
+// The chart caption is the chart's title: shown as the card subtitle under the section heading (one title line instead of two)
+document.querySelectorAll(".chart-cap").forEach(cap=>{const sub=cap.closest("section")?.querySelector(".card-head p.sub");if(!sub)return;sub.dataset.base=sub.textContent;
+  const slot=Object.keys(CAP).find(k=>CAP[k]===cap.id);
+  const sync=()=>{const tx=cap.textContent.trim();sub.textContent=tx||sub.dataset.base;axisTitle(slot,tx)};new MutationObserver(sync).observe(cap,{childList:true,characterData:true,subtree:true});sync()});
+document.querySelectorAll(".legend").forEach(el=>{fitLegend(el);new MutationObserver(()=>fitLegend(el)).observe(el,{childList:true})});
+
+// Keep side-by-side plots aligned: equalise the first and last gridline of charts in the same row
+const PAIRS=[["L","R"],["N","P"]];let _syncT=0;
+function syncPlots(){cancelAnimationFrame(_syncT);_syncT=requestAnimationFrame(()=>PAIRS.forEach(([a,b])=>{if(PAGECFG.unpaired&&PAGECFG.unpaired.includes(a))return;const A=CH[a],B=CH[b];
+  const bx=c=>c.canvas.closest(".chart-box");
+  [A,B].forEach(c=>{if(c){c.$base=c.$base||{...c.options.layout.padding};c.options.layout.padding={...c.$base};if(bx(c).style.height){bx(c).style.height="";c.resize()}c.update("none")}});
+  if(!A||!B||A.canvas.hidden||B.canvas.hidden)return;
+  const dt=A.chartArea.top-B.chartArea.top,db=(A.height-A.chartArea.bottom)-(B.height-B.chartArea.bottom);
+  if(dt>0)B.options.layout.padding.top+=dt;else A.options.layout.padding.top-=dt;
+  // extra space under one chart's axis (e.g. category brackets) is taken off the other chart's height, so its legend sits right under its axis instead of leaving a gap
+  const shrink=(c,d)=>{const e=bx(c);e.style.height=(e.clientHeight-d)+"px";c.resize()};
+  if(db>0)shrink(B,db);else if(db<0)shrink(A,-db);
+  A.update("none");B.update("none")}))}
+// Keep headers and control rows of paired cards the same height so the chart boxes start together
+function alignCards(){document.querySelectorAll(".charts").forEach(row=>{const cards=[...row.children];["card-head","ctx"].forEach(cls=>{
+  const els=cards.map(c=>c.querySelector(":scope > ."+cls)).filter(Boolean);els.forEach(e=>e.style.minHeight="");if(els.length<2)return;
+  const h=Math.max(...els.map(e=>e.getBoundingClientRect().height));els.forEach(e=>e.style.minHeight=h+"px")})})}
+new MutationObserver(()=>{alignCards();syncPlots()}).observe(document.querySelector(".content"),{childList:true,subtree:true,characterData:true});
+window.addEventListener("resize",()=>{alignCards();syncPlots()});
+
+// ===== Shared timeliness + plan vs actual charts (same look as Part Inspection With Deviation Status) =====
+// Each page passes accessors: due(p), done(p), actual(p) and planned(p), all in days relative to today.
+const MODEL_MRD_DAYS={"Model 1":-12,"Model 2":-3,"Model 3":6,"Model 4":14,"Model 5":24,"Model 6":35};
+const dayDate=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d};
+const fmtDay=d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+const TIME_SERIES=[["onT","On Time Completed","ok"],["dlC","Delayed Completed","tbc"],["dlI","Delayed Incomplete","bad"]];
+function timeVals(rows,a){return{onT:rows.filter(p=>a.done(p)&&a.actual(p)<=a.due(p)).length,dlC:rows.filter(p=>a.done(p)&&a.actual(p)>a.due(p)).length,dlI:rows.filter(p=>!a.done(p)&&a.due(p)<0).length}}
+function timelinessChart(rows,a,noun){
+  const emp=$("e-ng"),cv=$("c-ng"),{key,groups,word}=rightGroups(),G=groups.map(g=>rows.filter(p=>p[key]===g)),tot=timeVals(rows,a);
+  if(!rows.length||!(tot.onT+tot.dlC+tot.dlI)){if(CH.N){CH.N.destroy();CH.N=null}emp.hidden=false;cv.hidden=true;emp.innerHTML=`<div><b>Nothing to show</b>No applicable parts match the current filters.</div>`;["cap-ng","n-ng"].forEach(i=>$(i).textContent="");$("lg-ng").innerHTML="";return}
+  emp.hidden=true;cv.hidden=false;
+  drawChart("N",{data:{labels:groups,datasets:TIME_SERIES.map(([m,l,k])=>ds(l,G.map(r=>timeVals(r,a)[m]),k))}});
+  $("cap-ng").textContent=`${word} Wise ${noun} Timeliness`;$("lg-ng").innerHTML=legendHtml(TIME_SERIES.map(([,l,k])=>[l,k]));
+  $("n-ng").textContent=`${tot.onT} on time, ${tot.dlC} late · ${tot.dlI} still pending past due date`;
+}
+// Relative weekly timeline labels used by every line graph: "n-4 weeks" … "n (MRD)" … "n+4 weeks"
+const wkLabel=k=>k===0?"n (MRD)":`n${k>0?"+":"-"}${Math.abs(k)} weeks`;
+// tick text on two lines ("n-3" / "weeks") so week labels never overlap in a half-width card
+const wkTick=labels=>(v,i)=>{const l=String(labels[i]??"");return /weeks$/.test(l)?l.split(/ (?=weeks$)/):l};
+const PVA_MARKERS={id:"mk2",afterDatasetsDraw(ch,_,o){if(!o.lines)return;const{ctx,chartArea:a}=ch,xs=ch.scales.x,step=xs.getPixelForValue(1)-xs.getPixelForValue(0);
+  ctx.save();ctx.font='600 14px "Inter",system-ui,sans-serif';
+  const L=o.lines.map(m=>({...m,x:xs.getPixelForValue(0)+m.at*step,w:ctx.measureText(m.label).width+12})).filter(m=>m.x>=a.left-1&&m.x<=a.right+1).sort((p,q)=>p.x-q.x);
+  L.forEach((m,i)=>{m.cx=m.x;const nb=L[i===0?1:0];if(L.length>1&&Math.abs(nb.x-m.x)<(m.w+nb.w)/2+4)m.cx=i===0?m.x-m.w/2-2:m.x+m.w/2+2});
+  const y0=a.top-(o.top||58);
+  L.forEach(m=>{ctx.strokeStyle=m.color;ctx.lineWidth=1.5;ctx.setLineDash(m.dash||[5,4]);ctx.beginPath();ctx.moveTo(m.x,y0+22);ctx.lineTo(m.x,a.bottom);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=m.bg;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(m.cx-m.w/2,y0,m.w,22,6);ctx.fill();ctx.stroke();ctx.fillStyle=m.color;ctx.textAlign="center";ctx.fillText(m.label,m.cx,y0+16)});
+  ctx.restore()}};
+function planActualChart(rows,a,verb){
+  const m=S.f.model,emp=$("e-pva"),cv=$("c-pva"),clear=()=>{if(CH.P){CH.P.destroy();CH.P=null}emp.hidden=false;cv.hidden=true;["cap-pva","n-pva"].forEach(i=>$(i).textContent="");$("lg-pva").innerHTML=""};
+  if(!m){clear();emp.innerHTML=`<div>${ic('chart-line-up',36,'ic subtle')}<b>Select a model</b>Choose a single model in the filters above to see its plan vs actual progress.</div>`;return}
+  if(!rows.length){clear();emp.innerHTML='<div><b>No applicable parts</b>No parts match the current filters for this model.</div>';return}
+  emp.hidden=true;cv.hidden=false;
+  const mrd=MODEL_MRD_DAYS[m],ks=[-5,-4,-3,-2,-1,0,1,2],at=k=>mrd+k*7,N=rows.length;
+  const plan=ks.map(k=>Math.round(rows.filter(p=>a.planned(p)<=at(k)).length/N*100));
+  const act=ks.map(k=>at(k)<=0?Math.round(rows.filter(p=>a.done(p)&&a.actual(p)<=at(k)).length/N*100):null);
+  const labels=ks.map(wkLabel);
+  const line=(l,d,col)=>({type:"line",label:l,data:d,borderColor:col,backgroundColor:col,pointBackgroundColor:"#fff",pointBorderColor:col,pointBorderWidth:2,pointRadius:4,pointHoverRadius:6,borderWidth:2,tension:0,spanGaps:false,suffix:"%"});
+  const o=chartOpts({callbacks:{title:it=>`${labels[it[0].dataIndex]} · week of ${fmtDay(dayDate(at(ks[it[0].dataIndex])))}`,label:c=>` ${c.dataset.label}: ${c.raw}% ${verb}`}});
+  o.scales.y.max=100;o.scales.y.ticks.stepSize=20;o.scales.y.ticks.callback=v=>v+"%";o.scales.x.offset=true;o.scales.x.grid={display:true,color:"#F1F2F5",offset:false};o.scales.x.ticks={...o.scales.x.ticks,callback:wkTick(labels)};o.layout.padding.top=64;o.layout.padding.right=8;
+  o.plugins.mk2={lines:[{at:ks.indexOf(0),label:"MRD",color:"#4A5565",bg:"#F3F4F6"},{at:(0-at(ks[0]))/7,label:"Today",color:"#1447E6",bg:"#EEF6FF",dash:[2,3]}]};
+  drawChart("P",{type:"line",data:{labels,datasets:[line("Plan",plan,"#1447E6"),line("Actual",act,"#9AA2B1")]},options:o,plugins:[labelPlugin,PVA_MARKERS],minPer:56});
+  $("cap-pva").textContent=`${m} · Completion Percentage by Week`;
+  $("lg-pva").innerHTML=`<span><i style="background:#1447E6;border-color:#1447E6"></i>Plan</span><span><i style="background:#9AA2B1;border-color:#9AA2B1"></i>Actual</span><span><i style="background:#EEF6FF;border-color:#1447E6;border-style:dashed"></i>Today</span>`;
+  $("n-pva").textContent=`Today: ${pct(rows.filter(a.done).length,N)}% ${verb} vs ${pct(rows.filter(p=>a.planned(p)<=0).length,N)}% planned · MRD ${fmtDay(dayDate(mrd))} · weeks relative to MRD`;
+}
+
+// ===== Collapsible side navigation (state remembered in this browser) =====
+(()=>{const app=document.querySelector(".app"),b=$("navtog");if(!app||!b)return;let c=false;try{c=localStorage.getItem("msil-nav")==="c"}catch(e){}
+  const set=v=>{app.classList.toggle("navc",v);b.setAttribute("aria-expanded",String(!v));const l=v?"Expand navigation":"Collapse navigation";b.setAttribute("aria-label",l);b.title=l;b.querySelector("span").textContent=v?"Expand":"Collapse"};
+  set(c);b.onclick=()=>{c=!c;set(c);try{localStorage.setItem("msil-nav",c?"c":"e")}catch(e){}setTimeout(()=>{render();PAGECFG.renderLeft()},230)}})();
+
+// ===== NG correction timeline (waterfall, slot P) =====
+// items: {day (relative to today), done}; only corrected NG parts are plotted, by correction date, in weeks relative to the model's MRD.
+// Corrections before n-3 / after n+3 weeks are counted in the first / last week.
+S.ptype="pva";
+function ngTimeline(items){const m=S.f.model,emp=$("e-pva"),cv=$("c-pva"),clear=()=>{if(CH.P){CH.P.destroy();CH.P=null}emp.hidden=false;cv.hidden=true;["cap-pva","n-pva"].forEach(i=>$(i).textContent="");$("lg-pva").innerHTML=""};
+  if(!m){clear();emp.innerHTML=`<div>${ic('chart-line-up',36,'ic subtle')}<b>Select a model</b>Choose a single model in the filters above to see its NG correction timeline.</div>`;return}
+  if(!items.length){clear();emp.innerHTML='<div><b>No NG corrections</b>No NG parts need correction for this model and filters.</div>';return}
+  emp.hidden=true;cv.hidden=false;
+  const mrd=MODEL_MRD_DAYS[m],ks=[-3,-2,-1,0,1,2,3],idx=d=>Math.max(0,Math.min(ks.length-1,Math.round((d-mrd)/7)+3));
+  items=items.filter(it=>it.done);if(!items.length){clear();emp.innerHTML='<div><b>No corrected NG parts</b>No NG parts have been corrected yet for this model and filters.</div>';return}
+  const done=ks.map(()=>0),plan=ks.map(()=>0);items.forEach(it=>done[idx(it.day)]++);
+  let cum=0;const dA=[],pA=[],cumAt=[];ks.forEach((_,i)=>{dA.push(done[i]?[cum,cum+done[i]]:null);cum+=done[i];pA.push(plan[i]?[cum,cum+plan[i]]:null);cum+=plan[i];cumAt.push(cum)});
+  const labels=[...ks.map(wkLabel),"Total"],tot=cum,fl=(l,d,k)=>({label:l,data:d,backgroundColor:css(`--${k}-bar`),borderColor:css(`--${k}-bar-bd`),borderWidth:1,borderRadius:4,borderSkipped:false,grouped:false,maxBarThickness:48,categoryPercentage:.6,barPercentage:.9});
+  const sets=[fl("Corrected",[...dA,null],"ini"),fl("Total",[...ks.map(()=>null),[0,tot]],"na")];
+  const o=chartOpts({callbacks:{label:c=>` ${c.dataset.label}: ${c.raw[1]-c.raw[0]}`,footer:it=>{const i=it[0].dataIndex;return i<ks.length?`Cumulative: ${cumAt[i]} of ${cumAt[cumAt.length-1]}`:""}}});
+  o.scales.x.ticks={...o.scales.x.ticks,callback:wkTick(labels)};o.layout.padding.top=64;o.scales.y.title={display:true,text:"Corrected NG parts (cumulative)",color:"#6A7282",font:{size:14}};
+  o.plugins.mk2={lines:[{at:ks.indexOf(0),label:"MRD",color:"#4A5565",bg:"#F3F4F6"}]};
+  const WF={id:"wf",afterDatasetsDraw(ch){const c=ch.ctx;c.save();c.font='500 14px "Inter",system-ui,sans-serif';c.fillStyle="#4A5565";c.textAlign="center";
+    const tops=labels.map((_,i)=>{let t=null;ch.data.datasets.forEach((d,j)=>{const b=ch.getDatasetMeta(j).data[i];if(d.data[i]&&b&&(t==null||b.y<t.y))t=b});return t});
+    tops.forEach((b,i)=>{if(!b)return;const n=i<ks.length?done[i]+plan[i]:tot;c.fillText(n,b.x,b.y-7)});
+    c.strokeStyle="#9AA2B1";c.setLineDash([3,3]);c.beginPath();tops.forEach((b,i)=>{const nx=tops.slice(i+1).find(Boolean);if(!b||!nx||i>=ks.length-1)return;c.moveTo(b.x+b.width/2,b.y);c.lineTo(nx.x-nx.width/2,b.y)});c.stroke();c.restore()}};
+  drawChart("P",{noTotal:true,data:{labels,datasets:sets},options:o,plugins:[WF,PVA_MARKERS],minPer:50});
+  $("cap-pva").textContent=`${m} · NG Correction Timeline`;
+  $("lg-pva").innerHTML=legendHtml([["Corrected","ini"],["Total","na"]]);
+  $("n-pva").textContent=`${tot} NG parts corrected · MRD ${fmtDay(dayDate(mrd))}`}
+
+// switching dashboard views drops any graph selection
+document.addEventListener("click",e=>{if(e.target.closest("[data-view]"))S.gsel=null},true);
+
+// Nav groups (PP Trial Dashboards, MPP): expand / collapse each group's dashboards
+document.querySelectorAll(".mgrp").forEach(g=>{const sub=$(g.getAttribute("aria-controls"));if(!sub)return;g.onclick=()=>{const open=g.getAttribute("aria-expanded")!=="true";g.setAttribute("aria-expanded",open);sub.hidden=!open}});
+{const cur=document.querySelector(".msub a.cur");if(cur)cur.scrollIntoView({block:"nearest"})}
+
+// ===== MIS-P Approval =====
+// Sample data (own seed); days are relative to today.
+// Stages: Not prepared → Prepared and awaiting approval (Pending) → Approved. Uploaded and Shared with vendor apply to approved MIS-P only.
+// Delayed is not a status: it is a Pending MIS-P whose MRD deadline has passed. Delay Reason is vendor text and never drives the delayed flag.
+const RM=rng(113);
+const REASONS_TXT=["Awaiting revised drawing from MSIL","Sub-supplier process capability study in progress","Tool trial rescheduled; data pending","Waiting for material test certificate","Control plan under internal review","Gauge R&R study not yet complete"];
+const Dd=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d};
+const fmtD=d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+const isoD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+PARTS.forEach(p=>{
+  const b=(DLIST.indexOf(p.dept)*7+MODELS.indexOf(p.model)*3)%10/30;
+  p.mrdM=-25+Math.floor(RM()*60);p.prep=RM()<.86;p.mst=!p.prep?"Not prepared":RM()<.5+b?"Approved":"Pending";
+  p.prepOn=p.prep?p.mrdM-20-Math.floor(RM()*25):null;p.apprOn=p.mst==="Approved"?Math.min(0,p.prepOn+3+Math.floor(RM()*15)):null;
+  p.upl=p.mst==="Approved"&&RM()<.8;p.shared=p.mst==="Approved"?(RM()<.7?"Done":"Pending"):null;
+  p.mdel=p.mst==="Pending"&&p.mrdM<0;
+  p.reason=p.mst==="Pending"&&RM()<(p.mdel?.7:.3)?REASONS_TXT[Math.floor(RM()*REASONS_TXT.length)]:null;
+});
+const cnt=(r,f)=>r.filter(f).length;
+function mvals(r){return{total:r.length,prep:cnt(r,p=>p.prep),appr:cnt(r,p=>p.mst==="Approved"),pend:cnt(r,p=>p.mst==="Pending"),del:cnt(r,p=>p.mdel),
+  upl:cnt(r,p=>p.upl),shDone:cnt(r,p=>p.shared==="Done"),shPend:cnt(r,p=>p.shared==="Pending"),notPrep:cnt(r,p=>!p.prep)}}
+const TILES={
+  ov:[{m:"total",l:"Total Parts",c:"t-total",bar:"tot"},{m:"prep",l:"No. of MIS-P Prepared",c:"t-pt",bar:"pt"},{m:"appr",l:"No. of MIS-P Approved",c:"t-ok",bar:"ok"},
+      {m:"pend",l:"No. of MIS-P Pending",c:"t-tbc",bar:"tbc"},{m:"del",l:"No. of MIS-P Delayed",c:"t-bad",bar:"bad"},{m:"upl",l:"No. of MIS-P Uploaded",c:"t-ini",bar:"ini"}],
+  sh:[{m:"shDone",l:"Done",c:"t-ok",bar:"ok"},{m:"shPend",l:"Pending",c:"t-tbc",bar:"tbc"}]};
+const ALL=TILES.ov.concat(TILES.sh);
+const grp=(rows,key,groups)=>groups.map(g=>rows.filter(p=>p[key]===g));
+// Delayed bars use the red outline with diagonal hatching so they read as "part of Pending", not a separate status
+function hatch(){const c=document.createElement("canvas");c.width=c.height=8;const x=c.getContext("2d");x.fillStyle=css("--bad-bar");x.fillRect(0,0,8,8);
+  x.strokeStyle=css("--bad-bar-bd");x.lineWidth=1.5;x.beginPath();x.moveTo(-2,10);x.lineTo(10,-2);x.moveTo(6,10);x.lineTo(10,6);x.moveTo(-2,2);x.lineTo(2,-2);x.stroke();return x.createPattern(c,"repeat")}
+// Approved as one column; Pending as a second column whose top segment is the part delayed beyond MRD (Delayed is a subset of Pending)
+function clusterSets(G){const o={maxBarThickness:36,categoryPercentage:.55,barPercentage:.88};
+  return[ds("Approved",G.map(r=>mvals(r).appr),"ok",{stack:"a",...o}),ds("Pending · within MRD",G.map(r=>{const v=mvals(r);return v.pend-v.del}),"tbc",{stack:"p",f:p=>p.mst==="Pending"&&!p.mdel,...o}),
+    ds("Delayed Beyond MRD",G.map(r=>mvals(r).del),"bad",{stack:"p",backgroundColor:hatch(),...o})]}
+const CL_LEG=()=>legendHtml([["Approved","ok"],["Pending · within MRD","tbc"]])+`<span><i class="hatch" style="background:var(--bad-bar);border-color:var(--bad-bar-bd)"></i>Delayed Beyond MRD</span>`;
+
+const PAGECFG={
+  defaultTab:"ov",clearMetricOnTab:true,
+  get tileCols(){return TILES[S.cat].length},
+  tabs:[{k:"ov",label:"Overall Summary",icon:ic('home')},{k:"sh",label:"MIS-P Sharing With Vendor",icon:ic('building')}],
+  tiles:cat=>TILES[cat],
+  tileValues:rows=>mvals(rows),
+  renderLeft(){
+    const key=S.leftBy==="model"?"model":"dept",groups=key==="model"?MODELS:DLIST,G=grp(PARTS,key,groups);
+    drawChart("L",{data:{labels:groups,datasets:clusterSets(G)},stacked:true,mode:"stack",callbacks:{footer:it=>it[0].datasetIndex>0?`Pending total: ${mvals(G[it[0].dataIndex]).pend}`:""}});
+    $("cap-left").textContent=`${key==="model"?"Model":"Department"} Wise MIS-P Approval Status`;$("lg-left").innerHTML=CL_LEG();
+    const v=mvals(PARTS);$("n-left").textContent=`${v.appr} approved · ${v.pend} pending, of which ${v.del} delayed beyond MRD`;
+  },
+  renderRight(){
+    const seg=PAGECFG.tabs.find(c=>c.k===S.cat),t=ALL.find(x=>x.m===S.metric);
+    $("ctx-right").innerHTML=[`<span class="tag brand">${seg.label}</span>`].concat(t?[`<span class="tag brand">${t.l}</span>`]:[],filterTags()).join("");
+    const rows=scoped(),{key,groups,word}=rightGroups(),G=grp(rows,key,groups);
+    if(!rows.length)return showEmpty("No matching parts","No parts match the current filters.");
+    if(t){const v=G.map(r=>mvals(r)[t.m]);
+      if(!v.some(Boolean))return showEmpty("Nothing to show",`No ${t.l} for this selection.`);
+      showRight();drawChart("R",{data:{labels:groups,datasets:[t.m==="del"?ds(t.l,v,"bad",{backgroundColor:hatch()}):ds(t.l,v,t.bar)]}});
+      $("cap-right").textContent=`${word} Wise ${t.l}`;$("lg-right").innerHTML=legendHtml([[t.l,t.bar]]);
+      $("n-right").textContent=`${v.reduce((a,b)=>a+b,0)} parts shown${t.m==="del"?" · pending MIS-P past their MRD":""}`;return}
+    showRight();
+    if(S.cat==="sh"){ // approved MIS-P: shared vs not yet shared
+      drawChart("R",{data:{labels:groups,datasets:[ds("Shared",G.map(r=>mvals(r).shDone),"ok"),ds("Sharing pending",G.map(r=>mvals(r).shPend),"tbc")]}});
+      $("cap-right").textContent=`${word} Wise MIS-P Sharing With Vendor`;$("lg-right").innerHTML=legendHtml([["Shared","ok"],["Sharing pending","tbc"]]);
+      const v=mvals(rows);$("n-right").textContent=`${v.shDone} of ${v.appr} approved MIS-P shared with vendors`;return}
+    // default: same clustered view as the left graph, for the filtered scope
+    drawChart("R",{data:{labels:groups,datasets:clusterSets(G)},stacked:true,mode:"stack",callbacks:{footer:it=>it[0].datasetIndex>0?`Pending total: ${mvals(G[it[0].dataIndex]).pend}`:""}});
+    $("cap-right").textContent=`${word} Wise MIS-P Approval Status`;$("lg-right").innerHTML=CL_LEG();
+    const v=mvals(rows);$("n-right").textContent=`${v.appr} approved · ${v.pend} pending, of which ${v.del} delayed`;
+  },
+  table:{
+    groups:[["Part Details",6],["MIS-P",7],["Vendor",1]],
+    cols:[["model","Model"],["no","Part Number"],["name","Part Name"],["dept","Section"],["pic","PIC"],["vname","Vendor"],
+      ["mst","MIS-P Status"],["prepOn","Prepared On"],["apprOn","Approved On"],["upl","Uploaded"],["shared","Shared With Vendor"],["mrdM","MRD Deadline"],["mdel","Delayed"],
+      ["reason","Delay Reason",{type:"text"}]],
+    cell:(p,f)=>f==="prepOn"||f==="apprOn"?(p[f]==null?null:isoD(Dd(p[f]))):f==="mrdM"?isoD(Dd(p.mrdM)):f==="upl"?(p.mst==="Approved"?(p.upl?"Yes":"No"):null):f==="mdel"?(p.mdel?"Yes":"No"):p[f],
+    row:p=>{const dash='<span style="color:var(--subtle)">–</span>',sk={Approved:"ok",Pending:"tbc","Not prepared":"na"}[p.mst],dt=v=>v==null?dash:fmtD(Dd(v));
+      return `<tr><td class="id">${p.model}</td><td class="id">${p.no}</td><td class="wrap">${p.name}</td><td>${p.dept}</td><td class="wrap">${p.pic}</td><td class="wrap">${p.vname}</td>`+
+        `<td>${stCell(p.mst,sk)}</td><td>${dt(p.prepOn)}</td><td>${dt(p.apprOn)}</td><td>${p.mst==="Approved"?(p.upl?"Yes":"No"):dash}</td><td>${p.shared?stCell(p.shared,p.shared==="Done"?"ok":"tbc"):dash}</td>`+
+        `<td>${fmtD(Dd(p.mrdM))}</td><td>${p.mdel?stCell("Delayed","bad"):dash}</td><td class="reason${p.reason?"":" none"}">${p.reason||(p.mst==="Pending"?"No reason entered by vendor":"–")}</td></tr>`}
+  },
+  alerts(rows){
+    const out={crit:[],mgmt:[],ins:[]},v=mvals(rows);if(!v.total)return out;
+    if(v.del)out.crit.push({t:`${v.del} MIS-P delayed beyond MRD`,d:`${cnt(rows,p=>p.mdel&&!p.reason)} of them have no delay reason from the vendor.`,o:"QA Head"});
+    rows.filter(p=>p.mdel).sort((a,b)=>a.mrdM-b.mrdM).slice(0,2).forEach(p=>out.crit.push({t:`${p.no} ${p.name}: ${-p.mrdM} days past MRD`,d:p.reason?`Vendor: ${p.reason}`:"No delay reason entered",o:p.vname}));
+    const ve={};rows.filter(p=>p.mst==="Pending").forEach(p=>ve[p.vname]=(ve[p.vname]||0)+1);
+    Object.entries(ve).sort((a,b)=>b[1]-a[1]).slice(0,2).filter(([,n])=>n>=4).forEach(([vn,n])=>out.mgmt.push({t:`${vn}: ${n} MIS-P pending approval`,d:"Highest pending count by vendor.",o:"Purchase"}));
+    if(v.shPend)out.mgmt.push({t:`${v.shPend} approved MIS-P not yet shared with vendors`,d:"Share approved documents so vendors can act on them.",o:"Section Head"});
+    out.ins.push({t:`${pct(v.appr,v.prep)}% of prepared MIS-P approved`,d:`${v.appr} approved, ${v.pend} pending, ${v.notPrep} not prepared yet.`,o:"QA Team"});
+    out.ins.push({t:`${pct(v.upl,v.appr)}% of approved MIS-P uploaded`,d:`${v.upl} of ${v.appr} approved.`,o:"QA Team"});
+    return out;
+  }
+};
+
+boot();
+</script>
+<!-- EMBED-OVERRIDE: hide the client's own nav/top chrome when shown inside the app iframe -->
+<style>
+html.embedded .nav{display:none!important}
+html.embedded .top{display:none!important}
+html.embedded .app{grid-template-columns:minmax(0,1fr)!important}
+html.embedded body{background:#fff!important}
+html.embedded .content{padding-top:18px!important}
+</style>
+<script>try{if(window.self!==window.top){document.documentElement.classList.add('embedded')}}catch(e){document.documentElement.classList.add('embedded')}</script>
+</body>
+</html>

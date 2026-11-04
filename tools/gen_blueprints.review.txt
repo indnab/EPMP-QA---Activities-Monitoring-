@@ -1,0 +1,77 @@
+75 rows needed a guess/assumption (of 484 total).
+
+[PP | Parts drawing confirmation in IBOM] Spec Drawing availability: Option-style Entered by; modelled as PIC (alternate path is system)
+[PP | Parts drawing confirmation in IBOM] Final Drawing availability: Option-style Entered by; modelled as PIC (alternate path is system)
+[PP | Parts drawing confirmation in IBOM] Part classification: Option-style Entered by; modelled as PIC (alternate path is system)
+[PP | Parts drawing confirmation in IBOM] Monitoring Required Reason: Option-style Entered by; modelled as PIC (alternate path is system)
+[PP | SOR sharing and confirmation of SOR points] Agreed – Alternate control: 'table row per point' row folded into the details table (skipped as a scalar)
+[PP | SOR sharing and confirmation of SOR points] grouped 6 '(Table Field N)' rows into one table field with 6 columns
+[PP | New Tier-2 assessment confirmation] Audit Status: Option-style Entered by; modelled as PIC (alternate path is system)
+[PP | Newness confirmation – Process benchmarking status] Newness Remark: unrecognised Source "To be defined against Newness Type"; defaulted to manual
+[PP | Newness confirmation – Process benchmarking status] grouped 3 rows ('multi line rows in table format') into table field 'Observations (multi-row)'
+[PP | DMU data study status (ECR status)] grouped 4 rows ('multi line rows in table format') into table field 'DMU observations (multi-row)'
+[PP | Sheet metal part accuracy status] Sheet Metal Applicability: unrecognised format "Only for Weld Part"; defaulted to text
+[PP | Sheet metal part accuracy status] OK parameters: blank format; defaulted to text
+[PP | Part inspection with deviation status] NG Dropdown: Vendor & PIC both enter; modelled as Vendor entry + PIC validation
+[PP | Part inspection with deviation status] NG observation: Vendor & PIC both enter; modelled as Vendor entry + PIC validation
+[PP | Lab testing status] Retest sample submission / status: format "Same as above" is a reference; defaulted to text
+[PP | Lab testing status] Retest log: unrecognised format "History of every retest"; defaulted to text
+[PP | Lab testing status] Retest log: unrecognised Source "EPMP – log"; defaulted to manual
+[PP | Colour parts check – Testing] Applicable colour code: unrecognised format "Code per model (last 3 digits of SAP part code)"; defaulted to text
+[PP | Parts list with deviations & special parts list] Deviation list: unrecognised format "Deviations raised in earlier activities"; defaulted to text
+[PP | Parts list with deviations & special parts list] Deviation list: unrecognised Source "EPMP – auto-fetched"; defaulted to manual
+[PP | Parts list with deviations & special parts list] Applicable activities for special part: format "Activity list" is a reference; defaulted to text
+[MPP | OTOP status] repeated label 'Due to ECN' renamed 'Non OTOP breakup – Due to ECN'
+[MPP | OTOP status] repeated label 'Remarks' renamed 'Non OTOP breakup – Remarks'
+[MPP | OTOP status] repeated label 'Due to ECN' renamed 'Tool & process not ready breakup – Due to ECN'
+[MPP | OTOP status] repeated label 'Remarks' renamed 'Tool & process not ready breakup – Remarks'
+[MPP | PP Hinkai trial closure status – QAND & Production] Count of overdue: unrecognised format "Pending beyond target date"; defaulted to text
+[MPP | PP Hinkai trial closure status – QAND & Production] Hinkai Assigned to Vendor: unrecognised Source "EPMP – derived from reply by vendor above"; defaulted to manual
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Applicable SOR points: unrecognised format "From PP SOR confirmation"; defaulted to text
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Applicable SOR points: unrecognised Source "EPMP – auto-fetched"; defaulted to manual
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Agree: format "Same as PP - Count" is a reference; defaulted to text
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Agree: unrecognised Source "EPMP – auto-fetched"; defaulted to manual
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Disagreed: format "Same as PP - Count" is a reference; defaulted to text
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Disagreed: unrecognised Source "EPMP – auto-fetched"; defaulted to manual
+[MPP | SOR adherence confirmation (Div Head deviation via E-Doc)] Implemented break-up: dropped - section heading with truncated value ("Agreed ·"); covered by the two Implemented count fields
+[MPP | Lab testing status] deviation raised (pop-up): repeated in the sheet; merged into one field
+[MPP | Lab testing status] e-doc number: repeated in the sheet; merged into one field
+[MPP | Lab testing status] deviation approval status: repeated in the sheet; merged into one field
+[MPP | Lab testing status] Retest sample submission / status: format "Same as above" is a reference; defaulted to text
+[MPP | Process audit status] Audit completed / pending: unrecognised format "From actual date"; defaulted to text
+[MPP | Process capability (critical parameters)] grouped 3 '(Table Field N)' rows into one table field with 3 columns
+[MPP | Set part / semi-finished part status] Set part – sub parts mapping: unrecognised format "Against IBOM"; defaulted to text
+[MPP | Parts list with deviations & special parts list] Deviation list: unrecognised format "Deviations raised in earlier activities"; defaulted to text
+[MPP | Parts list with deviations & special parts list] Deviation list: unrecognised Source "EPMP – auto-fetched"; defaulted to manual
+[MPP | Parts list with deviations & special parts list] Applicable activities for special part: format "Activity list" is a reference; defaulted to text
+[Pilot/SOP | MPP Hinkai trial closure status – QAND & Production] Count of overdue: unrecognised format "Pending beyond target date"; defaulted to text
+[Pilot/SOP | PPAP file approval status] PPAP applicability: unrecognised format "Not required if approved for an earlier model"; defaulted to text
+[Pilot/SOP | PPAP file approval status] PPAP applicability: unrecognised Source "EPMP – rule"; defaulted to manual
+[Pilot/SOP | Lab testing status] Retest sample submission / status: format "Same as above" is a reference; defaulted to text
+[Pilot/SOP | IFM mail initiation and checklist completion] IFM readiness Date: blank format; guessed date from label
+[Pilot/SOP | IFM mail initiation and checklist completion] IFM readiness Date: blank "Entered by"; defaulted to PIC
+[Pilot/SOP | IFM mail initiation and checklist completion] If N, readiness remark: Vendor & PIC both enter; modelled as Vendor entry + PIC validation
+[Pilot/SOP | Part updation in Regulatory App] Applicability: unrecognised format "From homologation marking cases"; defaulted to text
+[Pilot/SOP | Part updation in Regulatory App] Applicability: unrecognised Source "EPMP – homologation screen"; defaulted to manual
+[Pilot/SOP | Part updation in CPM portal] Part Category: blank format; defaulted to text
+[Pilot/SOP | PPVT confirmation] PPVT Vendor Scope: unrecognised format "Form in EPMP (Attached Excel)"; defaulted to text
+[Pilot/SOP | PPVT confirmation – Vendor PPVT details] SC: blank "Entered by"; defaulted to PIC
+[Pilot/SOP | PPVT confirmation – Vendor PPVT details] Part No: unrecognised format "Part number"; defaulted to text
+[Pilot/SOP | PPVT confirmation – Vendor PPVT details] VENDOR: unrecognised format "Vendor name"; defaulted to text
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] Tool Readiness – Tool Readiness Remarks with Target Date: unrecognised format "Remarks and target date"; defaulted to text
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'PPVT' renamed 'PPVT – status'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'PPVT' renamed 'PPVT – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'PPVT' renamed 'PPVT – remarks'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Line readiness – Line readiness remarks with target date' renamed 'Line readiness – Line readiness remarks'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Line readiness – Line readiness remarks with target date' renamed 'Line readiness – Line readiness remarks – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Manpower – Manpower remarks with target date' renamed 'Manpower – Manpower remarks'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Manpower – Manpower remarks with target date' renamed 'Manpower – Manpower remarks – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Tier-2 preparedness – Tier-2 Pending/NG details with target date' renamed 'Tier-2 preparedness – Tier-2 Pending/NG details'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Tier-2 preparedness – Tier-2 Pending/NG details with target date' renamed 'Tier-2 preparedness – Tier-2 Pending/NG details – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Part evaluation – Part evaluation Pending/NG details with target date' renamed 'Part evaluation – Part evaluation Pending/NG details'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Part evaluation – Part evaluation Pending/NG details with target date' renamed 'Part evaluation – Part evaluation Pending/NG details – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Part evaluation – Durability and regulatory testing' renamed 'Part evaluation – Durability and regulatory testing – status'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Part evaluation – Durability and regulatory testing' renamed 'Part evaluation – Durability and regulatory testing – details'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Part evaluation – Durability and regulatory testing' renamed 'Part evaluation – Durability and regulatory testing – target date'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Closure of pending points – Pending points details with target date' renamed 'Closure of pending points – Pending points details'
+[Pilot/SOP | SOP Readiness Confirmation from Supplier] repeated label 'Closure of pending points – Pending points details with target date' renamed 'Closure of pending points – Pending points details – target date'

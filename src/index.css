@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from the EPMP rapid prototype (EPMP_RapidPrototype.html).
+ * Existing token names are kept so every screen inherits the new look;
+ * the values are EPMP's.
+ */
+@theme {
+  /* ── Typography ─────────────────────────────────────────────── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* ── Persona colours ────────────────────────────────────────── */
+  --color-persona-pic:    #c4b5fd;
+  --color-persona-vendor: #f97316;
+  --color-persona-system: #3b82f6;
+  --color-persona-admin:  #10b981;
+  --color-persona-sic:    #a78bfa;
+  --color-persona-dpm:    #6366f1;
+  --color-persona-mc:     #0891b2;
+  --color-persona-sa:     #d97706;
+
+  /* ── Status / RYG (EPMP status palette) ─────────────────────── */
+  --color-ryg-red:    #ef4444; /* delayed     */
+  --color-ryg-yellow: #f59e0b; /* at risk     */
+  --color-ryg-green:  #10b981; /* completed   */
+  --color-ryg-grey:   #c6cdd9; /* not started */
+  --color-on-track:   #3b82f6;
+
+  /* ── Surfaces, text, borders ────────────────────────────────── */
+  --color-surface:    #f8f9fc;
+  --color-card:       #ffffff;
+  --color-border:     #e8ebf1;
+  --color-input:      #e5e7eb;
+  --color-text:       #101828;
+  --color-muted:      #667085;
+  --color-ink-muted:  #475467;
+  --color-primary:    #2153f5;
+  --color-accent:     #2153f5;
+  --color-secondary:  #eff6ff;
+  --color-accent-soft:#e7edff;
+  --color-destructive:#dc2626;
+  --color-table-head: #edf3ff;
+
+  /* ── Sidebar (indigo) ───────────────────────────────────────── */
+  --color-nav-bg:       #2d3394;
+  --color-nav-text:     #e8e9fc;
+  --color-nav-sub:      #c7cdf9;
+  --color-nav-active:   #245bff;
+  --color-header-bg:    #ffffff;
+
+  --radius-card: 12px;
+}
+
+/* ── Base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* EPMP is a dense UI (13px body). 15px root makes Tailwind's text-sm ≈ 13px. */
+html { font-size: 15px; }
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background: var(--color-surface);
+}
+
+/* Page background: EPMP's warm-to-lavender diagonal gradient */
+.epmp-shell {
+  background: linear-gradient(105deg, #fbeee7 0%, #f2eaf0 47%, #e5e6f5 100%);
+}
+
+/* ── Sidebar pill items ───────────────────────────────────────── */
+.sb-group-label {
+  padding: 12px 28px 8px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--color-nav-sub);
+  opacity: .8;
+}
+.sb-item {
+  position: relative;
+  margin: 4px 12px;
+  min-height: 47px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 12px;
+  border: 2.5px solid transparent;
+  color: var(--color-nav-text);
+  transition: background .15s;
+}
+.sb-item:hover { background: rgba(255, 255, 255, .05); }
+.sb-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.sb-item.active {
+  background: linear-gradient(120deg, #245bff, #2d3394);
+  border-color: #f3dfef;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 3px 4px #1d206740;
+}
+
+/* ── Cards: EPMP's white 12px-radius surface with a soft white edge ── */
+.epmp-card {
+  min-width: 0;
+  border-radius: var(--radius-card);
+  border: 1px solid #ffffffb3;
+  background: var(--color-card);
+}
+
+/* ── Tables: pale-blue header, hairline row dividers ──────────── */
+table thead th {
+  background: var(--color-table-head);
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+table tbody td { border-color: #f1f2f6; }
+table tbody tr:hover td { background: var(--color-surface); }
+
+/* ── Form controls: EPMP's light-grey inputs ──────────────────── */
+select, input[type="text"], input[type="search"], input[type="date"],
+input[type="number"], textarea {
+  border-radius: 8px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+}
+
+/* ── react-grid-layout ────────────────────────────────────────── */
+.react-grid-layout { position: relative; transition: height 200ms ease; }
+.react-grid-item { transition: all 200ms ease; transition-property: left, top; }
+.react-grid-item.cssTransforms { transition-property: transform; }
+.react-grid-item.resizing { z-index: 10; will-change: width, height; }
+.react-grid-item.react-draggable-dragging { transition: none; z-index: 30; will-change: transform; }
+.react-grid-item.dropping { visibility: hidden; }
+.react-grid-item.react-grid-placeholder {
+  background: rgba(33, 83, 245, 0.08);
+  border: 2px dashed var(--color-primary);
+  border-radius: 12px;
+  z-index: 2;
+  user-select: none;
+}
+.react-resizable-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  bottom: 4px;
+  right: 4px;
+  cursor: se-resize;
+  z-index: 20;
+}
+.react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+/* ── Frozen table headers ─────────────────────────────────────
+   Wrap a table in a .table-scroll container (bounded height + scroll) and its
+   header row stays pinned while the body scrolls. The opaque background keeps
+   rows from showing through the sticky header. Works for single and two-tier
+   headers (the second tier sets its own `top`). */
+.table-scroll {
+  overflow: visible;
+}
+/* Header pins to the top of the PAGE scroll area once it reaches it (the page scrolls, not an inner box). */
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-table-head);
+}
+/* A sticky first column (e.g. the Part column) must sit above sticky headers. */
+.table-scroll thead th.sticky.left-0 { z-index: 7; }
+
+/* ── Page-level sticky table header ───────────────────────────
+   For tables that should flow with the page (no inner vertical scroll) but whose
+   header pins to the top of the scrolling area once it reaches it. Put .page-sticky-head
+   on the horizontal scroll wrapper. The first header row sticks at top:0; a second
+   header row (e.g. a filter row) sticks just below it. */
+.page-sticky-head thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--color-table-head);
+}
+.page-sticky-head thead tr:nth-child(2) th {
+  position: sticky;
+  top: var(--sticky-head-row1, 38px);
+  z-index: 6;
+  background: #fff;
+}

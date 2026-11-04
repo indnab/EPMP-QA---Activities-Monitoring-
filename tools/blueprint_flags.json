@@ -1,0 +1,178 @@
+{
+ "pp-1|spec_drawing_availability": {
+  "dash": true,
+  "list": true
+ },
+ "pp-1|part_classification": {
+  "dash": true,
+  "list": true
+ },
+ "pp-2|tech_meeting_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-2|sap_spec_meeting_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-4|tier_2_status": {
+  "dash": true,
+  "list": false
+ },
+ "pp-5|audit_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-6a|newness_score": {
+  "dash": true,
+  "list": false
+ },
+ "pp-7|dmu_status": {
+  "dash": true,
+  "list": false
+ },
+ "pp-7|observation_status": {
+  "dash": true,
+  "list": false
+ },
+ "pp-9|ot_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-10|accuracy": {
+  "dash": true,
+  "list": false
+ },
+ "pp-11|inspection_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-12|misp_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-13|testing_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-14|bcf_status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-15a|testing_status": {
+  "dash": true,
+  "list": false
+ },
+ "pp-15b|status": {
+  "dash": true,
+  "list": true
+ },
+ "pp-16|count_of_deviations": {
+  "dash": true,
+  "list": false
+ },
+ "mpp-1|otop_status": {
+  "dash": true,
+  "list": true
+ },
+ "mpp-5|total_hinkai": {
+  "dash": true,
+  "list": false
+ },
+ "mpp-6|total_implemented": {
+  "dash": true,
+  "list": false
+ },
+ "mpp-7|testing_status": {
+  "dash": true,
+  "list": true
+ },
+ "mpp-8|audit_status": {
+  "dash": true,
+  "list": true
+ },
+ "mpp-9|count_below_1_33": {
+  "dash": true,
+  "list": false
+ },
+ "mpp-12|misp_revision": {
+  "dash": true,
+  "list": true
+ },
+ "mpp-13|audit_status_as_per_check_sheet": {
+  "dash": true,
+  "list": false
+ },
+ "mpp-14|count_of_deviations": {
+  "dash": true,
+  "list": false
+ },
+ "pilot-1|otop_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-2|accuracy_achieved_not_achieved": {
+  "dash": true,
+  "list": false
+ },
+ "pilot-3|inspection_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-4|total_hinkai": {
+  "dash": true,
+  "list": false
+ },
+ "pilot-4|hinkai_status": {
+  "dash": false,
+  "list": true
+ },
+ "pilot-5|bcf_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-6|ppvt_msil_scope_status": {
+  "dash": true,
+  "list": false
+ },
+ "pilot-7|ppap_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-8|testing_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-10|limit_sample_status": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-11|ifm_category": {
+  "dash": true,
+  "list": false
+ },
+ "pilot-11|ifm_readiness": {
+  "dash": false,
+  "list": true
+ },
+ "pilot-12|part_category": {
+  "dash": false,
+  "list": true
+ },
+ "pilot-14|uploaded_in_regulatory_app": {
+  "dash": true,
+  "list": true
+ },
+ "pilot-15|uploaded_in_sap_smir": {
+  "dash": true,
+  "list": true
+ },
+ "pp-3|agreed_as_is": {
+  "dash": true,
+  "list": false
+ },
+ "pp-3|not_agreed_not_feasible": {
+  "dash": true,
+  "list": false
+ }
+}
