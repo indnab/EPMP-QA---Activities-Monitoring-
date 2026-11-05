@@ -4,6 +4,7 @@ import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { Deviation, DeviationStatus } from '../../domain'
 import { fmtDate, partInScope } from '../scope'
+import { useExcMatcher } from '../exceptions/exceptionFilters'
 
 const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
@@ -33,6 +34,7 @@ interface DevRow {
 export function DeviationsView() {
   const { entries, parts, templateRows, activities, advanceDeviation } = useQAStore()
   const { currentPersona } = usePersonaStore()
+  const match = useExcMatcher()
 
   const [statusFilter, setStatusFilter] = useState<'All' | 'Open' | DeviationStatus>('All')
   const [mineOnly, setMineOnly] = useState(false)
@@ -50,7 +52,7 @@ export function DeviationsView() {
       const part = partByNo.get(e.partNo)
       const row = rowById.get(e.templateRowId)
       if (!part || !row || part.supersededBy) continue
-      if (!partInScope(part, currentPersona)) continue
+      if (!partInScope(part, currentPersona) || !match(part, e.templateRowId)) continue
       const act = actById.get(row.activityId)
       for (const dev of e.deviations) {
         out.push({
@@ -67,7 +69,7 @@ export function DeviationsView() {
       }
     }
     return out.sort((a, b) => b.dev.raisedAt.localeCompare(a.dev.raisedAt))
-  }, [entries, parts, templateRows, activities, currentPersona])
+  }, [entries, parts, templateRows, activities, currentPersona, match])
 
   const isOpen = (d: Deviation) => d.status === 'In progress' || d.status === 'Sent back'
   const canActNow = (r: DevRow) =>

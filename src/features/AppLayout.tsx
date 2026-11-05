@@ -246,7 +246,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 overflow-y-auto px-4 pb-7 pt-1 lg:px-7">
+        <main id="main-content" className="flex-1 overflow-x-hidden overflow-y-auto px-4 pb-7 pt-1 lg:px-7">
           <Outlet context={{ startTour: () => setTourOpen(true) } satisfies AppOutletContext} />
         </main>
 

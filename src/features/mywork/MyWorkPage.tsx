@@ -13,6 +13,7 @@ import {
 } from '../../engine'
 import type { WorkBucket } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
+import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { buildWorkGroups, canEnterWork, canValidate, countWork, hasMyWork } from './workQueue'
 import { AiImportPanel } from './AiImportPanel'
 import { ReleasePanel } from './ReleasePanel'
@@ -120,6 +121,7 @@ export function MyWorkPage() {
   const { currentPersona } = usePersonaStore()
   const canEnter = canEnterWork(currentPersona)
   const canValidateWork = canValidate(currentPersona)
+  const upcomingOnly = useUpcomingOnly()
 
   // Top-level view toggle: the client's graphical "Workspace", or the proven "Worklist" of grouped cards.
   const [view, setView] = useState<'workspace' | 'worklist'>('workspace')
@@ -156,8 +158,10 @@ export function MyWorkPage() {
       )
         .filter((i) => partInScope(i.part, currentPersona))
         .filter((i) => currentPersona !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
-        .filter((i) => !i.notApplicable),
-    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks]
+        .filter((i) => !i.notApplicable)
+        // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
+        .filter((i) => !upcomingOnly || isUpcoming(i.dates)),
+    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, upcomingOnly]
   )
 
   // Filter option lists (stable across selections).
@@ -279,6 +283,7 @@ export function MyWorkPage() {
         title="My Workspace"
         section="Workspace"
         description="Your parts at a glance — graphical and as tiles. Filter, then click a bar or a tile (NG especially) to pull up the exact parts to work on."
+        actions={<UpcomingToggle />}
       />
 
       {/* Release handshake: released / pending / returned (PIC side) or acknowledge / return (vendor side) */}

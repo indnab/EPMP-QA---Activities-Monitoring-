@@ -167,15 +167,21 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   border-bottom: 2px solid #cbd5e1;
 }
 
-/* ── Frozen table headers ─────────────────────────────────────
-   Wrap a table in a .table-scroll container (bounded height + scroll) and its
-   header row stays pinned while the body scrolls. The opaque background keeps
-   rows from showing through the sticky header. Works for single and two-tier
-   headers (the second tier sets its own `top`). */
+/* ── Wide tables: scroll sideways inside their card ───────────
+   A wrapped table that is wider than the card (common on phones and on
+   many-column activities) scrolls horizontally INSIDE the card, so it never
+   overflows the page and never exposes the shell gradient on the right. The
+   header stays pinned while the body scrolls vertically (page scroll), via a
+   sticky thead. `-webkit-overflow-scrolling: touch` gives momentum on iOS. */
 .table-scroll {
-  overflow: visible;
+  overflow: auto;
+  max-height: calc(100vh - 230px);
+  -webkit-overflow-scrolling: touch;
 }
-/* Header pins to the top of the PAGE scroll area once it reaches it (the page scrolls, not an inner box). */
+/* On short viewports (phones) give the table box a sensible floor so it is usable. */
+@media (max-height: 640px) {
+  .table-scroll { max-height: 70vh; }
+}
 .table-scroll thead th {
   position: sticky;
   top: 0;

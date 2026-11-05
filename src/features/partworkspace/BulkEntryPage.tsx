@@ -12,6 +12,7 @@ import { CellEditor } from '../mywork/GridCell'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import type { GlobalFilters, FieldDefinition, PartRecord } from '../../domain'
 import { DEMO_TODAY } from '../scope'
+import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { UploadReport } from '../excel/UploadReport'
 import type { UploadSummary } from '../excel/UploadReport'
 import { applyUpload, downloadFillTemplate } from '../excel/fillSheet'
@@ -37,6 +38,7 @@ export function BulkEntryPage() {
   const role = currentPersona as PersonaId
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'
   const scope = getPersonaScope(currentPersona)
+  const upcomingOnly = useUpcomingOnly()
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const [modelFilter, setModelFilter] = useState('All')
@@ -68,8 +70,10 @@ export function BulkEntryPage() {
   const instances = useMemo<FilteredInstance[]>(() => {
     let out = getFilteredData(entries, activities, parts, templateRows, models, filters, 'overview', DEMO_TODAY)
     if (partFilter !== 'All') out = out.filter((i) => i.part.partNo === partFilter)
+    // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
+    if (upcomingOnly) out = out.filter((i) => isUpcoming(i.dates))
     return out
-  }, [entries, activities, parts, templateRows, models, filters, partFilter])
+  }, [entries, activities, parts, templateRows, models, filters, partFilter, upcomingOnly])
 
   const order = ['PP', 'MPP', 'Pilot', 'SOP']
 
@@ -215,9 +219,12 @@ export function BulkEntryPage() {
         section="Workspace"
         description="One grid — parts down the rows, every activity's fields across the columns. The Part column and headers stay fixed; scroll right for more activities."
         actions={
-          <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
-            ← Parts Data Entry
-          </Link>
+          <div className="flex items-center gap-3">
+            <UpcomingToggle />
+            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
+              ← Parts Data Entry
+            </Link>
+          </div>
         }
       />
 

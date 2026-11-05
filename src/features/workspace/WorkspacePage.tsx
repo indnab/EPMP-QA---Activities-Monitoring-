@@ -9,8 +9,8 @@ import type { StatusValue } from '../../components/StatusPill'
 import type { PartRecord } from '../../domain'
 import { PartDetailDrawer } from './PartDetailDrawer'
 import { listColumnFields, listCellTexts } from '../listColumns'
-import { hasMyWork, roleEntersFirst } from '../mywork/workQueue'
 import { DEMO_TODAY, fmtDate, fmtOffsetRange, partInScope, rowInScope, toRygStatus, canMarkNotApplicable, canReverseNotApplicable } from '../scope'
+import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 
 type TypeFilter = 'All' | 'NewPart' | 'ECN'
 type StatusFilter = 'All' | 'Draft' | 'Submitted' | 'Sent back' | 'Approved' | 'NotStarted'
@@ -99,6 +99,7 @@ export function WorkspacePage() {
   const [naDialog, setNaDialog] = useState<'mark' | 'reverse' | null>(null)
 
   const today = DEMO_TODAY
+  const upcomingOnly = useUpcomingOnly()
 
   // Parts tagged to this row's section, applicable to the activity scope, and visible to the persona
   const applicableParts = useMemo<PartRecord[]>(() => {
@@ -173,6 +174,11 @@ export function WorkspacePage() {
       if (modelFilter !== 'All' && p.model !== modelFilter) return false
       if (vendorFilter !== 'All' && p.vendorName !== vendorFilter) return false
       if (typeFilter !== 'All' && p.type !== typeFilter) return false
+      // PIC default: only parts whose activity is due or starting in the next 30 days.
+      if (upcomingOnly) {
+        const d = datesByPart.get(p.partNo)
+        if (!d || !isUpcoming(d)) return false
+      }
       if (applicabilityFilter !== 'All') {
         const na = !!entryMap.get(p.partNo)?.notApplicable
         if (applicabilityFilter === 'na' ? !na : na) return false
@@ -196,7 +202,7 @@ export function WorkspacePage() {
       }
       return true
     })
-  }, [applicableParts, modelFilter, vendorFilter, typeFilter, applicabilityFilter, statusFilter, rygFilter, entryMap, datesByPart, today])
+  }, [applicableParts, modelFilter, vendorFilter, typeFilter, applicabilityFilter, statusFilter, rygFilter, entryMap, datesByPart, today, upcomingOnly])
 
   // RYG summary
   const rygSummary = useMemo(() => {
@@ -348,14 +354,7 @@ export function WorkspacePage() {
                 {awaitingCount > 0 && dateRange && ` (+${awaitingCount} awaiting MRD)`}
               </span>
               <span>Owner: <strong className="text-[var(--color-text)]">{activity.ownerPersona}</strong></span>
-              {hasMyWork(currentPersona) && roleEntersFirst(activity, currentPersona) && (
-                <Link
-                  to={`/mywork/${activity.id}/${row.milestoneId}?section=${encodeURIComponent(row.section)}`}
-                  className="font-semibold text-[var(--color-accent)] hover:underline"
-                >
-                  Update many parts in the entry grid →
-                </Link>
-              )}
+              <UpcomingToggle />
             </div>
           </div>
 

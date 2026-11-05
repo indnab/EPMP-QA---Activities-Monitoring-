@@ -6,6 +6,7 @@ import type { FilteredInstance } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
+import { useExcMatcher } from '../exceptions/exceptionFilters'
 
 /** Where an activity stands on its delay reason. 'Needed' = delayed with the vendor and nothing given yet. */
 export type DelayState = 'Needed' | 'SentBack' | 'Submitted' | 'Accepted'
@@ -94,11 +95,12 @@ export interface DelayRow {
 export function useDelayRows() {
   const { entries, activities, parts, templateRows, models, partReleases, partAcks, delayReasons } = useQAStore()
   const { currentPersona } = usePersonaStore()
+  const match = useExcMatcher()
   const rows = useMemo<DelayRow[]>(() => {
     const instances = getFilteredData(
       entries, activities, parts, templateRows, models,
       { milestone: 'All', section: 'All', model: 'All', vendor: 'All', type: 'All' }, 'overview', DEMO_TODAY
-    ).filter((i) => partInScope(i.part, currentPersona) && isWorkableByVendor(i.part.partNo, partReleases, partAcks))
+    ).filter((i) => partInScope(i.part, currentPersona) && isWorkableByVendor(i.part.partNo, partReleases, partAcks) && match(i.part, i.row.id))
     const out = new Map<string, DelayRow>()
     for (const inst of instances) {
       const key = makeEntryId(inst.row.id, inst.part.partNo)
@@ -109,7 +111,7 @@ export function useDelayRows() {
       }
     }
     return Array.from(out.values()).sort((a, b) => b.item.daysLate - a.item.daysLate)
-  }, [entries, activities, parts, templateRows, models, partReleases, partAcks, delayReasons, currentPersona])
+  }, [entries, activities, parts, templateRows, models, partReleases, partAcks, delayReasons, currentPersona, match])
   return {
     rows,
     needed: rows.filter((r) => needsVendorReason(r.state)),

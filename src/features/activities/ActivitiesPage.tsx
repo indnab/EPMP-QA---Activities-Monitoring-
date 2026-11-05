@@ -10,6 +10,7 @@ import type { FilteredInstance } from '../../engine'
 import { DEMO_TODAY, activitiesForNewUse, fmtDate, fmtOffsetRange, partInScope, rowInScope } from '../scope'
 import { hasMyWork } from '../mywork/workQueue'
 import { SEED_ACTIVITIES } from '../../mock'
+import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 
 function activityStatusLabel(act: ActivityDefinition): 'Published' | 'Draft' {
   return act.published === false ? 'Draft' : 'Published'
@@ -43,6 +44,7 @@ export function ActivitiesPage() {
   const { currentPersona } = usePersonaStore()
   const isAdmin = currentPersona === 'Admin'
   const scope = getPersonaScope(currentPersona)
+  const upcomingOnly = useUpcomingOnly()
 
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
@@ -63,7 +65,10 @@ export function ActivitiesPage() {
       { milestone: 'All', section: 'All', model: 'All', vendor: 'All', type: 'All' },
       'overview',
       DEMO_TODAY
-    ).filter((i) => partInScope(i.part, currentPersona))
+    )
+      .filter((i) => partInScope(i.part, currentPersona))
+      // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
+      .filter((i) => !upcomingOnly || isUpcoming(i.dates))
 
     const out: RowSummary[] = []
     for (const row of templateRows) {
@@ -73,6 +78,8 @@ export function ActivitiesPage() {
       const instances = all.filter((i) => i.row.id === row.id)
       // A vendor-scoped persona only sees rows where at least one of their parts applies.
       if (scope.vendor && instances.length === 0) continue
+      // With the upcoming filter on, a row with nothing in the window is left out.
+      if (upcomingOnly && instances.length === 0) continue
 
       let start: string | undefined
       let end: string | undefined
@@ -99,7 +106,7 @@ export function ActivitiesPage() {
       })
     }
     return out
-  }, [entries, activities, parts, templateRows, models, currentPersona, scope.vendor])
+  }, [entries, activities, parts, templateRows, models, currentPersona, scope.vendor, upcomingOnly])
 
   const filtered = summaries.filter((s) => {
     if (search && !s.activity.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -141,7 +148,8 @@ export function ActivitiesPage() {
             : `${summaries.length} activit${summaries.length !== 1 ? 'ies' : 'y'} by milestone. Dates are calculated from each model's MRD. ${scopeNote}`
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <UpcomingToggle />
             <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
             </Link>

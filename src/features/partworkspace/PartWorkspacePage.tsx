@@ -18,6 +18,7 @@ import { vendorInsights, predictRisk } from '../lessons/insights'
 import { getFilteredData } from '../../engine'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import { MultiSelect } from '../intake/MultiSelect'
+import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 
 const inputCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
@@ -52,6 +53,7 @@ export function PartWorkspacePage() {
   const { currentPersona } = usePersonaStore()
 
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'
+  const upcomingOnly = useUpcomingOnly()
 
   // Parts the persona may see (PIC locked to its section; drop superseded).
   const scopeParts = useMemo(
@@ -127,6 +129,8 @@ export function PartWorkspacePage() {
         if (!targeted || !model?.mrds[subTypeMrdKey(row.milestoneId, row.subType)]) continue
       }
       const entry = entries.find((e) => e.id === makeEntryId(row.id, part.partNo))
+      // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
+      if (upcomingOnly && !isUpcoming(resolveTrackedDates(row, model, entry, activity, part))) continue
       out.push({ row, activity, entry })
     }
     // Order by milestone then activity id for a stable PP → MPP → Pilot flow.
@@ -136,7 +140,7 @@ export function PartWorkspacePage() {
         (order.indexOf(a.row.milestoneId) + 1 || 99) - (order.indexOf(b.row.milestoneId) + 1 || 99) ||
         a.activity.id.localeCompare(b.activity.id, undefined, { numeric: true })
     )
-  }, [part, templateRows, activities, entries])
+  }, [part, templateRows, activities, entries, modelRecords, upcomingOnly])
 
   const model = useMemo(() => modelRecords.find((m) => m.name === part?.model), [modelRecords, part])
 
@@ -307,9 +311,12 @@ export function PartWorkspacePage() {
         section="Workspace"
         description="Pick a part and fill every activity on one screen. Select more parts in the dropdown to save the same data to all of them at once."
         actions={
-          <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
-            ← Parts Data Entry
-          </Link>
+          <div className="flex items-center gap-3">
+            <UpcomingToggle />
+            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
+              ← Parts Data Entry
+            </Link>
+          </div>
         }
       />
 

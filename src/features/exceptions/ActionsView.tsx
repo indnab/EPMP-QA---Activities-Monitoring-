@@ -7,6 +7,7 @@ import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import type { PersonaId } from '../../store/personaStore'
 import { actionRyg, getPicOn } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope, toRygStatus } from '../scope'
+import { useExcMatcher } from './exceptionFilters'
 
 const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
@@ -34,6 +35,7 @@ export interface ActionRow {
 export function useActionRows(): ActionRow[] {
   const { entries, parts, templateRows, activities } = useQAStore()
   const { currentPersona } = usePersonaStore()
+  const match = useExcMatcher()
   return useMemo(() => {
     const partByNo = new Map(parts.map((p) => [p.partNo, p]))
     const rowById = new Map(templateRows.map((r) => [r.id, r]))
@@ -43,7 +45,7 @@ export function useActionRows(): ActionRow[] {
       if (!e.actions?.length) continue
       const part = partByNo.get(e.partNo)
       const row = rowById.get(e.templateRowId)
-      if (!part || !row || part.supersededBy || !partInScope(part, currentPersona)) continue
+      if (!part || !row || part.supersededBy || !partInScope(part, currentPersona) || !match(part, e.templateRowId)) continue
       for (const a of e.actions) {
         out.push({
           action: a, templateRowId: e.templateRowId, partNo: part.partNo, partName: part.partName, vendorName: part.vendorName,
@@ -53,7 +55,7 @@ export function useActionRows(): ActionRow[] {
       }
     }
     return out.sort((x, y) => (x.action.targetDate ?? '9999').localeCompare(y.action.targetDate ?? '9999'))
-  }, [entries, parts, templateRows, activities, currentPersona])
+  }, [entries, parts, templateRows, activities, currentPersona, match])
 }
 
 type StatusFilter = 'Active' | 'Overdue' | ActionStatus | 'All'

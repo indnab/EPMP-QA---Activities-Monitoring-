@@ -4,6 +4,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { partInScope } from '../scope'
 import { useDelayRows } from '../delay/delay'
 import { useActionRows } from './ActionsView'
+import { useExcMatcher } from './exceptionFilters'
 
 export type ExceptionTab = 'overview' | 'deviations' | 'actions' | 'delays'
 
@@ -52,6 +53,7 @@ export function useExceptionData() {
   const isVendor = currentPersona === 'Vendor'
   const actions = useActionRows()
   const delays = useDelayRows()
+  const match = useExcMatcher()
   // Open NG rounds (a submission rejected as NG, awaiting the vendor's resubmission), across parts in scope.
   const ngRows = useMemo(() => {
     const out: NgLite[] = []
@@ -59,19 +61,19 @@ export function useExceptionData() {
     const actByName = new Map(activities.map((a) => [a.id, a.name]))
     for (const e of entries) {
       const part = partByNo.get(e.partNo)
-      if (!e.ngRounds?.length || !part || part.supersededBy || !partInScope(part, currentPersona)) continue
+      if (!e.ngRounds?.length || !part || part.supersededBy || !partInScope(part, currentPersona) || !match(part, e.templateRowId)) continue
       const open = e.ngRounds.find((r) => !r.resolvedAt)
       if (!open) continue
       out.push({ key: `${e.id}-ng${open.round}`, partNo: part.partNo, partName: part.partName, activityName: actByName.get(e.activityId) ?? e.activityId, round: open.round, reason: open.reason, target: open.targetDate, rowId: e.templateRowId })
     }
     return out
-  }, [entries, parts, activities, currentPersona])
+  }, [entries, parts, activities, currentPersona, match])
   const devRows = useMemo(() => {
     const out: DeviationLite[] = []
     const partByNo = new Map(parts.map((p) => [p.partNo, p]))
     for (const e of entries) {
       const part = partByNo.get(e.partNo)
-      if (!e.deviations?.length || !part || part.supersededBy || !partInScope(part, currentPersona)) continue
+      if (!e.deviations?.length || !part || part.supersededBy || !partInScope(part, currentPersona) || !match(part, e.templateRowId)) continue
       for (const d of e.deviations) {
         const open = d.status === 'In progress' || d.status === 'Sent back'
         const stage = open ? d.flow[d.currentStep] : ''
@@ -79,7 +81,7 @@ export function useExceptionData() {
       }
     }
     return out
-  }, [entries, parts, currentPersona])
+  }, [entries, parts, currentPersona, match])
   const devMine = devRows.filter((d) => d.mine).length
   const actMine = actions.filter((a) => a.action.assignedTo === currentPersona && a.action.status !== 'Done').length
   const delayMine = isVendor ? delays.needed.length : delays.review.length

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { PageHeader, Tabs } from '../../components'
 import { fmtDate } from '../scope'
@@ -6,6 +7,8 @@ import { DelayPanel } from '../delay/DelayPanel'
 import { ActionsView } from './ActionsView'
 import { useExceptionData } from './useExceptionData'
 import type { Attention, ExceptionTab } from './useExceptionData'
+import { EMPTY_EXC_FILTERS, ExcFilterProvider, ExceptionFilterBar } from './exceptionFilters'
+import type { ExcFilters } from './exceptionFilters'
 
 type TabId = ExceptionTab
 
@@ -42,6 +45,16 @@ function SummaryCard(props: { title: string; color: string; main: number; mainLa
  * date) and delay reasons (vendor explains a late activity, PIC accepts or sends back).
  */
 export function ExceptionsPage() {
+  // The usual filters apply to every tab; the provider scopes them to this page only.
+  const [filters, setFilters] = useState<ExcFilters>(EMPTY_EXC_FILTERS)
+  return (
+    <ExcFilterProvider value={filters}>
+      <ExceptionsBody filters={filters} onFilters={setFilters} />
+    </ExcFilterProvider>
+  )
+}
+
+function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters: (f: ExcFilters) => void }) {
   const [params, setParams] = useSearchParams()
   const { isVendor, actions, delays, devRows, devMine, actMine, delayMine, ngRows, attention } = useExceptionData()
   const tabs: { id: TabId; label: string; badge?: number }[] = [{ id: 'overview', label: 'Overview' }]
@@ -60,6 +73,7 @@ export function ExceptionsPage() {
         section="Modules"
         description="Everything that went off plan, in one place: deviations, actions and delay reasons. See what needs you and act on it."
       />
+      <ExceptionFilterBar value={filters} onChange={onFilters} />
       <Tabs className="mb-4" activeId={tab} onChange={(id) => go(id as TabId)} items={tabs} />
 
       {tab === 'overview' && (
