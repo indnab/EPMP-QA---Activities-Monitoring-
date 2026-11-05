@@ -1,55 +1,71 @@
 import { createContext, useCallback, useContext, useMemo } from 'react'
 import type { PartRecord } from '../../domain'
 import { getPicOn } from '../../engine'
+import { INTAKE_FIELDS } from '../../mock/partIntakeFields'
+import type { IntakeField } from '../../mock/partIntakeFields'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
 
-/** The usual filters (same set as My Work), applied to every Exception Management tab. */
-export interface ExcFilters {
-  model: string
-  dept: string
-  milestone: string
-  pic: string
-  partName: string
-  partCode: string
-  vendorCode: string
-  vendor: string
+/**
+ * The primary part filters, taken straight from the Part Intake field spec (the fields flagged primary + filter):
+ * Model, QA Dept, Part Category, Model Variant, Fuel Type, QA PIC Name. One shared bar used on every list screen.
+ */
+export const PRIMARY_FILTER_FIELDS: IntakeField[] = INTAKE_FIELDS.filter((f) => f.primary && f.filter)
+
+/** Filter state: field key → selected value ('All' = no filter). */
+export type PartFilters = Record<string, string>
+
+export const EMPTY_PART_FILTERS: PartFilters = Object.fromEntries(PRIMARY_FILTER_FIELDS.map((f) => [f.key, 'All']))
+
+export function hasPartFilters(f: PartFilters): boolean {
+  return PRIMARY_FILTER_FIELDS.some((fld) => (f[fld.key] ?? 'All') !== 'All')
 }
 
-export const EMPTY_EXC_FILTERS: ExcFilters = {
-  model: 'All', dept: 'All', milestone: 'All', pic: 'All', partName: '', partCode: '', vendorCode: 'All', vendor: 'All'
+/** Read a filter field's value off a part (core column, derived PIC, or attrs bag). */
+function partFieldValue(part: PartRecord, field: IntakeField, picName: string): string {
+  if (field.key === 'qa_pic_name') return picName
+  if (field.core) {
+    const map: Record<string, string> = {
+      model: part.model, department: part.department, pic: part.pic,
+      partNo: part.partNo, partName: part.partName, vendorCode: part.vendorCode,
+      vendorName: part.vendorName, section: part.section
+    }
+    return map[field.core] ?? ''
+  }
+  return part.attrs?.[field.key] ?? ''
 }
 
-export function hasExcFilters(f: ExcFilters): boolean {
-  return (Object.keys(f) as (keyof ExcFilters)[]).some((k) => f[k] !== EMPTY_EXC_FILTERS[k])
-}
+/** Provided by each list page; where no provider exists the default is "no filter" so everything passes. */
+const PartFilterContext = createContext<PartFilters>(EMPTY_PART_FILTERS)
+export const PartFilterProvider = PartFilterContext.Provider
 
-/** Provided by the Exception Management page only; everywhere else (bell, Home, My Work) the default is "no filter". */
-const ExcFilterContext = createContext<ExcFilters>(EMPTY_EXC_FILTERS)
-export const ExcFilterProvider = ExcFilterContext.Provider
+// Back-compat aliases (Exception Management page used these names).
+export const ExcFilterProvider = PartFilterProvider
+export const EMPTY_EXC_FILTERS = EMPTY_PART_FILTERS
+export type ExcFilters = PartFilters
+
+/** Pure matcher used by both the context hook and pages that hold filters in their own state. */
+function matchPart(part: PartRecord, f: PartFilters, picName: string): boolean {
+  for (const field of PRIMARY_FILTER_FIELDS) {
+    const sel = f[field.key] ?? 'All'
+    if (sel !== 'All' && partFieldValue(part, field, picName) !== sel) return false
+  }
+  return true
+}
 
 /**
- * Returns a test for "does this part (and the milestone of its template row) pass the page's filters?".
- * With no filters set, or outside the Exception Management page, everything passes.
+ * A test for "does this part pass the given primary filters?". With no filters (or 'All' everywhere) everything
+ * passes. Pass explicit filters to use a page's own state; omit to read the nearest PartFilterProvider (used by
+ * Exception Management). The optional templateRowId is accepted for call-site compatibility; the set is part-only.
  */
-export function useExcMatcher(): (part: PartRecord, templateRowId?: string) => boolean {
-  const f = useContext(ExcFilterContext)
-  const { templateRows, picAssignments } = useQAStore()
-  const rowMs = useMemo(() => new Map(templateRows.map((r) => [r.id, r.milestoneId])), [templateRows])
+export function useExcMatcher(filters?: PartFilters): (part: PartRecord, templateRowId?: string) => boolean {
+  const ctx = useContext(PartFilterContext)
+  const f = filters ?? ctx
+  const { picAssignments } = useQAStore()
   return useCallback(
-    (part, templateRowId) => {
-      if (f.model !== 'All' && part.model !== f.model) return false
-      if (f.dept !== 'All' && (part.department || 'Other') !== f.dept) return false
-      if (f.vendor !== 'All' && part.vendorName !== f.vendor) return false
-      if (f.vendorCode !== 'All' && part.vendorCode !== f.vendorCode) return false
-      if (f.pic !== 'All' && getPicOn(part, picAssignments, DEMO_TODAY).name !== f.pic) return false
-      if (f.partName && !part.partName.toLowerCase().includes(f.partName.toLowerCase())) return false
-      if (f.partCode && !part.partNo.toLowerCase().includes(f.partCode.toLowerCase())) return false
-      if (f.milestone !== 'All' && templateRowId && rowMs.get(templateRowId) !== f.milestone) return false
-      return true
-    },
-    [f, picAssignments, rowMs]
+    (part) => matchPart(part, f, getPicOn(part, picAssignments, DEMO_TODAY).name),
+    [f, picAssignments]
   )
 }
 
@@ -57,52 +73,44 @@ const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 const labelCls = 'mb-1 block text-[10px] font-semibold text-[var(--color-muted)]'
 
-/** The filter bar shown above the Exception Management tabs. */
-export function ExceptionFilterBar({ value, onChange }: { value: ExcFilters; onChange: (f: ExcFilters) => void }) {
-  const { parts, templateRows, picAssignments } = useQAStore()
+/** The shared primary filter bar shown above a list. */
+export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; onChange: (f: PartFilters) => void }) {
+  const { parts, picAssignments } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  const set = (patch: Partial<ExcFilters>) => onChange({ ...value, ...patch })
 
   const scoped = useMemo(() => parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), [parts, currentPersona])
-  const uniq = (vals: string[]) => Array.from(new Set(vals.filter(Boolean))).sort()
-  const models = useMemo(() => uniq(scoped.map((p) => p.model)), [scoped])
-  const depts = useMemo(() => uniq(scoped.map((p) => p.department || 'Other')), [scoped])
-  const vendors = useMemo(() => uniq(scoped.map((p) => p.vendorName)), [scoped])
-  const vendorCodes = useMemo(() => uniq(scoped.map((p) => p.vendorCode)), [scoped])
-  const pics = useMemo(() => uniq(scoped.map((p) => getPicOn(p, picAssignments, DEMO_TODAY).name)), [scoped, picAssignments])
-  const milestones = useMemo(() => uniq(templateRows.map((r) => r.milestoneId)), [templateRows])
+  // Options per field: the field's declared pick-list, else the distinct values present in the scoped parts.
+  const optionsByKey = useMemo(() => {
+    const out: Record<string, string[]> = {}
+    for (const field of PRIMARY_FILTER_FIELDS) {
+      if (field.options?.length) {
+        out[field.key] = field.options
+      } else {
+        const vals = scoped.map((p) => partFieldValue(p, field, getPicOn(p, picAssignments, DEMO_TODAY).name))
+        out[field.key] = Array.from(new Set(vals.filter(Boolean))).sort()
+      }
+    }
+    return out
+  }, [scoped, picAssignments])
 
-  const select = (label: string, key: keyof ExcFilters, options: string[]) => (
-    <label className="block">
-      <span className={labelCls}>{label}</span>
-      <select value={value[key]} onChange={(e) => set({ [key]: e.target.value } as Partial<ExcFilters>)} className={filterCls}>
-        <option value="All">All</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  )
-  const text = (label: string, key: 'partName' | 'partCode') => (
-    <label className="block">
-      <span className={labelCls}>{label}</span>
-      <input value={value[key]} onChange={(e) => set({ [key]: e.target.value } as Partial<ExcFilters>)} placeholder="All" className={filterCls} />
-    </label>
-  )
+  const set = (key: string, v: string) => onChange({ ...value, [key]: v })
 
   return (
     <section className="epmp-card mb-4 px-4 py-3.5" aria-label="Filters">
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
-        {select('Model', 'model', models)}
-        {select('Department', 'dept', depts)}
-        {select('Trial status', 'milestone', milestones)}
-        {select('PIC name', 'pic', pics)}
-        {text('Part name', 'partName')}
-        {text('Part code', 'partCode')}
-        {select('Vendor code', 'vendorCode', vendorCodes)}
-        {select('Vendor name', 'vendor', vendors)}
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+        {PRIMARY_FILTER_FIELDS.map((field) => (
+          <label key={field.key} className="block">
+            <span className={labelCls}>{field.label}</span>
+            <select value={value[field.key] ?? 'All'} onChange={(e) => set(field.key, e.target.value)} className={filterCls}>
+              <option value="All">All</option>
+              {(optionsByKey[field.key] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </label>
+        ))}
       </div>
-      {hasExcFilters(value) && (
+      {hasPartFilters(value) && (
         <div className="mt-2.5">
-          <button onClick={() => onChange(EMPTY_EXC_FILTERS)} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">
+          <button onClick={() => onChange(EMPTY_PART_FILTERS)} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">
             Clear all filters
           </button>
         </div>

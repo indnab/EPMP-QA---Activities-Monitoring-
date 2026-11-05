@@ -232,20 +232,6 @@ export function BulkEntryPage() {
       <section className="epmp-card mb-4 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Model</span>
-            <select value={modelFilter} onChange={(e) => { setModelFilter(e.target.value); setPartFilter('All') }} className={selCls}>
-              <option value="All">All models</option>
-              {modelOpts.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Vendor</span>
-            <select value={vendorFilter} onChange={(e) => { setVendorFilter(e.target.value); setPartFilter('All') }} className={selCls}>
-              <option value="All">All vendors</option>
-              {vendorOpts.map((v) => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </label>
-          <label className="block">
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Milestone</span>
             <select value={milestoneFilter} onChange={(e) => setMilestoneFilter(e.target.value)} className={selCls}>
               <option value="All">All milestones</option>

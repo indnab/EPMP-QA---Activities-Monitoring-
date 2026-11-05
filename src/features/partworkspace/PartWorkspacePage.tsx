@@ -19,9 +19,8 @@ import { getFilteredData } from '../../engine'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import { MultiSelect } from '../intake/MultiSelect'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
-
-const inputCls =
-  'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
+import { EMPTY_PART_FILTERS, ExceptionFilterBar, useExcMatcher } from '../exceptions/exceptionFilters'
+import type { PartFilters } from '../exceptions/exceptionFilters'
 
 /** One activity section for the selected part: its template row, definition and the primary part's entry. */
 interface ActivitySection {
@@ -61,25 +60,17 @@ export function PartWorkspacePage() {
     [allParts, currentPersona]
   )
 
-  // ── Filters to pick the primary part ──────────────────────────────────────
-  const [modelFilter, setModelFilter] = useState('All')
-  const [vendorFilter, setVendorFilter] = useState('All')
+  // ── Primary filters (shared bar) to narrow which part you pick ────────────
+  const [partFilters, setPartFilters] = useState<PartFilters>(EMPTY_PART_FILTERS)
+  const matchPart = useExcMatcher(partFilters)
   // Trial (milestone) filter for the activity sections of the selected part.
   const [trialFilter, setTrialFilter] = useState('All')
   const [searchParams] = useSearchParams()
   const [partNo, setPartNo] = useState<string>(searchParams.get('part') ?? '')
 
-  const models = useMemo(() => Array.from(new Set(scopeParts.map((p) => p.model).filter(Boolean))).sort(), [scopeParts])
-  const vendors = useMemo(() => Array.from(new Set(scopeParts.map((p) => p.vendorName).filter(Boolean))).sort(), [scopeParts])
-
   const candidateParts = useMemo(
-    () =>
-      scopeParts.filter(
-        (p) =>
-          (modelFilter === 'All' || p.model === modelFilter) &&
-          (vendorFilter === 'All' || p.vendorName === vendorFilter)
-      ),
-    [scopeParts, modelFilter, vendorFilter]
+    () => scopeParts.filter((p) => matchPart(p)),
+    [scopeParts, matchPart]
   )
 
   // Default the selected part to the first candidate when filters change and current selection falls out of range.
@@ -320,23 +311,10 @@ export function PartWorkspacePage() {
         }
       />
 
-      {/* ── Filter / part picker bar (fixed) ─────────────────────────────── */}
+      {/* ── Primary filters + part picker (fixed) ────────────────────────── */}
+      <ExceptionFilterBar value={partFilters} onChange={setPartFilters} />
       <section className="epmp-card mb-4 flex-none px-4 py-3.5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Model</span>
-            <select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)} className={inputCls}>
-              <option value="All">All models</option>
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Vendor</span>
-            <select value={vendorFilter} onChange={(e) => setVendorFilter(e.target.value)} className={inputCls}>
-              <option value="All">All vendors</option>
-              {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </label>
+        <div className="grid grid-cols-1 gap-3">
           <div className="block">
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
               Parts {targetPartNos.length > 1 && <span className="text-primary">· {targetPartNos.length} selected</span>}
