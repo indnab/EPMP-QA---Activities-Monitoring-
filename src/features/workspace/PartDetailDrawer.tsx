@@ -1,3 +1,4 @@
+import { Icon as FbIcon } from '../../components/Icon'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { ActivityDefinition, FieldDefinition, ActivityEntry, TemplateRow, PartRecord } from '../../domain'
 import { makeEntryId } from '../../domain'
@@ -484,9 +485,9 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
     <>
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
 
-      <div className="fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="border-b border-[var(--color-border)] px-5 py-4 flex-shrink-0">
+      <div className="fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col max-lg:h-[100dvh] max-lg:overflow-y-auto">
+        {/* Header (mobile: scrolls away with the form) */}
+        <div className="border-b border-[var(--color-border)] px-5 py-4 flex-shrink-0 max-sm:px-4">
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -512,10 +513,11 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
             </div>
             <button
               onClick={onClose}
-              className="text-[var(--color-muted)] hover:text-[var(--color-text)] p-1 rounded ml-4 flex-shrink-0"
+              className="ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
               aria-label="Close"
+              title="Close"
             >
-              ✕
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-xs text-[var(--color-muted)]">
@@ -546,12 +548,12 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
         </div>
 
         {/* Tabs */}
-        <div className="px-5 pt-3 flex-shrink-0 border-b border-[var(--color-border)]">
-          <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} />
+        <div className="px-5 pt-3 flex-shrink-0 border-b border-[var(--color-border)] max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-white max-sm:px-4">
+          <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} className="max-lg:flex-nowrap" />
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 max-lg:flex-none max-lg:overflow-visible max-sm:p-4">
           {/* Release-to-vendor gate */}
           {released ? (
             <div
@@ -751,7 +753,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
               </p>
               {ngRounds.length === 0 ? (
                 <div className="rounded border border-dashed border-[var(--color-border)] py-8 text-center text-xs text-[var(--color-muted)]">
-                  No NG rounds. {isPic ? 'Use “✗ Mark NG” on a submitted entry to record one.' : ''}
+                  No NG rounds. {isPic ? 'Use “Mark NG” on a submitted entry to record one.' : ''}
                 </div>
               ) : (
                 <ol className="space-y-2">
@@ -759,7 +761,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                     <li key={r.round} className={`rounded-lg border px-3 py-2 ${r.resolvedAt ? 'border-[var(--color-border)] bg-[var(--color-surface)]' : 'border-[#fca5a5] bg-[#fef2f2]'}`}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-[var(--color-text)]">Round {r.round}</span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${r.resolvedAt ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                        <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${r.resolvedAt ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
                           {r.resolvedAt ? 'Cleared' : 'Open — awaiting resubmission'}
                         </span>
                       </div>
@@ -866,7 +868,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[13px] font-medium text-[var(--color-text)]">{a.title}</span>
-                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                              <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                                 a.status === 'Done' ? 'bg-emerald-100 text-emerald-800'
                                 : a.status === 'In progress' ? 'bg-amber-100 text-amber-800'
                                 : 'bg-slate-100 text-slate-600'}`}>{a.status}</span>
@@ -961,7 +963,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[13px] font-medium text-[var(--color-text)]">{d.title}</span>
-                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusTone}`}>{d.status}</span>
+                              <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusTone}`}>{d.status}</span>
                             </div>
                             {d.description && <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">{d.description}</p>}
                             <div className="mt-1.5 flex items-center gap-1">
@@ -1000,7 +1002,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[var(--color-border)] px-5 py-3 flex-shrink-0">
+        <div className="border-t border-[var(--color-border)] px-5 py-3 flex-shrink-0 max-lg:sticky max-lg:bottom-0 max-lg:mt-auto max-lg:bg-white max-sm:px-4">
           {/* PIC validation actions */}
           {isPic && isSubmitted && (
             <div className="mb-3">
@@ -1015,12 +1017,12 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                 className="w-full border border-[var(--color-border)] rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] mb-2"
               />
               <div className="flex flex-wrap gap-2">
-                <Button variant="primary" size="sm" onClick={handleApprove}>✓ Approve</Button>
-                <Button variant="secondary" size="sm" onClick={handlePicEdit}>✎ Edit</Button>
-                <Button variant="danger" size="sm" onClick={() => setShowSendBackModal(true)}>↩ Send back</Button>
+                <Button variant="primary" size="sm" onClick={handleApprove}><FbIcon name="check" size={14} className="mr-1" />Approve</Button>
+                <Button variant="secondary" size="sm" onClick={handlePicEdit}><FbIcon name="pen" size={14} className="mr-1" />Edit</Button>
+                <Button variant="danger" size="sm" onClick={() => setShowSendBackModal(true)}><FbIcon name="undo" size={14} className="mr-1" />Send back</Button>
                 {activity.trackNgRounds && (
                   <Button variant="danger" size="sm" onClick={() => setShowNgModal(true)} title="Reject this submission as NG and send it back for resubmission">
-                    ✗ Mark NG
+                    <FbIcon name="close" size={14} className="mr-1" />Mark NG
                   </Button>
                 )}
               </div>
@@ -1056,7 +1058,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
           )}
 
           {entryState === 'Approved' && !isNa && (
-            <p className="mt-2 text-sm text-[#047857] font-medium">✓ Entry approved</p>
+            <p className="mt-2 text-sm text-[#047857] font-medium"><FbIcon name="check-circle" size={16} className="mr-1" />Entry approved</p>
           )}
 
           {!isPic && !canVendorEdit && !canPicEnter && entryState !== 'Approved' && !showReverseNa && (
@@ -1226,7 +1228,7 @@ function FormTab({
           <div key={field.key}>
             {sentBackComment && (
               <div className="mb-1 px-2 py-1 bg-[#fffbeb] border border-[#fde68a] rounded text-xs text-[#b45309]">
-                ⚠ Sent back: {sentBackComment}
+                <FbIcon name="exclamation-circle" size={14} className="mr-1" />Sent back: {sentBackComment}
               </div>
             )}
 
@@ -1263,7 +1265,7 @@ function FormTab({
                     </span>
                   )}
                   {fs?.error && (
-                    <span className="text-[10px] text-[#b45309]">⚠ Not available</span>
+                    <span className="text-[10px] text-[#b45309]"><FbIcon name="exclamation-circle" size={12} className="mr-1" />Not available</span>
                   )}
                   <button
                     type="button"
@@ -1271,7 +1273,7 @@ function FormTab({
                     disabled={fs?.loading}
                     className={`text-[10px] px-1.5 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors ${fs?.loading ? 'opacity-50 cursor-wait' : ''}`}
                   >
-                    {fs?.loading ? '⟳ Fetching…' : '↻ Refresh'}
+                    <><FbIcon name="refresh" size={12} className="mr-1" />{fs?.loading ? 'Fetching…' : 'Refresh'}</>
                   </button>
                 </div>
               )}

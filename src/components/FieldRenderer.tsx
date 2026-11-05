@@ -1,3 +1,4 @@
+import { Icon as FbIcon } from './Icon'
 /**
  * Field Renderer Registry
  *
@@ -54,7 +55,7 @@ function FieldWrapper({ label, children, className = '' }: { label: string; chil
 }
 
 function inputClass(disabled?: boolean) {
-  return `w-full border border-[var(--color-border)] rounded px-2.5 py-1.5 text-sm bg-white text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${disabled ? 'opacity-60 cursor-not-allowed bg-[var(--color-surface)]' : ''}`
+  return `w-full border border-[var(--color-border)] rounded px-2.5 py-1.5 text-sm max-md:text-base bg-white text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${disabled ? 'opacity-60 cursor-not-allowed bg-[var(--color-surface)]' : ''}`
 }
 
 // ── Registry ─────────────────────────────────────────────────────────────────
@@ -287,7 +288,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           disabled={disabled}
           className={`px-3 py-1.5 text-xs rounded border transition-colors ${value ? 'bg-[#fef2f2] border-[#fca5a5] text-destructive' : 'bg-white border-[var(--color-border)] text-[var(--color-muted)]'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
-          {value ? 'Flagged ✕' : 'Flag'}
+          {value ? <>Flagged <FbIcon name="close" size={12} className="ml-1" /></> : 'Flag'}
         </button>
       </FieldWrapper>
     ),
@@ -329,7 +330,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
                   <tr className="bg-[var(--color-surface)]">
                     <th className="px-2 py-1 text-left font-medium text-[var(--color-muted)] w-12">Sl.</th>
                     {cols.map((c) => (
-                      <th key={c.key} className="px-2 py-1 text-left font-medium text-[var(--color-muted)]">{c.label}</th>
+                      <th key={c.key} className="px-2 py-1 text-left font-medium text-[var(--color-muted)] max-md:min-w-[128px]">{c.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -377,7 +378,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
                 <tr className="bg-[var(--color-surface)]">
                   <th className="px-2 py-1 text-left font-medium text-[var(--color-muted)] w-12">Sl.</th>
                   {cols.map((c) => (
-                    <th key={c.key} className="px-2 py-1 text-left font-medium text-[var(--color-muted)]">{c.label}</th>
+                    <th key={c.key} className="px-2 py-1 text-left font-medium text-[var(--color-muted)] max-md:min-w-[128px]">{c.label}</th>
                   ))}
                   <th className="w-8" />
                 </tr>
@@ -392,7 +393,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
                     {cols.map((c) => {
                       const editable = colEditable(c)
                       return (
-                        <td key={c.key} className="px-1 py-1">
+                        <td key={c.key} className="px-1 py-1 max-md:min-w-[128px]">
                           {c.type === 'dropdown' ? (
                             <select
                               value={r[c.key] ?? ''}
@@ -417,7 +418,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
                     })}
                     <td className="px-1 py-1 text-center">
                       {canAddRows && (
-                        <button type="button" onClick={() => removeRow(i)} className="text-[var(--color-destructive)] hover:underline text-xs" title="Remove row">✕</button>
+                        <button type="button" onClick={() => removeRow(i)} className="text-[var(--color-destructive)] hover:underline text-xs" title="Remove row" aria-label="Remove row"><FbIcon name="close" size={14} /></button>
                       )}
                     </td>
                   </tr>

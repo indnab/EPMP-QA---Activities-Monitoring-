@@ -180,7 +180,7 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
                   <th className="px-3 py-2 font-medium">Activity</th>
                   <th className="px-3 py-2 font-medium">Late by</th>
                   <th className="px-3 py-2 font-medium">State</th>
-                  <th className="px-3 py-2 font-medium">Reason</th>
+                  <th className="min-w-[280px] px-3 py-2 font-medium">Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,9 +202,9 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
                       <div className="text-[10.5px] text-[var(--color-muted)]">end {fmtDate(r.item.plannedEnd)}</div>
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL[r.state].cls}`}>{PILL[r.state].label}</span>
+                      <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL[r.state].cls}`}>{PILL[r.state].label}</span>
                     </td>
-                    <td className="max-w-[340px] px-3 py-2 text-[11px] text-[var(--color-muted)]">
+                    <td className="min-w-[280px] max-w-[420px] px-3 py-2 text-[11px] text-[var(--color-muted)]">
                       {r.record ? (
                         <>
                           <strong className="text-[#344054]">{r.record.category}</strong>
