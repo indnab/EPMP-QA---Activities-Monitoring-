@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
-import { PageHeader, Card, Tabs, RygDot } from '../../components'
+import { PageHeader, Card, Tabs, RygDot, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import {
@@ -20,6 +20,7 @@ import { AiImportPanel } from './AiImportPanel'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useExceptionData } from '../exceptions/useExceptionData'
 import type { WorkGroup, WorkMode } from './workQueue'
 
 const filterCls =
@@ -92,6 +93,168 @@ function GroupCard({ group, mode }: { group: WorkGroup; mode: WorkMode }) {
   )
 }
 
+// ── My Approvals ────────────────────────────────────────────────────────────
+
+/** Everything across the app that waits on the current role to approve: validations, deviations, delay reasons. */
+function ApprovalsPanel({
+  groups, deviations, delays
+}: {
+  groups: WorkGroup[]
+  deviations: ReturnType<typeof useExceptionData>['devRows']
+  delays: ReturnType<typeof useExceptionData>['delays']['review']
+}) {
+  const { advanceDeviation, decideDelayReasons } = useQAStore()
+  const { currentPersona } = usePersonaStore()
+  // Send-back needs a comment; this holds the item being sent back while the reason is typed.
+  const [sendBack, setSendBack] = useState<{ kind: 'deviation' | 'delay'; id: string; rowId?: string; partNo?: string; title: string } | null>(null)
+  const [comment, setComment] = useState('')
+
+  const approveDeviation = (d: ReturnType<typeof useExceptionData>['devRows'][number]) =>
+    advanceDeviation(d.rowId, d.partNo, d.id, 'Approve', currentPersona, currentPersona)
+  const acceptDelay = (recordId: string) =>
+    decideDelayReasons({ ids: [recordId], decision: 'Accepted', by: currentPersona, actorName: currentPersona })
+  const runSendBack = () => {
+    if (!sendBack || !comment.trim()) return
+    if (sendBack.kind === 'deviation' && sendBack.rowId && sendBack.partNo) {
+      advanceDeviation(sendBack.rowId, sendBack.partNo, sendBack.id, 'Send back', currentPersona, currentPersona, comment.trim())
+    } else if (sendBack.kind === 'delay') {
+      decideDelayReasons({ ids: [sendBack.id], decision: 'SentBack', comment: comment.trim(), by: currentPersona, actorName: currentPersona })
+    }
+    setSendBack(null); setComment('')
+  }
+
+  const validations = groups.filter((g) => g.submitted > 0)
+  const nothing = validations.length === 0 && deviations.length === 0 && delays.length === 0
+  if (nothing) {
+    return (
+      <Card>
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <p className="text-sm font-medium text-[var(--color-text)]">Nothing is waiting for your approval</p>
+          <p className="max-w-sm text-xs text-[var(--color-muted)]">Vendor submissions, deviations and delay reasons that need your decision will appear here.</p>
+        </div>
+      </Card>
+    )
+  }
+  return (
+    <div className="space-y-6">
+      {/* Activity submissions awaiting this role's validation */}
+      {validations.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
+            Submissions to validate <span className="text-[var(--color-muted)]">· {validations.reduce((n, g) => n + g.submitted, 0)}</span>
+          </h2>
+          <div className="space-y-3">{validations.map((g) => <GroupCard key={g.key} group={g} mode="validate" />)}</div>
+        </section>
+      )}
+
+      {/* Deviations awaiting this role's decision in the approval chain */}
+      {deviations.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
+            Deviations to decide <span className="text-[var(--color-muted)]">· {deviations.length}</span>
+          </h2>
+          <Card flush className="!overflow-visible">
+            <div className="table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+                    <th className={thCls}>Deviation</th>
+                    <th className={thCls}>Part</th>
+                    <th className={thCls}>Stage</th>
+                    <th className={thCls}>Target</th>
+                    <th className={`${thCls} text-right`}>Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deviations.map((d) => (
+                    <tr key={d.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
+                      <td className="px-3 py-2.5 font-medium text-[#101828]">{d.title}</td>
+                      <td className="px-3 py-2.5"><div className="font-mono text-[11px]">{d.partNo}</div><div className="text-[11px] text-[var(--color-muted)]">{d.partName}</div></td>
+                      <td className="px-3 py-2.5 text-[12px]">{d.stage}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[var(--color-muted)]">{d.target ? fmtDate(d.target) : '—'}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button variant="primary" size="sm" onClick={() => approveDeviation(d)}>Approve</Button>
+                          <Button variant="secondary" size="sm" onClick={() => { setSendBack({ kind: 'deviation', id: d.id, rowId: d.rowId, partNo: d.partNo, title: d.title }); setComment('') }}>Send back</Button>
+                          <Link to={`/exceptions?tab=deviations`} className="ml-1 text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Open →</Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {/* Vendor delay reasons awaiting this role's accept / send back */}
+      {delays.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
+            Delay reasons to review <span className="text-[var(--color-muted)]">· {delays.length}</span>
+          </h2>
+          <Card flush className="!overflow-visible">
+            <div className="table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+                    <th className={thCls}>Activity</th>
+                    <th className={thCls}>Part</th>
+                    <th className={thCls}>Reason</th>
+                    <th className={thCls}>Late by</th>
+                    <th className={`${thCls} text-right`}>Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {delays.map((r) => (
+                    <tr key={r.key} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
+                      <td className="px-3 py-2.5 text-[12px]">{r.item.activityName}</td>
+                      <td className="px-3 py-2.5"><div className="font-mono text-[11px]">{r.item.partNo}</div><div className="text-[11px] text-[var(--color-muted)]">{r.partName}</div></td>
+                      <td className="px-3 py-2.5 text-[12px]">{r.record?.category ?? ''}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[#b91c1c]">{r.item.daysLate} day{r.item.daysLate === 1 ? '' : 's'}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button variant="primary" size="sm" disabled={!r.record} onClick={() => r.record && acceptDelay(r.record.id)}>Accept</Button>
+                          <Button variant="secondary" size="sm" disabled={!r.record} onClick={() => { if (r.record) { setSendBack({ kind: 'delay', id: r.record.id, title: r.item.activityName }); setComment('') } }}>Send back</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {/* Send-back reason (required) for a deviation or a delay reason */}
+      <Modal
+        open={!!sendBack}
+        onClose={() => setSendBack(null)}
+        title={sendBack ? `Send back: ${sendBack.title}` : 'Send back'}
+        footer={
+          <>
+            <Button variant="secondary" size="md" onClick={() => setSendBack(null)}>Cancel</Button>
+            <Button variant="primary" size="md" disabled={!comment.trim()} onClick={runSendBack}>Send back</Button>
+          </>
+        }
+      >
+        <label className="block text-sm">
+          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason for sending back</span>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            placeholder="Tell them what to correct before resubmitting…"
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+        </label>
+      </Modal>
+    </div>
+  )
+}
+
 // ── Workspace tile ────────────────────────────────────────────────────────────
 
 function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; count: number; active: boolean; onClick: () => void }) {
@@ -125,10 +288,12 @@ export function MyWorkPage() {
   const canValidateWork = canValidate(currentPersona)
   const upcomingOnly = useUpcomingOnly()
 
-  // Top-level view toggle: the client's graphical "Workspace", or the proven "Worklist" of grouped cards.
-  const [view, setView] = useState<'workspace' | 'worklist'>('workspace')
+  // Top-level view toggle: graphical "Workspace", the "Worklist" of grouped cards, or "My Approvals".
+  const [view, setView] = useState<'workspace' | 'worklist' | 'approvals'>('workspace')
   // Worklist enter/validate mode.
   const [tab, setTab] = useState<WorkMode>('enter')
+  // Approvals across the app that wait on the current role (validations + deviations + delay reasons).
+  const { devRows, delays } = useExceptionData()
 
   // Filters (the client's set). 'All' by default.
   const [fModel, setFModel] = useState('All')
@@ -268,6 +433,7 @@ export function MyWorkPage() {
   const counts = useMemo(() => countWork(instances, currentPersona), [instances, currentPersona])
   const enterGroups = useMemo(() => (canEnter ? buildWorkGroups(instances, currentPersona, 'enter') : []), [instances, currentPersona, canEnter])
   const validateGroups = useMemo(() => (canValidateWork ? buildWorkGroups(instances, currentPersona, 'validate') : []), [instances, currentPersona, canValidateWork])
+  const devMine = useMemo(() => devRows.filter((d) => d.mine), [devRows])
 
   if (!hasMyWork(currentPersona)) {
     return (
@@ -281,6 +447,12 @@ export function MyWorkPage() {
   const activeMode: WorkMode = canEnter && canValidateWork ? tab : canValidateWork ? 'validate' : 'enter'
   const cardGroups = activeMode === 'enter' ? enterGroups : validateGroups
 
+  // ── My Approvals: everything across the app waiting on this role to decide ──
+  const delayReview = delays.review // vendor delay reasons the PIC/SIC/DPM must accept or send back
+  const approvalCount = validateGroups.reduce((n, g) => n + g.submitted, 0) + devMine.length + delayReview.length
+  // Approvals is a validator concern; fall back to the Worklist view for roles that cannot validate.
+  const effectiveView = view === 'approvals' && !canValidateWork ? 'worklist' : view
+
   const groupDimLabel = { model: 'Model', vendor: 'Vendor', department: 'Department', milestone: 'Trial status' }[groupDim]
 
   return (
@@ -292,22 +464,29 @@ export function MyWorkPage() {
         actions={<UpcomingToggle />}
       />
 
-      {/* Release handshake: released / pending / returned (PIC side) or acknowledge / return (vendor side) */}
-      <ReleasePanel />
-      {/* Delay reasons: vendor gives them, PIC accepts or sends back */}
-      <DelayPanel />
+      {/* Release + delay panels belong to the parts views; My Approvals lists its own approval items. */}
+      {effectiveView !== 'approvals' && (
+        <>
+          {/* Release handshake: released / pending / returned (PIC side) or acknowledge / return (vendor side) */}
+          <ReleasePanel />
+          {/* Delay reasons: vendor gives them, PIC accepts or sends back */}
+          <DelayPanel />
+        </>
+      )}
       {/* View toggle */}
       <Tabs
         className="mb-4"
-        activeId={view}
-        onChange={(id) => setView(id as 'workspace' | 'worklist')}
+        activeId={effectiveView}
+        onChange={(id) => setView(id as 'workspace' | 'worklist' | 'approvals')}
         items={[
           { id: 'workspace', label: 'Workspace' },
-          { id: 'worklist', label: 'Worklist' }
+          { id: 'worklist', label: 'Worklist' },
+          ...(canValidateWork ? [{ id: 'approvals', label: 'My Approvals', badge: approvalCount || undefined }] : [])
         ]}
       />
 
-      {/* Filters — the client's set */}
+      {/* Filters — the client's set (not shown on My Approvals, which lists approval items directly) */}
+      {effectiveView !== 'approvals' && (
       <section className="epmp-card mb-4 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
           <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
@@ -333,8 +512,11 @@ export function MyWorkPage() {
           </div>
         )}
       </section>
+      )}
 
-      {view === 'workspace' ? (
+      {effectiveView === 'approvals' ? (
+        <ApprovalsPanel groups={validateGroups} deviations={devMine} delays={delayReview} />
+      ) : effectiveView === 'workspace' ? (
         <>
           {/* Tiles: Upcoming / Completed / Delayed / NG */}
           <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
