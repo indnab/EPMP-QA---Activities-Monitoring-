@@ -1,6 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { Fragment, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
@@ -20,7 +20,8 @@ import { AiImportPanel } from './AiImportPanel'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { useExceptionData } from '../exceptions/useExceptionData'
+import { useApprovalRows } from './approvalRows'
+import type { ApprovalRow, ApprovalType } from './approvalRows'
 import type { WorkGroup, WorkMode } from './workQueue'
 
 const filterCls =
@@ -95,140 +96,138 @@ function GroupCard({ group, mode }: { group: WorkGroup; mode: WorkMode }) {
 
 // ── My Approvals ────────────────────────────────────────────────────────────
 
-/** Everything across the app that waits on the current role to approve: validations, deviations, delay reasons. */
-function ApprovalsPanel({
-  groups, deviations, delays
-}: {
-  groups: WorkGroup[]
-  deviations: ReturnType<typeof useExceptionData>['devRows']
-  delays: ReturnType<typeof useExceptionData>['delays']['review']
-}) {
-  const { advanceDeviation, decideDelayReasons } = useQAStore()
+const APPROVAL_TYPE_STYLE: Record<ApprovalType, string> = {
+  'Data Validation': 'bg-blue-100 text-blue-800',
+  Deviation: 'bg-amber-100 text-amber-800',
+  Action: 'bg-violet-100 text-violet-800',
+  'Delay Reason': 'bg-red-100 text-red-800'
+}
+
+const aThCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
+const fmtDateTime = (iso?: string) => (iso ? fmtDate(iso.slice(0, 10)) : '—')
+
+/**
+ * My Approvals: one flat row per item awaiting the current role, across all four approval types. Multi-select to
+ * approve in one go; clicking a row opens the activity form for the detailed view.
+ */
+function ApprovalsPanel() {
+  const navigate = useNavigate()
+  const rows = useApprovalRows()
+  const { transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  // Send-back needs a comment; this holds the item being sent back while the reason is typed.
-  const [sendBack, setSendBack] = useState<{ kind: 'deviation' | 'delay'; id: string; rowId?: string; partNo?: string; title: string } | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [notice, setNotice] = useState('')
+  const [sendBack, setSendBack] = useState<ApprovalRow | null>(null)
   const [comment, setComment] = useState('')
 
-  const approveDeviation = (d: ReturnType<typeof useExceptionData>['devRows'][number]) =>
-    advanceDeviation(d.rowId, d.partNo, d.id, 'Approve', currentPersona, currentPersona)
-  const acceptDelay = (recordId: string) =>
-    decideDelayReasons({ ids: [recordId], decision: 'Accepted', by: currentPersona, actorName: currentPersona })
+  const keys = useMemo(() => new Set(rows.map((r) => r.key)), [rows])
+  const selected = useMemo(() => new Set([...picked].filter((k) => keys.has(k))), [picked, keys])
+
+  const approveOne = (r: ApprovalRow) => {
+    switch (r.approve.kind) {
+      case 'entry': transitionEntryState(r.approve.entryId, 'Approve', undefined, currentPersona); break
+      case 'deviation': advanceDeviation(r.approve.rowId, r.approve.partNo, r.approve.deviationId, 'Approve', currentPersona, currentPersona); break
+      case 'delay': decideDelayReasons({ ids: [r.approve.recordId], decision: 'Accepted', by: currentPersona, actorName: currentPersona }); break
+      case 'action': updateAction(r.approve.rowId, r.approve.partNo, r.approve.actionId, { status: 'Done' }, currentPersona, currentPersona); break
+    }
+  }
+  const approveSelected = () => {
+    const chosen = rows.filter((r) => selected.has(r.key))
+    chosen.forEach(approveOne)
+    setNotice(`${chosen.length} approval${chosen.length === 1 ? '' : 's'} actioned.`)
+    setPicked(new Set())
+  }
   const runSendBack = () => {
     if (!sendBack || !comment.trim()) return
-    if (sendBack.kind === 'deviation' && sendBack.rowId && sendBack.partNo) {
-      advanceDeviation(sendBack.rowId, sendBack.partNo, sendBack.id, 'Send back', currentPersona, currentPersona, comment.trim())
-    } else if (sendBack.kind === 'delay') {
-      decideDelayReasons({ ids: [sendBack.id], decision: 'SentBack', comment: comment.trim(), by: currentPersona, actorName: currentPersona })
+    if (sendBack.approve.kind === 'deviation') {
+      advanceDeviation(sendBack.approve.rowId, sendBack.approve.partNo, sendBack.approve.deviationId, 'Send back', currentPersona, currentPersona, comment.trim())
+    } else if (sendBack.approve.kind === 'delay') {
+      decideDelayReasons({ ids: [sendBack.approve.recordId], decision: 'SentBack', comment: comment.trim(), by: currentPersona, actorName: currentPersona })
+    } else if (sendBack.approve.kind === 'entry') {
+      transitionEntryState(sendBack.approve.entryId, 'Send back', comment.trim(), currentPersona)
     }
     setSendBack(null); setComment('')
   }
+  const openForm = (r: ApprovalRow) => navigate(`/activities/${r.rowId}?part=${encodeURIComponent(r.partNo)}`)
 
-  const validations = groups.filter((g) => g.submitted > 0)
-  const nothing = validations.length === 0 && deviations.length === 0 && delays.length === 0
-  if (nothing) {
-    return (
-      <Card>
-        <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <p className="text-sm font-medium text-[var(--color-text)]">Nothing is waiting for your approval</p>
-          <p className="max-w-sm text-xs text-[var(--color-muted)]">Vendor submissions, deviations and delay reasons that need your decision will appear here.</p>
+  const allOn = rows.length > 0 && rows.every((r) => selected.has(r.key))
+  const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
+
+  return (
+    <div>
+      <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+        <span className="text-[12px] font-semibold text-[#101828]">{rows.length} approval{rows.length === 1 ? '' : 's'} waiting</span>
+        <div className="ml-auto flex items-center gap-2">
+          {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          <Button variant="primary" size="sm" disabled={selected.size === 0} onClick={approveSelected}>
+            Approve selected ({selected.size})
+          </Button>
+        </div>
+      </section>
+
+      <Card flush className="!overflow-visible">
+        <div className="table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+                <th className="w-8 px-3 py-2.5">
+                  {rows.length > 0 && (
+                    <input type="checkbox" aria-label="Select all" checked={allOn}
+                      onChange={() => setPicked(allOn ? new Set() : new Set(rows.map((r) => r.key)))} />
+                  )}
+                </th>
+                <th className={aThCls}>Part Number</th>
+                <th className={aThCls}>Vendor</th>
+                <th className={aThCls}>Model</th>
+                <th className={aThCls}>Trial</th>
+                <th className={aThCls}>Approval Type</th>
+                <th className={aThCls}>Submitted by</th>
+                <th className={aThCls}>Submitted On</th>
+                <th className={`${aThCls} text-right`}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.key} className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40"
+                  onClick={() => openForm(r)}>
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" aria-label={`Select ${r.partNo} ${r.type}`} checked={selected.has(r.key)} onChange={() => toggle(r.key)} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="font-mono text-[11px] text-[#101828]">{r.partNo}</div>
+                    <div className="text-[11px] text-[var(--color-muted)]">{r.title}</div>
+                  </td>
+                  <td className="px-3 py-2.5 text-[12px]">
+                    <div className="font-mono text-[11px]">{r.vendorCode}</div>
+                    <div className="text-[11px] text-[var(--color-muted)]">{r.vendorName}</div>
+                  </td>
+                  <td className="px-3 py-2.5 text-[12px]">{r.model}</td>
+                  <td className="px-3 py-2.5"><span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{r.trial}</span></td>
+                  <td className="px-3 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_TYPE_STYLE[r.type]}`}>{r.type}</span></td>
+                  <td className="px-3 py-2.5 text-[12px]">
+                    {r.submittedByName || r.submittedByRole}
+                    {r.submittedByName && r.submittedByRole ? <div className="text-[10px] text-[var(--color-muted)]">{r.submittedByRole}</div> : null}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[var(--color-muted)]">{fmtDateTime(r.submittedOn)}</td>
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button variant="primary" size="sm" onClick={() => { approveOne(r); setNotice('Approved.') }}>Approve</Button>
+                      {r.type !== 'Action' && (
+                        <Button variant="secondary" size="sm" onClick={() => { setSendBack(r); setComment('') }}>Send back</Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-[var(--color-muted)]">Nothing is waiting for your approval.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
-    )
-  }
-  return (
-    <div className="space-y-6">
-      {/* Activity submissions awaiting this role's validation */}
-      {validations.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
-            Submissions to validate <span className="text-[var(--color-muted)]">· {validations.reduce((n, g) => n + g.submitted, 0)}</span>
-          </h2>
-          <div className="space-y-3">{validations.map((g) => <GroupCard key={g.key} group={g} mode="validate" />)}</div>
-        </section>
-      )}
 
-      {/* Deviations awaiting this role's decision in the approval chain */}
-      {deviations.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
-            Deviations to decide <span className="text-[var(--color-muted)]">· {deviations.length}</span>
-          </h2>
-          <Card flush className="!overflow-visible">
-            <div className="table-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                    <th className={thCls}>Deviation</th>
-                    <th className={thCls}>Part</th>
-                    <th className={thCls}>Stage</th>
-                    <th className={thCls}>Target</th>
-                    <th className={`${thCls} text-right`}>Decision</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deviations.map((d) => (
-                    <tr key={d.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
-                      <td className="px-3 py-2.5 font-medium text-[#101828]">{d.title}</td>
-                      <td className="px-3 py-2.5"><div className="font-mono text-[11px]">{d.partNo}</div><div className="text-[11px] text-[var(--color-muted)]">{d.partName}</div></td>
-                      <td className="px-3 py-2.5 text-[12px]">{d.stage}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[var(--color-muted)]">{d.target ? fmtDate(d.target) : '—'}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button variant="primary" size="sm" onClick={() => approveDeviation(d)}>Approve</Button>
-                          <Button variant="secondary" size="sm" onClick={() => { setSendBack({ kind: 'deviation', id: d.id, rowId: d.rowId, partNo: d.partNo, title: d.title }); setComment('') }}>Send back</Button>
-                          <Link to={`/exceptions?tab=deviations`} className="ml-1 text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Open →</Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </section>
-      )}
-
-      {/* Vendor delay reasons awaiting this role's accept / send back */}
-      {delays.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
-            Delay reasons to review <span className="text-[var(--color-muted)]">· {delays.length}</span>
-          </h2>
-          <Card flush className="!overflow-visible">
-            <div className="table-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                    <th className={thCls}>Activity</th>
-                    <th className={thCls}>Part</th>
-                    <th className={thCls}>Reason</th>
-                    <th className={thCls}>Late by</th>
-                    <th className={`${thCls} text-right`}>Decision</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {delays.map((r) => (
-                    <tr key={r.key} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
-                      <td className="px-3 py-2.5 text-[12px]">{r.item.activityName}</td>
-                      <td className="px-3 py-2.5"><div className="font-mono text-[11px]">{r.item.partNo}</div><div className="text-[11px] text-[var(--color-muted)]">{r.partName}</div></td>
-                      <td className="px-3 py-2.5 text-[12px]">{r.record?.category ?? ''}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[#b91c1c]">{r.item.daysLate} day{r.item.daysLate === 1 ? '' : 's'}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button variant="primary" size="sm" disabled={!r.record} onClick={() => r.record && acceptDelay(r.record.id)}>Accept</Button>
-                          <Button variant="secondary" size="sm" disabled={!r.record} onClick={() => { if (r.record) { setSendBack({ kind: 'delay', id: r.record.id, title: r.item.activityName }); setComment('') } }}>Send back</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </section>
-      )}
-
-      {/* Send-back reason (required) for a deviation or a delay reason */}
+      {/* Send-back reason (required) */}
       <Modal
         open={!!sendBack}
         onClose={() => setSendBack(null)}
@@ -242,13 +241,9 @@ function ApprovalsPanel({
       >
         <label className="block text-sm">
           <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason for sending back</span>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            rows={3}
+          <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
             placeholder="Tell them what to correct before resubmitting…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-          />
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
         </label>
       </Modal>
     </div>
@@ -292,8 +287,8 @@ export function MyWorkPage() {
   const [view, setView] = useState<'workspace' | 'worklist' | 'approvals'>('workspace')
   // Worklist enter/validate mode.
   const [tab, setTab] = useState<WorkMode>('enter')
-  // Approvals across the app that wait on the current role (validations + deviations + delay reasons).
-  const { devRows, delays } = useExceptionData()
+  // Approvals across the app that wait on the current role (validations + deviations + actions + delay reasons).
+  const approvalRows = useApprovalRows()
 
   // Filters (the client's set). 'All' by default.
   const [fModel, setFModel] = useState('All')
@@ -433,7 +428,6 @@ export function MyWorkPage() {
   const counts = useMemo(() => countWork(instances, currentPersona), [instances, currentPersona])
   const enterGroups = useMemo(() => (canEnter ? buildWorkGroups(instances, currentPersona, 'enter') : []), [instances, currentPersona, canEnter])
   const validateGroups = useMemo(() => (canValidateWork ? buildWorkGroups(instances, currentPersona, 'validate') : []), [instances, currentPersona, canValidateWork])
-  const devMine = useMemo(() => devRows.filter((d) => d.mine), [devRows])
 
   if (!hasMyWork(currentPersona)) {
     return (
@@ -448,8 +442,7 @@ export function MyWorkPage() {
   const cardGroups = activeMode === 'enter' ? enterGroups : validateGroups
 
   // ── My Approvals: everything across the app waiting on this role to decide ──
-  const delayReview = delays.review // vendor delay reasons the PIC/SIC/DPM must accept or send back
-  const approvalCount = validateGroups.reduce((n, g) => n + g.submitted, 0) + devMine.length + delayReview.length
+  const approvalCount = approvalRows.length
   // Approvals is a validator concern; fall back to the Worklist view for roles that cannot validate.
   const effectiveView = view === 'approvals' && !canValidateWork ? 'worklist' : view
 
@@ -515,7 +508,7 @@ export function MyWorkPage() {
       )}
 
       {effectiveView === 'approvals' ? (
-        <ApprovalsPanel groups={validateGroups} deviations={devMine} delays={delayReview} />
+        <ApprovalsPanel />
       ) : effectiveView === 'workspace' ? (
         <>
           {/* Tiles: Upcoming / Completed / Delayed / NG */}
