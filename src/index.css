@@ -191,11 +191,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 /* A sticky first column (e.g. the Part column) must sit above sticky headers. */
 .table-scroll thead th.sticky.left-0 { z-index: 7; }
 
-/* ── Page-level sticky table header ───────────────────────────
-   For tables that should flow with the page (no inner vertical scroll) but whose
-   header pins to the top of the scrolling area once it reaches it. Put .page-sticky-head
-   on the horizontal scroll wrapper. The first header row sticks at top:0; a second
-   header row (e.g. a filter row) sticks just below it. */
+/* ── Two-tier sticky header table ─────────────────────────────
+   For tables with two header rows (a sortable head + a per-column filter row).
+   The box scrolls on both axes inside its card, so a wide table never overflows
+   the page or exposes the shell gradient. The first header row sticks at top:0;
+   the second (filter) row sticks just below it. */
+.page-sticky-head {
+  overflow: auto;
+  max-height: calc(100vh - 230px);
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-height: 640px) {
+  .page-sticky-head { max-height: 70vh; }
+}
 .page-sticky-head thead tr:first-child th {
   position: sticky;
   top: 0;
