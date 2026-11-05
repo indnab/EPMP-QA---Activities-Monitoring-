@@ -13,6 +13,8 @@ import { EMPTY_FILTERS } from '../dashboard/drill'
 import type { GlobalFilters, FieldDefinition, PartRecord } from '../../domain'
 import { DEMO_TODAY } from '../scope'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
+import { EMPTY_PART_FILTERS, ExceptionFilterBar, useExcMatcher } from '../exceptions/exceptionFilters'
+import type { PartFilters } from '../exceptions/exceptionFilters'
 import { UploadReport } from '../excel/UploadReport'
 import type { UploadSummary } from '../excel/UploadReport'
 import { applyUpload, downloadFillTemplate } from '../excel/fillSheet'
@@ -41,8 +43,8 @@ export function BulkEntryPage() {
   const upcomingOnly = useUpcomingOnly()
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const [modelFilter, setModelFilter] = useState('All')
-  const [vendorFilter, setVendorFilter] = useState('All')
+  const [partFilters, setPartFilters] = useState<PartFilters>(EMPTY_PART_FILTERS)
+  const matchPart = useExcMatcher(partFilters)
   const [milestoneFilter, setMilestoneFilter] = useState('All')
   const [partFilter, setPartFilter] = useState('All')
 
@@ -50,30 +52,26 @@ export function BulkEntryPage() {
     () => parts.filter((p) => !p.supersededBy && (!scope.section || p.section === scope.section) && (!scope.vendor || p.vendorName === scope.vendor)),
     [parts, scope.section, scope.vendor]
   )
-  const modelOpts = useMemo(() => Array.from(new Set(scopeParts.map((p) => p.model).filter(Boolean))).sort(), [scopeParts])
-  const vendorOpts = useMemo(() => Array.from(new Set(scopeParts.map((p) => p.vendorName).filter(Boolean))).sort(), [scopeParts])
   const milestoneOpts = useMemo(() => Array.from(new Set(templateRows.map((r) => r.milestoneId))).sort(), [templateRows])
   const partOpts = useMemo(
-    () =>
-      scopeParts
-        .filter((p) => (modelFilter === 'All' || p.model === modelFilter) && (vendorFilter === 'All' || p.vendorName === vendorFilter))
-        .sort((a, b) => a.partNo.localeCompare(b.partNo)),
-    [scopeParts, modelFilter, vendorFilter]
+    () => scopeParts.filter((p) => matchPart(p)).sort((a, b) => a.partNo.localeCompare(b.partNo)),
+    [scopeParts, matchPart]
   )
 
   const filters = useMemo<GlobalFilters>(
-    () => ({ ...EMPTY_FILTERS, model: modelFilter, vendor: vendorFilter, milestone: milestoneFilter, section: scope.section ?? 'All' }),
-    [modelFilter, vendorFilter, milestoneFilter, scope.section]
+    () => ({ ...EMPTY_FILTERS, milestone: milestoneFilter, section: scope.section ?? 'All' }),
+    [milestoneFilter, scope.section]
   )
 
   // All (part × activity) instances for the current filters.
   const instances = useMemo<FilteredInstance[]>(() => {
     let out = getFilteredData(entries, activities, parts, templateRows, models, filters, 'overview', DEMO_TODAY)
+      .filter((i) => matchPart(i.part))
     if (partFilter !== 'All') out = out.filter((i) => i.part.partNo === partFilter)
     // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
     if (upcomingOnly) out = out.filter((i) => isUpcoming(i.dates))
     return out
-  }, [entries, activities, parts, templateRows, models, filters, partFilter, upcomingOnly])
+  }, [entries, activities, parts, templateRows, models, filters, partFilter, upcomingOnly, matchPart])
 
   const order = ['PP', 'MPP', 'Pilot', 'SOP']
 
@@ -228,7 +226,10 @@ export function BulkEntryPage() {
         }
       />
 
-      {/* Filters */}
+      {/* Primary filters (shared bar) */}
+      <ExceptionFilterBar value={partFilters} onChange={setPartFilters} />
+
+      {/* Milestone / part narrowing specific to this grid */}
       <section className="epmp-card mb-4 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <label className="block">
