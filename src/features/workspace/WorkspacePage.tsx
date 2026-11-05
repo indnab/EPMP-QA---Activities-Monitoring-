@@ -1,3 +1,4 @@
+import { Icon as FbIcon } from '../../components/Icon'
 import { useState, useMemo } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
@@ -9,6 +10,7 @@ import type { StatusValue } from '../../components/StatusPill'
 import type { PartRecord } from '../../domain'
 import { PartDetailDrawer } from './PartDetailDrawer'
 import { listColumnFields, listCellTexts } from '../listColumns'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEMO_TODAY, fmtDate, fmtOffsetRange, partInScope, rowInScope, toRygStatus, canMarkNotApplicable, canReverseNotApplicable } from '../scope'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 
@@ -19,6 +21,7 @@ type ApplicabilityFilter = 'All' | 'applicable' | 'na'
 export function WorkspacePage() {
   // The route param is the template row id (an activity under a milestone for a section).
   const { id } = useParams<{ id: string }>()
+  const isMobile = useIsMobile()
   const { activities, entries, templateRows, models: modelRecords, parts, partReleases, partAcks, setNotApplicable } = useQAStore()
   const { currentPersona } = usePersonaStore()
 
@@ -237,7 +240,7 @@ export function WorkspacePage() {
   if (!row || !activity) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-[var(--color-muted)]">
-        <p className="text-4xl mb-3">🔍</p>
+        <p className="mb-3 text-[var(--color-muted)]"><FbIcon name="search" size={36} /></p>
         <p className="font-medium">Activity not found</p>
         <Link to="/activities" className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to Activities</Link>
       </div>
@@ -247,7 +250,7 @@ export function WorkspacePage() {
   if (!rowAllowed) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-[var(--color-muted)]">
-        <p className="text-4xl mb-3">🔒</p>
+        <p className="mb-3 text-[var(--color-muted)]"><FbIcon name="lock" size={36} /></p>
         <p className="font-medium">Not available for your role</p>
         <p className="text-sm mt-1">This activity belongs to section {row.section}, which is outside your scope.</p>
         <Link to="/activities" className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to Activities</Link>
@@ -325,10 +328,11 @@ export function WorkspacePage() {
       </nav>
 
       {/* Header */}
-      <div className="epmp-card px-6 py-5 mb-5">
+      <div className="epmp-card px-6 py-5 mb-5 max-sm:px-4 max-sm:py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+          {/* Mobile: the title block takes the full width; the RYG counts and % sit on their own row below. */}
+          <div className="flex-1 min-w-0 max-md:basis-full">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
               <span className="text-xs font-medium bg-secondary text-primary px-2 py-0.5 rounded">
                 {row.milestoneId}
               </span>
@@ -340,16 +344,16 @@ export function WorkspacePage() {
                 {activity.scope === 'Both' ? 'New Part + ECN' : activity.scope === 'NewPart' ? 'New Part' : 'ECN'}
               </span>
             </div>
-            <h1 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)]">
+            <h1 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)] max-sm:text-[20px] max-sm:leading-7">
               {activity.name}
               {row.subType && <span className="ml-2 align-middle rounded bg-secondary px-2 py-0.5 text-xs font-semibold text-primary">{row.milestoneId} · {row.subType}</span>}
             </h1>
             {activity.description && (
               <p className="text-sm text-[var(--color-muted)] mt-1">{activity.description}</p>
             )}
-            <div className="flex items-center gap-4 mt-2 text-sm text-[var(--color-muted)]">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-[var(--color-muted)]">
               <span>
-                📅{' '}
+                <FbIcon name="calendar-month" size={16} className="mr-1.5 text-[var(--color-muted)]" />
                 {dateRange ? `${fmtDate(dateRange.start)} → ${fmtDate(dateRange.end)}` : <em>Awaiting MRD</em>}
                 {awaitingCount > 0 && dateRange && ` (+${awaitingCount} awaiting MRD)`}
               </span>
@@ -359,27 +363,27 @@ export function WorkspacePage() {
           </div>
 
           {/* RYG Summary + Completion */}
-          <div className="flex items-center gap-6 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <RygDot status="green" size={10} />
+          <div className="flex items-center gap-6 flex-shrink-0 max-md:w-full max-md:justify-between max-md:border-t max-md:border-[var(--color-border)] max-md:pt-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <RygDot status="green" size={12} />
                 <span className="text-sm text-[var(--color-muted)]">{rygSummary.green}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <RygDot status="yellow" size={10} />
+              <div className="flex items-center gap-1.5">
+                <RygDot status="yellow" size={12} />
                 <span className="text-sm text-[var(--color-muted)]">{rygSummary.yellow}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <RygDot status="red" size={10} />
+              <div className="flex items-center gap-1.5">
+                <RygDot status="red" size={12} />
                 <span className="text-sm text-[var(--color-muted)]">{rygSummary.red}</span>
               </div>
-              <div className="flex items-center gap-1" title="Awaiting MRD">
-                <RygDot status="grey" size={10} />
+              <div className="flex items-center gap-1.5" title="Awaiting MRD">
+                <RygDot status="grey" size={12} />
                 <span className="text-sm text-[var(--color-muted)]">{rygSummary.grey}</span>
               </div>
               {allowsNa || rygSummary.na > 0 ? (
-                <div className="flex items-center gap-1" title="Not applicable">
-                  <RygDot status="na" size={10} />
+                <div className="flex items-center gap-1.5" title="Not applicable">
+                  <RygDot status="na" size={12} />
                   <span className="text-sm text-[var(--color-muted)]">{rygSummary.na} N/A</span>
                 </div>
               ) : null}
@@ -398,8 +402,8 @@ export function WorkspacePage() {
         </div>
       </div>
 
-      {/* Filters row */}
-      <div className="flex flex-wrap gap-2 mb-3 items-center">
+      {/* Filters row (mobile: an even two-column grid; count and Clear span the full width) */}
+      <div className="flex flex-wrap gap-2 mb-3 items-center max-sm:grid max-sm:grid-cols-2 max-sm:[&>select]:w-full max-sm:[&>button]:col-span-2 max-sm:[&>button]:text-left max-sm:[&>span]:col-span-2 max-sm:[&>span]:text-right">
         <select
           value={modelFilter}
           onChange={(e) => setModelFilter(e.target.value)}
@@ -473,7 +477,7 @@ export function WorkspacePage() {
             Clear filters
           </button>
         )}
-        <span className="ml-auto text-xs text-[var(--color-muted)]">
+        <span className="ml-auto inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-primary">
           {filteredParts.length} of {applicableParts.length} parts
         </span>
       </div>
@@ -521,11 +525,12 @@ export function WorkspacePage() {
       <Card flush className="!overflow-visible">
         {filteredParts.length === 0 ? (
           <div className="text-center py-12 text-[var(--color-muted)]">
-            <p className="text-3xl mb-3">📋</p>
+            <p className="mb-3 text-[var(--color-muted)]"><FbIcon name="clipboard-list" size={32} /></p>
             <p className="font-medium">No parts match your filters</p>
           </div>
         ) : (
-          <div className="table-scroll">
+          // Mobile: sideways scroll with the Open column pinned right (laptop unchanged).
+          <div className={`table-scroll ${isMobile ? 'tbl-sleeve tbl-sleeve-r' : ''}`}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -550,7 +555,7 @@ export function WorkspacePage() {
                   ))}
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Status</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">RYG</th>
-                  <th className="px-3 py-3"></th>
+                  <th className="px-3 py-3 text-right font-medium text-[var(--color-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>

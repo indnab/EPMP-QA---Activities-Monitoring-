@@ -1,3 +1,4 @@
+import { Icon as FbIcon } from '../../components/Icon'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { PageHeader, Card, Button, getFieldRenderer, SourceBadge, StatusPill } from '../../components'
@@ -210,6 +211,20 @@ export function PartWorkspacePage() {
   const scrollBodyRef = useRef<HTMLDivElement | null>(null)
   const tabBarRef = useRef<HTMLDivElement | null>(null)
   const [activeRow, setActiveRow] = useState<string | null>(null)
+  // The sticky activity bar squares its top corners once it is pinned, so cards scrolling underneath don't show at the corners.
+  const stickSentinel = useRef<HTMLDivElement | null>(null)
+  const [stuck, setStuck] = useState(false)
+  useEffect(() => {
+    const root = document.getElementById('main-content')
+    if (!root) return
+    const check = () => {
+      const node = stickSentinel.current
+      setStuck(!!node && node.getBoundingClientRect().top < root.getBoundingClientRect().top)
+    }
+    check()
+    root.addEventListener('scroll', check, { passive: true })
+    return () => root.removeEventListener('scroll', check)
+  }, [partNo, sections.length])
 
   const jumpTo = (rowId: string) => {
     sectionRefs.current[rowId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -218,7 +233,8 @@ export function PartWorkspacePage() {
 
   // Scroll-spy: highlight the activity tab for whichever section is currently at the top of the scroll area.
   useEffect(() => {
-    const root = scrollBodyRef.current
+    // The page itself scrolls now, so observe against the app's main scroll area.
+    const root = scrollBodyRef.current ? document.getElementById('main-content') : null
     if (!root || sections.length === 0) return
     const obs = new IntersectionObserver(
       (entries) => {
@@ -243,8 +259,10 @@ export function PartWorkspacePage() {
   // Keep the active tab scrolled into view in the (horizontal) tab bar.
   useEffect(() => {
     if (!activeRow || !tabBarRef.current) return
-    const btn = tabBarRef.current.querySelector<HTMLElement>(`[data-tab="${activeRow}"]`)
-    btn?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    const bar = tabBarRef.current
+    const btn = bar.querySelector<HTMLElement>(`[data-tab="${activeRow}"]`)
+    // Scroll only the tab strip sideways; scrollIntoView would also move the page and cancel a jump in progress.
+    if (btn) bar.scrollTo({ left: btn.offsetLeft - (bar.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' })
   }, [activeRow])
 
   function setDraftValue(rowId: string, key: string, value: any) {
@@ -296,13 +314,13 @@ export function PartWorkspacePage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <PageHeader
         title="Part Workspace"
         section="Workspace"
         description="Pick a part and fill every activity on one screen. Select more parts in the dropdown to save the same data to all of them at once."
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <UpcomingToggle />
             <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
@@ -371,7 +389,7 @@ export function PartWorkspacePage() {
               <ul className="mb-1 space-y-0.5">
                 {partPredictions.slice(0, 3).map((p) => (
                   <li key={p.activityId} className="text-[11px] font-medium text-[#92400e]">
-                    ⚠ Forecast · {p.activityName.split(' ').slice(0, 2).join(' ')}: {p.outcome} <span className="font-normal text-[var(--color-muted)]">({p.reasons[0]} · {p.confidence} confidence)</span>
+                    <FbIcon name="exclamation-circle" size={14} className="mr-1 -mt-0.5" />Forecast · {p.activityName.split(' ').slice(0, 2).join(' ')}: {p.outcome} <span className="font-normal text-[var(--color-muted)]">({p.reasons[0]} · {p.confidence} confidence)</span>
                   </li>
                 ))}
               </ul>
@@ -394,17 +412,18 @@ export function PartWorkspacePage() {
           <p className="py-10 text-center text-sm text-[var(--color-muted)]">No activities apply to this part.</p>
         </Card>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-col">
           {/* ── Activity jump tabs + progress scale + Save all (fixed) ─── */}
-          <div className="epmp-card mb-4 flex-none px-4 py-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <div ref={stickSentinel} aria-hidden="true" className="h-px -mb-px" />
+          <div className={`epmp-card sticky -top-1 z-10 mb-4 flex-none px-4 py-4 ${stuck ? 'rounded-t-none shadow-[0_6px_16px_-8px_rgba(16,24,40,.25)]' : ''}`}>
+            <div className="mb-3 flex items-center justify-between gap-3 max-sm:flex-nowrap sm:flex-wrap">
               {/* Completion scale: how many activities are complete out of the total */}
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
                 <span className="whitespace-nowrap text-[12px] font-semibold text-[#101828]">
                   <span className="text-emerald-700">{completedCount}</span>
-                  <span className="text-[var(--color-muted)]"> of {sections.length} activities complete</span>
+                  <span className="text-[var(--color-muted)]"> of {sections.length}<span className="max-sm:hidden"> activities</span> complete</span>
                 </span>
-                <div className="h-2 w-40 max-w-[40vw] overflow-hidden rounded-full bg-[var(--color-border)]">
+                <div className="h-2 w-40 max-w-[40vw] overflow-hidden rounded-full bg-[var(--color-border)] max-sm:w-auto max-sm:min-w-[40px] max-sm:max-w-none max-sm:flex-1">
                   <div
                     className="h-full rounded-full bg-emerald-500 transition-all"
                     style={{ width: `${sections.length ? Math.round((completedCount / sections.length) * 100) : 0}%` }}
@@ -424,8 +443,8 @@ export function PartWorkspacePage() {
             {/* Horizontal scroller. Tabs show the full activity name; they size to content with a
                 min-width so roughly 4 are visible on a phone and the rest scroll into view. Wider
                 screens simply fit more before scrolling. */}
-            <div ref={tabBarRef} className="-mx-1 overflow-x-auto pb-1">
-              <div className="flex gap-2 px-1">
+            <div ref={tabBarRef} className="-mx-1 overflow-x-auto pb-2 pt-1">
+              <div className="flex gap-2 px-1.5 py-1">
                 {shownSections.map((s) => {
                   const done = completeByRow[s.row.id]
                   const active = activeRow === s.row.id
@@ -435,14 +454,14 @@ export function PartWorkspacePage() {
                       data-tab={s.row.id}
                       onClick={() => jumpTo(s.row.id)}
                       title={s.activity.name}
-                      className={`flex-none min-w-[22vw] max-w-[60vw] sm:min-w-[160px] sm:max-w-none whitespace-nowrap
+                      className={`flex-none min-w-[22vw] max-sm:max-w-[72vw] max-sm:whitespace-normal max-sm:leading-snug sm:min-w-[160px] sm:whitespace-nowrap
                         rounded-lg border px-3 py-2 text-left text-[11px] font-medium transition-colors ${
                           done
                             ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                             : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe] hover:text-primary'
                         } ${active ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                     >
-                      <span className="mr-1.5">{done ? '✓' : '○'}</span>
+                      <span className="mr-1.5">{done ? <FbIcon name="check-circle" size={14} /> : <span className="inline-block h-3 w-3 rounded-full border-[1.5px] border-current align-[-0.1em] opacity-60" />}</span>
                       {s.activity.name}{s.row.subType ? ` · ${s.row.subType}` : ''}
                     </button>
                   )
@@ -451,8 +470,8 @@ export function PartWorkspacePage() {
             </div>
           </div>
 
-          {/* ── Stacked activity sections (ONLY this area scrolls) ─────── */}
-          <div ref={scrollBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
+          {/* ── Stacked activity sections: scroll with the page (#main-content), not in a nested box ── */}
+          <div ref={scrollBodyRef} className="space-y-4 pb-4">
             {shownSections.map((s, i) => {
               // Milestone (trial) divider before the first activity of each new milestone.
               const prev = shownSections[i - 1]
@@ -463,7 +482,7 @@ export function PartWorkspacePage() {
                   {showDivider && (
                     <div className="mb-2 flex items-center gap-2 pt-1">
                       <span className="rounded bg-secondary px-2.5 py-1 text-[11px] font-semibold text-primary">{s.row.milestoneId}</span>
-                      <span className="text-[11px] text-[var(--color-muted)]">{groupCount} activit{groupCount === 1 ? 'y' : 'ies'}</span>
+                      <span className="whitespace-nowrap rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium text-[#475467]">{groupCount} activit{groupCount === 1 ? 'y' : 'ies'}</span>
                       <span className="h-px flex-1 bg-[var(--color-border)]" />
                     </div>
                   )}
@@ -531,9 +550,9 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
       : fmtOffsetRange(row)
 
   return (
-    <div ref={ref} data-rowid={rowId} className="epmp-card scroll-mt-4 p-0">
+    <div ref={ref} data-rowid={rowId} className="epmp-card scroll-mt-[150px] p-0">
       {/* Section header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:px-5">
         <div>
           <h3 className="m-0 text-[15px] font-semibold text-[#101828]">{activity.name}</h3>
           <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
@@ -544,13 +563,13 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
       </div>
 
       {/* Fields */}
-      <div className="px-5 py-4">
+      <div className="px-4 py-4 sm:px-5">
         {isNa ? (
           <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">
             Marked Not applicable{entry?.notApplicable?.reason ? ` — ${entry.notApplicable.reason}` : ''}.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+          <div className="pw-fields grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
             {visibleFields.map((field) => {
               const isEditable = canEnter && canPersonaEdit(field, currentPersona, entry)
               const renderer = getFieldRenderer(field.type)
@@ -558,8 +577,8 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
               const mandatory = conditional[field.key]?.mandatory
               return (
                 <div key={field.key} className="min-w-0">
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-[#344054]">
+                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[12px] font-medium text-[#344054]">
                       {field.label}
                       {mandatory && <span className="text-red-500"> *</span>}
                     </span>
@@ -579,7 +598,7 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
 
       {/* Section actions */}
       {!isNa && canEnter && (
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] px-4 py-3 sm:px-5 max-sm:[&>button]:flex-1">
           <Button variant="secondary" size="sm" onClick={onSave}>Save draft</Button>
           <Button variant="primary" size="sm" onClick={onSubmit}>Save & submit</Button>
         </div>

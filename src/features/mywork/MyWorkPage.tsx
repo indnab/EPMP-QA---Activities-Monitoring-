@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { Icon as FbIcon } from '../../components/Icon'
+import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
@@ -18,6 +19,7 @@ import { buildWorkGroups, canEnterWork, canValidate, countWork, hasMyWork } from
 import { AiImportPanel } from './AiImportPanel'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { WorkGroup, WorkMode } from './workQueue'
 
 const filterCls =
@@ -42,7 +44,7 @@ const TABLE_COLS: { key: TableColKey; label: string }[] = [
 
 function Chip({ n, label, tone }: { n: number; label: string; tone: string }) {
   if (n === 0) return null
-  return <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${tone}`}>{n} {label}</span>
+  return <span className={`whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium ${tone}`}>{n} {label}</span>
 }
 
 function GroupCard({ group, mode }: { group: WorkGroup; mode: WorkMode }) {
@@ -220,6 +222,10 @@ export function MyWorkPage() {
     }
   }
 
+  // Mobile: Activity is the first column (pinned left); laptop keeps the original order.
+  const isMobile = useIsMobile()
+  const tableCols = isMobile ? [TABLE_COLS.find((c) => c.key === 'activity')!, ...TABLE_COLS.filter((c) => c.key !== 'activity')] : TABLE_COLS
+
   // The detail table respects the selected bucket/group, then the per-column filters, then the sort.
   const tableRows = useMemo(() => {
     let rows = instances
@@ -343,8 +349,8 @@ export function MyWorkPage() {
 
           {/* Graphical: stacked bars by the chosen dimension */}
           <Card className="mb-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
               <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} w-auto`}>
                 <option value="model">By Model</option>
                 <option value="vendor">By Vendor</option>
@@ -357,11 +363,13 @@ export function MyWorkPage() {
             ) : (
               <div style={{ height: Math.max(180, groups.length * 34 + 60) }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                  <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}
                     barCategoryGap={8}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                     <XAxis type="number" stroke="#9ca3af" fontSize={10} allowDecimals={false} />
-                    <YAxis type="category" dataKey="key" stroke="#667085" fontSize={11} width={110} tickLine={false} />
+                    {/* Label column sized to the longest label so the bars use the rest of the card width */}
+                    <YAxis type="category" dataKey="key" stroke="#667085" fontSize={11} tickLine={false}
+                      width={Math.min(110, Math.max(48, Math.max(...groups.map((g) => String(g.key).length)) * 6.5 + 12))} />
                     <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
                     {WORK_BUCKETS.map((b) => (
@@ -389,7 +397,7 @@ export function MyWorkPage() {
                   </span>
                 ) : 'All parts'}
                 {selectedGroup ? <span className="text-[var(--color-muted)]"> · {selectedGroup}</span> : ''}
-                <span className="ml-2 text-[11px] font-normal text-[var(--color-muted)]">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
+                <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[11px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
               </h3>
               <div className="ml-auto flex items-center gap-3">
                 {anyColFilter && (
@@ -401,26 +409,27 @@ export function MyWorkPage() {
                 )}
               </div>
             </div>
-            <div className="page-sticky-head">
+            {/* Mobile: the table scrolls sideways inside this wrapper (Activity first); only Open is pinned right (.tbl-sleeve-r). */}
+            <div className={`page-sticky-head ${isMobile ? 'tbl-sleeve tbl-sleeve-r overflow-x-auto' : ''}`}>
               <table className="w-full text-sm">
                 <thead>
                   {/* Sortable header row */}
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                    {TABLE_COLS.map((c) => (
+                    {tableCols.map((c) => (
                       <th key={c.key} className={`${thCls} cursor-pointer select-none hover:text-[var(--color-text)]`}
                         onClick={() => toggleSort(c.key)}
                         aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                         <span className="inline-flex items-center gap-1">
                           {c.label}
-                          <span className="text-[9px] text-[var(--color-accent)]">{sortKey === c.key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          <span className="text-[var(--color-accent)]">{sortKey === c.key ? <FbIcon name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} /> : <FbIcon name="caret-sort" size={14} className="opacity-60" />}</span>
                         </span>
                       </th>
                     ))}
-                    <th className={thCls}></th>
+                    <th className={`${thCls} text-right`}>Actions</th>
                   </tr>
                   {/* Per-column filter row */}
                   <tr className="border-b border-[var(--color-border)] bg-white">
-                    {TABLE_COLS.map((c) => (
+                    {tableCols.map((c) => (
                       <th key={c.key} className="px-2 py-1.5">
                         <input
                           value={colFilters[c.key]}
@@ -440,20 +449,40 @@ export function MyWorkPage() {
                     const planned = i.dates.status === 'resolved' ? `${fmtDate(i.dates.start)} → ${fmtDate(i.dates.end)}` : 'Awaiting MRD'
                     return (
                       <tr key={`${i.row.id}-${i.part.partNo}`} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
+                        {tableCols.map((c) => <Fragment key={c.key}>{({
+                          status: (
                         <td className="px-3 py-2.5">
-                          <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium"
                             style={{ background: `${WORK_BUCKET_COLORS[b]}1a`, color: WORK_BUCKET_COLORS[b] }}>
                             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}
                           </span>
                         </td>
+                          ),
+                          partNo: (
                         <td className="px-3 py-2.5 font-mono text-[11px]">{i.part.partNo}</td>
+                          ),
+                          partName: (
                         <td className="px-3 py-2.5">{i.part.partName}</td>
+                          ),
+                          model: (
                         <td className="px-3 py-2.5 text-[12px]">{i.part.model}</td>
+                          ),
+                          department: (
                         <td className="px-3 py-2.5 text-[12px]">{i.part.department}</td>
+                          ),
+                          vendorName: (
                         <td className="px-3 py-2.5 text-[12px]">{i.part.vendorName}</td>
-                        <td className="px-3 py-2.5"><span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span></td>
+                          ),
+                          milestoneId: (
+                        <td className="px-3 py-2.5"><span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span></td>
+                          ),
+                          activity: (
                         <td className="px-3 py-2.5 text-[12px]">{i.activity.name}</td>
+                          ),
+                          planned: (
                         <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-[var(--color-muted)]">{planned}</td>
+                          ),
+                        } as Record<TableColKey, React.ReactNode>)[c.key]}</Fragment>)}
                         <td className="px-3 py-2.5 text-right">
                           <Link
                             // Opens this part's form for this activity (the part drawer), not the whole part list.

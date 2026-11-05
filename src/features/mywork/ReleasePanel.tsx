@@ -124,8 +124,8 @@ export function ReleasePanel() {
 
   return (
     <section className="mb-4" aria-label="Part release status">
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-[13px] font-semibold text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Release to vendor'}</h2>
+      <div className="mb-2 flex items-baseline justify-between gap-3 max-sm:flex-col max-sm:gap-1">
+        <h2 className="text-[13px] font-semibold whitespace-nowrap text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Release to vendor'}</h2>
         <span className="text-[11px] text-[var(--color-muted)]">
           {isVendor
             ? 'Acknowledge a part to start work on it, or return it to the PIC with a reason.'
@@ -221,7 +221,7 @@ export function ReleasePanel() {
                       <td className="px-3 py-2">{part.model}</td>
                       <td className="px-3 py-2">{part.vendorName}</td>
                       <td className="px-3 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_PILL[state].cls}`}>{STATE_PILL[state].label}</span>
+                        <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_PILL[state].cls}`}>{STATE_PILL[state].label}</span>
                       </td>
                       <td className="max-w-[360px] px-3 py-2 text-[11px] text-[var(--color-muted)]">
                         {state === 'Returned' && ret
