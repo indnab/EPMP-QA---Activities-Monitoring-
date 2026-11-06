@@ -264,10 +264,10 @@ export function WorkspacePage() {
   const canReverse = canReverseNotApplicable(currentPersona)
   const naTargets = naDialog === 'mark' ? selectedApplicable : selectedNa
 
-  // Fields this persona may fill in bulk: editable, not system/calculated, not data-only, and not a table field.
-  const bulkEditableFields = activity.fields.filter(
-    (f) => !f.dataOnly && f.type !== 'table' && canPersonaEdit(f, currentPersona, undefined)
-  )
+  // The activity's form fields (shown on the bulk-fill form). Table fields are per-row, so excluded from bulk fill.
+  const bulkFormFields = activity.fields.filter((f) => !f.dataOnly && f.type !== 'table')
+  // Can this persona actually enter at least one of them? (Drives whether "Fill selected" is shown.)
+  const bulkEditableFields = bulkFormFields.filter((f) => canPersonaEdit(f, currentPersona, undefined))
   // Bulk fill writes to the applicable (non-NA) selected parts.
   const bulkTargets = selectedApplicable
 
@@ -473,9 +473,9 @@ export function WorkspacePage() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 bg-secondary border border-[#bfdbfe] rounded-lg px-4 py-2 mb-3 text-sm">
           <span className="font-medium text-primary">{selected.size} selected</span>
-          {bulkEditableFields.length > 0 && (
+          {bulkEditableFields.length > 0 && bulkTargets.length > 0 && (
             <Button variant="primary" size="sm" onClick={() => setBulkFillOpen(true)}>
-              Fill selected ({selected.size})
+              Fill selected ({bulkTargets.length})
             </Button>
           )}
           {canMark && (
