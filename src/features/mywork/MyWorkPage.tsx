@@ -25,6 +25,7 @@ import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
 import { useExceptionData } from '../exceptions/useExceptionData'
 import { DownloadMenu } from '../export/DownloadMenu'
 import { ExportSection } from '../export/ExportSection'
+import { useViewMode, ViewModeToggle } from '../viewmode'
 
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
@@ -112,6 +113,92 @@ function ApprovalCard({
   )
 }
 
+/** The same worklist items rendered as a dense table (toggleable from the card view). */
+function ApprovalTable({
+  rows, selected, onToggle, onOpen, onApprove, onSendBack
+}: {
+  rows: ApprovalRow[]
+  selected: Set<string>
+  onToggle: (k: string) => void
+  onOpen: (r: ApprovalRow) => void
+  onApprove: (r: ApprovalRow) => void
+  onSendBack: (r: ApprovalRow) => void
+}) {
+  const th = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
+  return (
+    <Card flush>
+      <div className="table-scroll">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+              <th className={`${th} w-8`}></th>
+              <th className={th}>Type</th>
+              <th className={th}>Activity</th>
+              <th className={th}>Part</th>
+              <th className={th}>Vendor</th>
+              <th className={th}>Model</th>
+              <th className={th}>Dept</th>
+              <th className={th}>Trial</th>
+              <th className={th}>{rows.some((r) => r.mode === 'enter') ? 'Updated / submitted' : 'Submitted'} by</th>
+              <th className={th}>On</th>
+              <th className={`${th} text-right`}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const approveLabel = r.type === 'Delay Reason' ? 'Accept' : r.type === 'Action' ? 'Mark done' : 'Approve'
+              return (
+                <tr
+                  key={r.key}
+                  className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40"
+                  onClick={() => onOpen(r)}
+                >
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    {r.mode === 'approve' && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${r.partNo} ${r.type}`}
+                        checked={selected.has(r.key)}
+                        onChange={() => onToggle(r.key)}
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_TYPE_STYLE[r.type]}`}>{r.type}</span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="font-medium text-[var(--color-text)]">{r.title}</div>
+                    {r.statusLabel && <span className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_STYLE[r.statusLabel] ?? 'bg-slate-100 text-slate-700'}`}>{r.statusLabel}</span>}
+                  </td>
+                  <td className="px-3 py-2.5 font-mono text-[11px]">{r.partNo}</td>
+                  <td className="px-3 py-2.5">{r.vendorCode} · {r.vendorName}</td>
+                  <td className="px-3 py-2.5">{r.model}</td>
+                  <td className="px-3 py-2.5">{r.department}</td>
+                  <td className="px-3 py-2.5"><span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{r.trial}</span></td>
+                  <td className="px-3 py-2.5">{r.submittedByName || r.submittedByRole || '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-[var(--color-muted)]">{fmtDateTime(r.submittedOn)}</td>
+                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-none items-center justify-end gap-1.5">
+                      {r.mode === 'enter' ? (
+                        <Button variant="primary" size="sm" onClick={() => onOpen(r)}>Open form</Button>
+                      ) : (
+                        <>
+                          <Button variant="primary" size="sm" onClick={() => onApprove(r)}>{approveLabel}</Button>
+                          {r.type !== 'Action' && <Button variant="secondary" size="sm" onClick={() => onSendBack(r)}>Send back</Button>}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
 /**
  * Merged Worklist: one card per item for the current role — the work they enter and the things they approve, at the
  * same granularity as before (one activity-part per card). A segment switches between "To enter" and "To approve".
@@ -141,6 +228,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
   const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>('all')
+  const [viewMode, setViewMode] = useViewMode('worklist')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
   const [sendBack, setSendBack] = useState<ApprovalRow | null>(null)
@@ -205,6 +293,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         />
         <div className="ml-auto flex items-center gap-2">
           {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
           {selectableShown.length > 0 && (
             <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
               <input type="checkbox" checked={allOn} onChange={() => setPicked(allOn ? new Set() : new Set(selectableShown.map((r) => r.key)))} />
@@ -220,6 +309,15 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
 
       {shown.length === 0 ? (
         <Card><p className="py-12 text-center text-sm text-[var(--color-muted)]">Nothing here right now.</p></Card>
+      ) : viewMode === 'table' ? (
+        <ApprovalTable
+          rows={shown}
+          selected={selected}
+          onToggle={toggle}
+          onOpen={setOpenRow}
+          onApprove={(r) => { approveOne(r); setNotice(r.type === 'Delay Reason' ? 'Accepted.' : r.type === 'Action' ? 'Marked done.' : 'Approved.') }}
+          onSendBack={(r) => { setSendBack(r); setComment('') }}
+        />
       ) : (
         <div className="space-y-3">
           {shown.map((r) => (
