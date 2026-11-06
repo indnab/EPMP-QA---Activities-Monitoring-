@@ -294,33 +294,32 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
 
 // ── Overview tab ─────────────────────────────────────────────────────────────
 
-function KpiCard({ title, value, color, icon }: { title: string; value: number; color: string; icon: string }) {
+function KpiCard({ title, value, color, icon, onClick }: { title: string; value: number; color: string; icon: string; onClick?: () => void }) {
   return (
-    <div className="epmp-card px-4 py-3">
-      <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color }}>
-        <FbIcon name={icon} size={14} /> {title}
-      </div>
-      <div className="mt-1 text-[30px] font-bold leading-[34px]" style={{ color }}>{value}</div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="epmp-card flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+    >
+      <span className="flex items-center gap-1.5 text-[11px] font-medium leading-tight" style={{ color }}>
+        <FbIcon name={icon} size={13} /> {title}
+      </span>
+      <span className="text-[22px] font-bold leading-none" style={{ color }}>{value}</span>
+    </button>
   )
 }
 
 /** Overview: key KPIs, the priority actions that need the role now, and an activity snapshot. No full worklist/charts. */
 function OverviewTab({
-  persona, totals, pendingRelease, returned, delayReviews, ngCount, onGo
+  totals, pendingRelease, awaitingAck, returned, delayReviews, onGo
 }: {
-  persona: string
   totals: Record<WorkBucket, number>
   pendingRelease: number
+  awaitingAck: number
   returned: number
   delayReviews: number
-  ngCount: number
-  onGo: (t: 'overview' | 'actions' | 'worklist' | 'insights') => void
+  onGo: (t: 'overview' | 'actions' | 'worklist' | 'insights', payload?: { bucket?: WorkBucket; focus?: string }) => void
 }) {
-  const greeting = (() => {
-    const h = new Date().getHours()
-    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-  })()
   const priorities: { title: string; sub: string; n: number }[] = []
   if (pendingRelease > 0) priorities.push({ title: `${pendingRelease} part${pendingRelease === 1 ? '' : 's'} pending vendor release`, sub: 'Review and release', n: pendingRelease })
   if (delayReviews > 0) priorities.push({ title: `${delayReviews} vendor delay reason${delayReviews === 1 ? '' : 's'}`, sub: 'Awaiting your review', n: delayReviews })
@@ -328,42 +327,18 @@ function OverviewTab({
 
   return (
     <div>
-      <h2 className="text-[17px] font-semibold text-[var(--color-text)]">{greeting}, {persona}</h2>
-      <p className="mb-4 text-[12px] text-[var(--color-muted)]">Items requiring attention across your assigned parts</p>
-
       {/* Key KPIs */}
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" />
-        <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="clipboard-list" />
-        <KpiCard title="Delayed activities" value={totals.Delayed} color="#d97706" icon="calendar-month" />
-        <KpiCard title="NG / Rework" value={ngCount || totals.NG} color="#dc2626" icon="exclamation-circle" />
+      <div className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-6">
+        <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
+        <KpiCard title="Awaiting acknowledgement" value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} />
+        <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
+        <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="clipboard-list" onClick={() => onGo('actions', { focus: 'delay' })} />
+        <KpiCard title="Delayed activities" value={totals.Delayed} color="#d97706" icon="calendar-month" onClick={() => onGo('insights', { bucket: 'Delayed' })} />
+        <KpiCard title="NG / Rework" value={totals.NG} color="#dc2626" icon="exclamation-circle" onClick={() => onGo('insights', { bucket: 'NG' })} />
       </div>
 
-      {/* Priority actions */}
-      <section className="epmp-card mb-5 px-5 py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
-          {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
-        </div>
-        {priorities.length === 0 ? (
-          <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">Nothing urgent right now.</p>
-        ) : (
-          <div className="divide-y divide-[var(--color-border)]">
-            {priorities.map((p) => (
-              <div key={p.title} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-medium text-[var(--color-text)]">{p.title}</div>
-                  <div className="text-[11px] text-[var(--color-muted)]">{p.sub}</div>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => onGo('actions')}>Open</Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Activity snapshot */}
-      <section className="epmp-card px-5 py-4">
+      <section className="epmp-card mb-4 px-5 py-3">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Activity snapshot</h3>
           <button onClick={() => onGo('worklist')} className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">View worklist →</button>
@@ -376,6 +351,29 @@ function OverviewTab({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Priority actions — last; the list scrolls inside the card so the page stays one screen. */}
+      <section className="epmp-card px-5 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
+          {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
+        </div>
+        {priorities.length === 0 ? (
+          <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">Nothing urgent right now.</p>
+        ) : (
+          <div className="max-h-[200px] divide-y divide-[var(--color-border)] overflow-y-auto">
+            {priorities.map((p) => (
+              <div key={p.title} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium text-[var(--color-text)]">{p.title}</div>
+                  <div className="text-[11px] text-[var(--color-muted)]">{p.sub}</div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => onGo('actions')}>Open</Button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )
@@ -402,16 +400,17 @@ export function MyWorkPage() {
   // Worklist (merged): work to enter + things to approve, for this role.
   const approvalRows = useApprovalRows()
   // Counts for the Overview KPIs and Activity snapshot.
-  const { delays: excDelays, ngRows: excNg } = useExceptionData()
+  const { delays: excDelays } = useExceptionData()
   const releaseCounts = useMemo(() => {
-    let pending = 0, returned = 0
+    let pending = 0, returned = 0, awaitingAck = 0
     for (const p of parts) {
       if (p.supersededBy || !partInScope(p, currentPersona)) continue
       const st = getReleaseState(p.partNo, partReleases, partAcks)
       if (st === 'Pending') pending++
       else if (st === 'Returned') returned++
+      else if (st === 'Released') awaitingAck++ // released to the vendor, not yet acknowledged
     }
-    return { pending, returned }
+    return { pending, returned, awaitingAck }
   }, [parts, currentPersona, partReleases, partAcks])
 
   // Filters (the client's set). 'All' by default.
@@ -562,6 +561,17 @@ export function MyWorkPage() {
   const worklistCount = approvalRows.length
   const effectiveView = view
 
+  // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
+  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string }) => {
+    if (payload?.bucket) { setSelectedBucket(payload.bucket); setSelectedGroup(null) }
+    setView(tab)
+    const anchor = payload?.bucket ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
+    if (anchor) {
+      // Wait for the tab's content to render, then bring the target queue into view.
+      setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+    }
+  }
+
   const groupDimLabel = { model: 'Model', vendor: 'Vendor', department: 'Department', milestone: 'Trial status' }[groupDim]
 
   return (
@@ -649,19 +659,18 @@ export function MyWorkPage() {
         />
       ) : effectiveView === 'overview' ? (
         <OverviewTab
-          persona={currentPersona}
           totals={totals}
           pendingRelease={releaseCounts.pending}
+          awaitingAck={releaseCounts.awaitingAck}
           returned={releaseCounts.returned}
           delayReviews={excDelays.review.length}
-          ngCount={excNg.length}
-          onGo={setView}
+          onGo={goFromOverview}
         />
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake + delay reason approvals — the PIC's transactional approvals */}
-          <ReleasePanel />
-          <DelayPanel />
+          <div id="mw-release"><ReleasePanel /></div>
+          <div id="mw-delay"><DelayPanel /></div>
         </>
       ) : (
         <>
@@ -715,7 +724,8 @@ export function MyWorkPage() {
             <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>
           </Card>
 
-          {/* Detail table — appears for the selected bucket/group (NG drill lands here) */}
+          {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
+          <div id="mw-detail" />
           <Card flush className="!overflow-visible">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
               <h3 className="text-[13px] font-semibold text-[var(--color-text)]">
