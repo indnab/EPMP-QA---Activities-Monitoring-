@@ -521,6 +521,8 @@ export function WorkspacePage() {
                   </th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Part No.</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Part Name</th>
+                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Status</th>
+                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">RYG</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Model</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Vendor</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Dept</th>
@@ -529,8 +531,6 @@ export function WorkspacePage() {
                   {extraFields.map((f) => (
                     <th key={f.key} className="text-left px-3 py-3 font-medium text-[var(--color-muted)] whitespace-nowrap">{f.label}</th>
                   ))}
-                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Status</th>
-                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">RYG</th>
                   <th className="px-3 py-3 text-right font-medium text-[var(--color-muted)]">Actions</th>
                 </tr>
               </thead>
@@ -562,6 +562,22 @@ export function WorkspacePage() {
                       </td>
                       <td className="px-3 py-2.5 font-mono text-xs text-[var(--color-text)]">{part.partNo}</td>
                       <td className="px-3 py-2.5 text-[var(--color-text)] max-w-[180px] truncate">{part.partName}</td>
+                      <td className="px-3 py-2.5">
+                        {isNa ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-[#cbd5e1] bg-[#f1f5f9] px-2 py-1 text-[10px] font-medium text-[#475569]"
+                            title={`Marked by ${naMark!.by} on ${fmtDate(naMark!.at.slice(0, 10))}${naMark!.reason ? ` — ${naMark!.reason}` : ''}`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#94a3b8]" />
+                            Not applicable
+                          </span>
+                        ) : (
+                          <StatusPill status={status} size="sm" />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {isNa ? <span className="text-xs text-[var(--color-muted)]">—</span> : <RygDot status={ryg} size={10} />}
+                      </td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)]">{part.model}</td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)] max-w-[140px] truncate">{part.vendorName}</td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)]">{part.department}</td>
@@ -600,22 +616,6 @@ export function WorkspacePage() {
                       {extraTexts.map((text, k) => (
                         <td key={extraFields[k].key} className="px-3 py-2.5 text-[var(--color-muted)] max-w-[160px] truncate" title={text}>{text}</td>
                       ))}
-                      <td className="px-3 py-2.5">
-                        {isNa ? (
-                          <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-[#cbd5e1] bg-[#f1f5f9] px-2 py-1 text-[10px] font-medium text-[#475569]"
-                            title={`Marked by ${naMark!.by} on ${fmtDate(naMark!.at.slice(0, 10))}${naMark!.reason ? ` — ${naMark!.reason}` : ''}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#94a3b8]" />
-                            Not applicable
-                          </span>
-                        ) : (
-                          <StatusPill status={status} size="sm" />
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {isNa ? <span className="text-xs text-[var(--color-muted)]">—</span> : <RygDot status={ryg} size={10} />}
-                      </td>
                       <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <Button variant="primary" size="sm" onClick={() => setOpenPartNo(part.partNo)}>Open form</Button>
                       </td>
