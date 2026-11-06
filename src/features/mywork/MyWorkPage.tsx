@@ -276,18 +276,16 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`epmp-card flex flex-col items-start px-4 py-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${active ? 'ring-2' : 'hover:shadow-sm'}`}
+      title={WORK_BUCKET_DESC[bucket]}
+      className={`epmp-card flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${active ? 'ring-2' : 'hover:shadow-sm'}`}
       style={active ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}
     >
-      <div className="flex w-full items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color }}>
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-          {bucket}
-        </span>
-        {bucket === 'NG' && count > 0 && <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--color-ryg-red)]">action</span>}
-      </div>
-      <span className="mt-1 text-[28px] font-bold leading-[32px]" style={{ color }}>{count}</span>
-      <span className="text-[10px] text-[var(--color-muted)]">{WORK_BUCKET_DESC[bucket]}</span>
+      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color }}>
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+        {bucket}
+        {bucket === 'NG' && count > 0 && <span className="ml-1 text-[9px] font-bold uppercase tracking-wide text-[var(--color-ryg-red)]">action</span>}
+      </span>
+      <span className="text-[22px] font-bold leading-none" style={{ color }}>{count}</span>
     </button>
   )
 }
@@ -686,9 +684,9 @@ export function MyWorkPage() {
 
           {/* Graphical: stacked bars by the chosen dimension */}
           <Card className="mb-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
-              <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} w-auto`}>
+            <div className="mb-3 flex items-center gap-3">
+              <h3 className="flex-none whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
+              <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
                 <option value="model">By Model</option>
                 <option value="vendor">By Vendor</option>
                 <option value="department">By Department</option>
