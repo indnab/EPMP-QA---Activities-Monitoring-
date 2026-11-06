@@ -290,6 +290,62 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
   )
 }
 
+// ── Compact filter bar ─────────────────────────────────────────────────────
+
+interface FilterBarProps {
+  model: string; setModel: (v: string) => void; modelOptions: string[]
+  dept: string; setDept: (v: string) => void; deptOptions: string[]
+  vendor: string; setVendor: (v: string) => void; vendorOptions: string[]
+  milestone: string; setMilestone: (v: string) => void; milestoneOptions: string[]
+  pic: string; setPic: (v: string) => void; picOptions: string[]
+  vendorCode: string; setVendorCode: (v: string) => void; vendorCodeOptions: string[]
+  part: string; setPart: (v: string) => void
+  partCode: string; setPartCode: (v: string) => void
+  hasFilters: boolean; clearFilters: () => void
+}
+
+const fbSel = 'h-8 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] pl-2 pr-6 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+const fbInput = 'h-8 w-36 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054] placeholder-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+
+/** Primary filters inline (name shown in the control); the rest hide behind "More filters". */
+function CompactFilterBar(f: FilterBarProps) {
+  const [more, setMore] = useState(false)
+  // A labelled select: the "All" option reads as the field name so no separate label row is needed.
+  const sel = (label: string, value: string, onChange: (v: string) => void, options: string[]) => (
+    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={fbSel}>
+      <option value="All">{label}: All</option>
+      {options.map((o) => <option key={o} value={o}>{label}: {o}</option>)}
+    </select>
+  )
+  return (
+    <section className="epmp-card mb-3 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {sel('Model', f.model, f.setModel, f.modelOptions)}
+        {sel('Dept', f.dept, f.setDept, f.deptOptions)}
+        {sel('Vendor', f.vendor, f.setVendor, f.vendorOptions)}
+        <button
+          onClick={() => setMore((v) => !v)}
+          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
+        >
+          <FbIcon name="tools" size={12} /> More filters
+        </button>
+        {f.hasFilters && (
+          <button onClick={f.clearFilters} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
+        )}
+      </div>
+      {more && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
+          {sel('Trial status', f.milestone, f.setMilestone, f.milestoneOptions)}
+          {sel('PIC name', f.pic, f.setPic, f.picOptions)}
+          {sel('Vendor code', f.vendorCode, f.setVendorCode, f.vendorCodeOptions)}
+          <input aria-label="Part name" value={f.part} onChange={(e) => f.setPart(e.target.value)} placeholder="Part name" className={fbInput} />
+          <input aria-label="Part code" value={f.partCode} onChange={(e) => f.setPartCode(e.target.value)} placeholder="Part code" className={fbInput} />
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ── Overview tab ─────────────────────────────────────────────────────────────
 
 function KpiCard({ title, value, color, icon, onClick }: { title: string; value: number; color: string; icon: string; onClick?: () => void }) {
@@ -594,32 +650,18 @@ export function MyWorkPage() {
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
       {effectiveView === 'insights' && (
-      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-2 lg:-mx-7 lg:px-7">
-      <section className="epmp-card px-4 py-3.5">
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
-            <select value={fModel} onChange={(e) => setFModel(e.target.value)} className={filterCls}><option value="All">All</option>{modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Department</span>
-            <select value={fDept} onChange={(e) => setFDept(e.target.value)} className={filterCls}><option value="All">All</option>{deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Trial status</span>
-            <select value={fMilestone} onChange={(e) => setFMilestone(e.target.value)} className={filterCls}><option value="All">All</option>{milestoneOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">PIC name</span>
-            <select value={fPic} onChange={(e) => setFPic(e.target.value)} className={filterCls}><option value="All">All</option>{picOptions.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part name</span>
-            <input value={fPart} onChange={(e) => setFPart(e.target.value)} placeholder="All" className={filterCls} /></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part code</span>
-            <input value={fPartCode} onChange={(e) => setFPartCode(e.target.value)} placeholder="All" className={filterCls} /></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor code</span>
-            <select value={fVendorCode} onChange={(e) => setFVendorCode(e.target.value)} className={filterCls}><option value="All">All</option>{vendorCodeOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor name</span>
-            <select value={fVendor} onChange={(e) => setFVendor(e.target.value)} className={filterCls}><option value="All">All</option>{vendorOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
-        </div>
-        {hasFilters && (
-          <div className="mt-2.5">
-            <button onClick={clearFilters} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear all filters</button>
-          </div>
-        )}
-      </section>
+      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-7 lg:px-7">
+        <CompactFilterBar
+          model={fModel} setModel={setFModel} modelOptions={modelOptions}
+          dept={fDept} setDept={setFDept} deptOptions={deptOptions}
+          vendor={fVendor} setVendor={setFVendor} vendorOptions={vendorOptions}
+          milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
+          pic={fPic} setPic={setFPic} picOptions={picOptions}
+          vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorCodeOptions={vendorCodeOptions}
+          part={fPart} setPart={setFPart}
+          partCode={fPartCode} setPartCode={setFPartCode}
+          hasFilters={hasFilters} clearFilters={clearFilters}
+        />
       </div>
       )}
 
@@ -627,31 +669,17 @@ export function MyWorkPage() {
         <ApprovalsPanel
           filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, part: fPart, partCode: fPartCode, vendorCode: fVendorCode, vendor: fVendor }}
           filterBar={
-            <section className="epmp-card mb-3 px-4 py-3">
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
-                  <select value={fModel} onChange={(e) => setFModel(e.target.value)} className={filterCls}><option value="All">All</option>{modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Department</span>
-                  <select value={fDept} onChange={(e) => setFDept(e.target.value)} className={filterCls}><option value="All">All</option>{deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Trial status</span>
-                  <select value={fMilestone} onChange={(e) => setFMilestone(e.target.value)} className={filterCls}><option value="All">All</option>{milestoneOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">PIC name</span>
-                  <select value={fPic} onChange={(e) => setFPic(e.target.value)} className={filterCls}><option value="All">All</option>{picOptions.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part name</span>
-                  <input value={fPart} onChange={(e) => setFPart(e.target.value)} placeholder="All" className={filterCls} /></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part code</span>
-                  <input value={fPartCode} onChange={(e) => setFPartCode(e.target.value)} placeholder="All" className={filterCls} /></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor code</span>
-                  <select value={fVendorCode} onChange={(e) => setFVendorCode(e.target.value)} className={filterCls}><option value="All">All</option>{vendorCodeOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
-                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor name</span>
-                  <select value={fVendor} onChange={(e) => setFVendor(e.target.value)} className={filterCls}><option value="All">All</option>{vendorOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
-              </div>
-              {hasFilters && (
-                <div className="mt-2.5">
-                  <button onClick={clearFilters} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear all filters</button>
-                </div>
-              )}
-            </section>
+            <CompactFilterBar
+              model={fModel} setModel={setFModel} modelOptions={modelOptions}
+              dept={fDept} setDept={setFDept} deptOptions={deptOptions}
+              vendor={fVendor} setVendor={setFVendor} vendorOptions={vendorOptions}
+              milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
+              pic={fPic} setPic={setFPic} picOptions={picOptions}
+              vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorCodeOptions={vendorCodeOptions}
+              part={fPart} setPart={setFPart}
+              partCode={fPartCode} setPartCode={setFPartCode}
+              hasFilters={hasFilters} clearFilters={clearFilters}
+            />
           }
         />
       ) : effectiveView === 'overview' ? (
