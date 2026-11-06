@@ -23,15 +23,15 @@ function SummaryCard(props: { title: string; color: string; main: number; mainLa
   return (
     <button
       onClick={props.onOpen}
-      className="epmp-card flex flex-col items-start px-4 py-3 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+      className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
     >
-      <span className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: props.color }}>
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: props.color }} />
+      <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
+        <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
         {props.title}
+        <span className="ml-auto text-[20px] font-bold leading-none">{props.main}</span>
       </span>
-      <span className="mt-1 text-[30px] font-bold leading-[34px]" style={{ color: props.color }}>{props.main}</span>
-      <span className="mb-1.5 text-[10.5px] text-[var(--color-muted)]">{props.mainLabel}</span>
-      <span className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-[#344054]">
+      <span className="mt-0.5 mb-1 text-[10px] leading-tight text-[var(--color-muted)]">{props.mainLabel}</span>
+      <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#344054]">
         {props.lines.map(([l, n]) => (
           <span key={l}><strong>{n}</strong> {l}</span>
         ))}

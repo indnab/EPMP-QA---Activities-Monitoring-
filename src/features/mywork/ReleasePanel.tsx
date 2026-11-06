@@ -29,17 +29,15 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
     <button
       onClick={props.onClick}
       aria-pressed={props.active}
-      className="epmp-card flex flex-col items-start px-4 py-3 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+      className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
       style={props.active ? { boxShadow: `inset 0 0 0 2px ${props.color}` } : undefined}
     >
-      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: props.color }}>
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: props.color }} />
+      <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
+        <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
         {props.title}
+        <span className="ml-auto text-[20px] font-bold leading-none">{props.count}</span>
       </span>
-      <span className="mt-1 text-[28px] font-bold leading-[32px]" style={{ color: props.color }}>
-        {props.count}
-      </span>
-      <span className="text-[10px] text-[var(--color-muted)]">{props.sub}</span>
+      <span className="mt-0.5 text-[10px] leading-tight text-[var(--color-muted)]">{props.sub}</span>
     </button>
   )
 }
