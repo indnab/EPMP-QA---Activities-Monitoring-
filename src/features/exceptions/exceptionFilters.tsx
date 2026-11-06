@@ -6,6 +6,7 @@ import type { IntakeField } from '../../mock/partIntakeFields'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
+import { MultiSelect } from '../intake/MultiSelect'
 
 /**
  * The primary part filters, taken straight from the Part Intake field spec (the fields flagged primary + filter):
@@ -13,13 +14,13 @@ import { DEMO_TODAY, partInScope } from '../scope'
  */
 export const PRIMARY_FILTER_FIELDS: IntakeField[] = INTAKE_FIELDS.filter((f) => f.primary && f.filter)
 
-/** Filter state: field key → selected value ('All' = no filter). */
-export type PartFilters = Record<string, string>
+/** Filter state: field key → selected values. An empty array (or missing key) = no filter on that field. */
+export type PartFilters = Record<string, string[]>
 
-export const EMPTY_PART_FILTERS: PartFilters = Object.fromEntries(PRIMARY_FILTER_FIELDS.map((f) => [f.key, 'All']))
+export const EMPTY_PART_FILTERS: PartFilters = Object.fromEntries(PRIMARY_FILTER_FIELDS.map((f) => [f.key, []]))
 
 export function hasPartFilters(f: PartFilters): boolean {
-  return PRIMARY_FILTER_FIELDS.some((fld) => (f[fld.key] ?? 'All') !== 'All')
+  return PRIMARY_FILTER_FIELDS.some((fld) => (f[fld.key] ?? []).length > 0)
 }
 
 /** Read a filter field's value off a part (core column, derived PIC, or attrs bag). */
@@ -48,8 +49,8 @@ export type ExcFilters = PartFilters
 /** Pure matcher used by both the context hook and pages that hold filters in their own state. */
 function matchPart(part: PartRecord, f: PartFilters, picName: string): boolean {
   for (const field of PRIMARY_FILTER_FIELDS) {
-    const sel = f[field.key] ?? 'All'
-    if (sel !== 'All' && partFieldValue(part, field, picName) !== sel) return false
+    const sel = f[field.key] ?? []
+    if (sel.length > 0 && !sel.includes(partFieldValue(part, field, picName))) return false
   }
   return true
 }
@@ -69,11 +70,7 @@ export function useExcMatcher(filters?: PartFilters): (part: PartRecord, templat
   )
 }
 
-const filterCls =
-  'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
-const labelCls = 'mb-1 block text-[10px] font-semibold text-[var(--color-muted)]'
-
-/** The shared primary filter bar shown above a list. */
+/** The shared primary filter bar shown above a list. Standard multi-select controls (nothing ticked = All). */
 export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; onChange: (f: PartFilters) => void }) {
   const { parts, picAssignments } = useQAStore()
   const { currentPersona } = usePersonaStore()
@@ -93,28 +90,26 @@ export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; on
     return out
   }, [scoped, picAssignments])
 
-  const set = (key: string, v: string) => onChange({ ...value, [key]: v })
+  const set = (key: string, v: string[]) => onChange({ ...value, [key]: v })
 
   return (
-    <section className="epmp-card mb-4 px-4 py-3.5" aria-label="Filters">
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+    <section className="epmp-card mb-4 px-3 py-2" aria-label="Filters">
+      <div className="flex flex-wrap items-center gap-2">
         {PRIMARY_FILTER_FIELDS.map((field) => (
-          <label key={field.key} className="block">
-            <span className={labelCls}>{field.label}</span>
-            <select value={value[field.key] ?? 'All'} onChange={(e) => set(field.key, e.target.value)} className={filterCls}>
-              <option value="All">All</option>
-              {(optionsByKey[field.key] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </label>
+          <MultiSelect
+            key={field.key}
+            label={field.label}
+            options={(optionsByKey[field.key] ?? []).map((o) => ({ value: o }))}
+            selected={value[field.key] ?? []}
+            onChange={(next) => set(field.key, next)}
+          />
         ))}
-      </div>
-      {hasPartFilters(value) && (
-        <div className="mt-2.5">
-          <button onClick={() => onChange(EMPTY_PART_FILTERS)} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">
+        {hasPartFilters(value) && (
+          <button onClick={() => onChange(EMPTY_PART_FILTERS)} className="ml-auto text-[11px] font-medium text-[var(--color-primary)] hover:underline">
             Clear all filters
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   )
 }
