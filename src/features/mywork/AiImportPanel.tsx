@@ -10,8 +10,6 @@ interface Picked {
 }
 
 const RULES = [
-  'Nothing is submitted automatically. You review every value first.',
-  'AI never approves, edits or sends back on anyone’s behalf.',
   'A PIC can update data for their own department only.',
   'For dropdown fields, only the values available in the dropdown are allowed.',
   'AI-assisted values are marked in the history with the source file and the person who reviewed them.'
@@ -62,14 +60,13 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
   const canImport = !!picked || pasted.trim().length > 0
 
   return (
-    <details open={defaultOpen} data-tour="ai-import" className="epmp-card mb-4 px-5 py-3.5">
+    <details open={defaultOpen} data-tour="ai-import" className="epmp-card mb-2 px-5 py-3">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
         <span className="text-[13px] font-semibold text-[var(--color-text)]">Import with AI</span>
-        <span className="rounded bg-[#ede9fe] px-1.5 py-0.5 text-[10px] font-semibold text-[#6d28d9]">Placeholder</span>
         <span className="text-[11px] text-[var(--color-muted)]">Upload or paste what you already have instead of typing it in.</span>
       </summary>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-2 space-y-2">
         <div className="grid gap-3 md:grid-cols-2">
           <div
             onDragOver={(e) => {
@@ -78,7 +75,7 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
-            className={`flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-center ${dragOver ? 'border-[var(--color-accent)] bg-secondary' : 'border-[var(--color-border)] bg-[var(--color-surface)]'}`}
+            className={`flex min-h-[80px] flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-4 py-2 text-center ${dragOver ? 'border-[var(--color-accent)] bg-secondary' : 'border-[var(--color-border)] bg-[var(--color-surface)]'}`}
           >
             <p className="text-[11px] text-[var(--color-muted)]">Drop a file here — any type</p>
             <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
@@ -95,9 +92,9 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
                 setPasted(e.target.value)
                 setTried(false)
               }}
-              rows={4}
+              rows={3}
               placeholder="Paste a table, an email, notes or a sentence…"
-              className="min-h-[88px] resize-y rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[11px] font-normal normal-case tracking-normal text-[var(--color-text)]"
+              className="min-h-[60px] resize-y rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-normal normal-case tracking-normal text-[var(--color-text)]"
             />
           </label>
         </div>

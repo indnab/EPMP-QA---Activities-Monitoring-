@@ -50,11 +50,7 @@ export function DataEntryLandingPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Parts Data Entry"
-        section="Workspace"
-        description="Choose how you want to enter and review values for parts."
-      />
+      <PageHeader title="Parts Data Entry" section="Workspace" />
       {available.length === 0 ? (
         <div className="epmp-card px-6 py-10 text-center text-sm text-[var(--color-muted)]">
           There is nothing to enter for the {currentPersona} role here.

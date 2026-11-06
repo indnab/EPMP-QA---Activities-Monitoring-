@@ -487,7 +487,8 @@ export function MyWorkPage() {
 
       {/* Filters — the client's set, applied to both the Workspace and the Worklist */}
       {effectiveView !== 'worklist' && (
-      <section className="epmp-card mb-4 px-4 py-3.5">
+      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-2 lg:-mx-7 lg:px-7">
+      <section className="epmp-card px-4 py-3.5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
           <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
             <select value={fModel} onChange={(e) => setFModel(e.target.value)} className={filterCls}><option value="All">All</option>{modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
@@ -512,6 +513,7 @@ export function MyWorkPage() {
           </div>
         )}
       </section>
+      </div>
       )}
 
       {effectiveView === 'worklist' ? (
