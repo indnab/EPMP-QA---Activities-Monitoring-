@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
-import { PageHeader, Card, Tabs, RygDot, Button, Modal } from '../../components'
+import { PageHeader, Card, Tabs, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import {
@@ -15,15 +15,13 @@ import {
 import type { WorkBucket } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
-import { buildWorkGroups, canEnterWork, canValidate, countWork, hasMyWork } from './workQueue'
-import { AiImportPanel } from './AiImportPanel'
+import { hasMyWork } from './workQueue'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useApprovalRows } from './approvalRows'
 import type { ApprovalRow, ApprovalType } from './approvalRows'
 import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
-import type { WorkGroup, WorkMode } from './workQueue'
 
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
@@ -43,92 +41,123 @@ const TABLE_COLS: { key: TableColKey; label: string }[] = [
   { key: 'planned', label: 'Planned' }
 ]
 
-// ── Worklist (existing grouped cards) ─────────────────────────────────────────
-
-function Chip({ n, label, tone }: { n: number; label: string; tone: string }) {
-  if (n === 0) return null
-  return <span className={`whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium ${tone}`}>{n} {label}</span>
-}
-
-function GroupCard({ group, mode }: { group: WorkGroup; mode: WorkMode }) {
-  const parts = group.instances.length
-  return (
-    <section className="epmp-card px-5 py-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <RygDot status={group.ryg} size={12} />
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">{group.activity.name}</h3>
-          <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
-            <span className="mr-2 rounded bg-secondary px-2 py-0.5 font-medium text-primary">{group.milestoneId}</span>
-            {group.start && group.end ? `${fmtDate(group.start)} → ${fmtDate(group.end)}` : <em>Awaiting MRD</em>}
-            {group.awaitingMrd > 0 && group.start ? ` · +${group.awaitingMrd} awaiting MRD` : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Link
-            to={`/mywork/${group.activity.id}/${group.milestoneId}${mode === 'validate' ? '?mode=validate' : ''}`}
-            className="mr-1 inline-flex items-center rounded-[10px] border border-[var(--color-primary)] bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
-          >
-            {mode === 'validate' ? 'Open validation grid' : 'Open entry grid'}
-          </Link>
-          <Chip n={group.sentBack} label="sent back" tone="bg-[#fef2f2] text-[#b91c1c]" />
-          <Chip n={group.draft} label="draft" tone="bg-[#eff6ff] text-[#1d4ed8]" />
-          <Chip n={group.notStarted} label="not started" tone="bg-[#f3f4f6] text-[#4b5563]" />
-          <Chip n={group.submitted} label="submitted" tone="bg-[#fffbeb] text-[#b45309]" />
-          <span className="text-[11px] text-[var(--color-muted)]">{parts} part{parts !== 1 ? 's' : ''}</span>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {group.rows.map((wr) => (
-          <Link
-            key={wr.row.id}
-            to={`/mywork/${group.activity.id}/${group.milestoneId}?${mode === 'validate' ? 'mode=validate&' : ''}section=${encodeURIComponent(wr.row.section)}`}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text)] hover:border-[#bfdbfe] hover:bg-secondary"
-          >
-            <span className="font-semibold">{wr.row.section}</span>
-            <span className="ml-1.5 text-[var(--color-muted)]">{wr.instances.length} part{wr.instances.length !== 1 ? 's' : ''}</span>
-            <span className="ml-1.5 text-[var(--color-accent)]" aria-hidden="true">→</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
-}
 
 // ── My Approvals ────────────────────────────────────────────────────────────
 
 const APPROVAL_TYPE_STYLE: Record<ApprovalType, string> = {
+  'Data Entry': 'bg-slate-100 text-slate-700',
   'Data Validation': 'bg-blue-100 text-blue-800',
   Deviation: 'bg-amber-100 text-amber-800',
   Action: 'bg-violet-100 text-violet-800',
   'Delay Reason': 'bg-red-100 text-red-800'
 }
-
-const aThCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
+const STATUS_STYLE: Record<string, string> = {
+  'Sent back': 'bg-[#fef2f2] text-[#b91c1c]',
+  Draft: 'bg-[#eff6ff] text-[#1d4ed8]',
+  'Not started': 'bg-[#f3f4f6] text-[#4b5563]'
+}
 const fmtDateTime = (iso?: string) => (iso ? fmtDate(iso.slice(0, 10)) : '—')
 
+/** One item rendered as a card (the worklist card look), with the My Approvals fields + Department. */
+function ApprovalCard({
+  r, selected, onToggle, onOpen, onApprove, onSendBack
+}: {
+  r: ApprovalRow
+  selected: boolean
+  onToggle: () => void
+  onOpen: () => void
+  onApprove: () => void
+  onSendBack: () => void
+}) {
+  const canBulk = r.mode === 'approve'
+  const approveLabel = r.type === 'Delay Reason' ? 'Accept' : r.type === 'Action' ? 'Mark done' : 'Approve'
+  return (
+    <section className="epmp-card cursor-pointer px-5 py-4 transition-all hover:shadow-sm" onClick={onOpen}>
+      <div className="flex flex-wrap items-start gap-3">
+        {canBulk && (
+          <input type="checkbox" className="mt-1" aria-label={`Select ${r.partNo} ${r.type}`} checked={selected}
+            onClick={(e) => e.stopPropagation()} onChange={onToggle} />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_TYPE_STYLE[r.type]}`}>{r.type}</span>
+            {r.statusLabel && <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_STYLE[r.statusLabel] ?? 'bg-slate-100 text-slate-700'}`}>{r.statusLabel}</span>}
+            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{r.trial}</span>
+          </div>
+          <h3 className="mt-1 text-[14px] font-semibold text-[var(--color-text)]">{r.title}</h3>
+          <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 text-[11px] text-[var(--color-muted)] sm:grid-cols-3 lg:grid-cols-6">
+            <span><span className="text-[var(--color-muted)]">Part </span><span className="font-mono text-[var(--color-text)]">{r.partNo}</span></span>
+            <span><span className="text-[var(--color-muted)]">Vendor </span><span className="text-[var(--color-text)]">{r.vendorCode} · {r.vendorName}</span></span>
+            <span><span className="text-[var(--color-muted)]">Model </span><span className="text-[var(--color-text)]">{r.model}</span></span>
+            <span><span className="text-[var(--color-muted)]">Dept </span><span className="text-[var(--color-text)]">{r.department}</span></span>
+            <span><span className="text-[var(--color-muted)]">{r.mode === 'enter' ? 'Updated' : 'Submitted'} by </span><span className="text-[var(--color-text)]">{r.submittedByName || r.submittedByRole || '—'}</span></span>
+            <span><span className="text-[var(--color-muted)]">{r.mode === 'enter' ? 'Updated' : 'Submitted'} on </span><span className="text-[var(--color-text)]">{fmtDateTime(r.submittedOn)}</span></span>
+          </div>
+        </div>
+        <div className="flex flex-none items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {r.mode === 'enter' ? (
+            <Button variant="primary" size="sm" onClick={onOpen}>Open form</Button>
+          ) : (
+            <>
+              <Button variant="primary" size="sm" onClick={onApprove}>{approveLabel}</Button>
+              {r.type !== 'Action' && <Button variant="secondary" size="sm" onClick={onSendBack}>Send back</Button>}
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /**
- * My Approvals: one flat row per item awaiting the current role, across all four approval types. Multi-select to
- * approve in one go; clicking a row opens the activity form for the detailed view.
+ * Merged Worklist: one card per item for the current role — the work they enter and the things they approve, at the
+ * same granularity as before (one activity-part per card). A segment switches between "To enter" and "To approve".
+ * Multi-select to approve in one go; clicking a card opens the activity form in a drawer.
  */
-function ApprovalsPanel() {
-  const rows = useApprovalRows()
+interface WorkFilters {
+  model: string; dept: string; milestone: string; pic: string
+  part: string; partCode: string; vendorCode: string; vendor: string
+}
+
+function ApprovalsPanel({ filters }: { filters: WorkFilters }) {
+  const allRows = useApprovalRows()
+  const rows = useMemo(
+    () =>
+      allRows.filter((r) => {
+        if (filters.model !== 'All' && r.model !== filters.model) return false
+        if (filters.dept !== 'All' && r.department !== filters.dept) return false
+        if (filters.milestone !== 'All' && r.trial !== filters.milestone) return false
+        if (filters.vendor !== 'All' && r.vendorName !== filters.vendor) return false
+        if (filters.vendorCode !== 'All' && r.vendorCode !== filters.vendorCode) return false
+        if (filters.pic !== 'All' && r.pic !== filters.pic) return false
+        if (filters.part && !r.partName.toLowerCase().includes(filters.part.toLowerCase())) return false
+        if (filters.partCode && !r.partNo.toLowerCase().includes(filters.partCode.toLowerCase())) return false
+        return true
+      }),
+    [allRows, filters]
+  )
   const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
+  const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>('all')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
   const [sendBack, setSendBack] = useState<ApprovalRow | null>(null)
   const [comment, setComment] = useState('')
-  // The approval whose form is open in the drawer (over this list; closing returns here).
+  // The item whose form is open in the drawer (over this list; closing returns here).
   const [openRow, setOpenRow] = useState<ApprovalRow | null>(null)
-  const openForm = (r: ApprovalRow) => setOpenRow(r)
   const openActivity = openRow ? activities.find((a) => a.id === (templateRows.find((t) => t.id === openRow.rowId)?.activityId)) : undefined
   const openTemplateRow = openRow ? templateRows.find((t) => t.id === openRow.rowId) : undefined
 
-  const keys = useMemo(() => new Set(rows.map((r) => r.key)), [rows])
+  const enterRows = rows.filter((r) => r.mode === 'enter')
+  const approveRows = rows.filter((r) => r.mode === 'approve')
+  const shown = segment === 'enter' ? enterRows : segment === 'approve' ? approveRows : rows
+
+  const keys = useMemo(() => new Set(approveRows.map((r) => r.key)), [approveRows])
   const selected = useMemo(() => new Set([...picked].filter((k) => keys.has(k))), [picked, keys])
+  const selectableShown = shown.filter((r) => r.mode === 'approve')
 
   const approveOne = (r: ApprovalRow) => {
+    if (!r.approve) return
     switch (r.approve.kind) {
       case 'entry': transitionEntryState(r.approve.entryId, 'Approve', undefined, currentPersona); break
       case 'deviation': advanceDeviation(r.approve.rowId, r.approve.partNo, r.approve.deviationId, 'Approve', currentPersona, currentPersona); break
@@ -137,13 +166,13 @@ function ApprovalsPanel() {
     }
   }
   const approveSelected = () => {
-    const chosen = rows.filter((r) => selected.has(r.key))
+    const chosen = approveRows.filter((r) => selected.has(r.key))
     chosen.forEach(approveOne)
-    setNotice(`${chosen.length} approval${chosen.length === 1 ? '' : 's'} actioned.`)
+    setNotice(`${chosen.length} item${chosen.length === 1 ? '' : 's'} actioned.`)
     setPicked(new Set())
   }
   const runSendBack = () => {
-    if (!sendBack || !comment.trim()) return
+    if (!sendBack || !comment.trim() || !sendBack.approve) return
     if (sendBack.approve.kind === 'deviation') {
       advanceDeviation(sendBack.approve.rowId, sendBack.approve.partNo, sendBack.approve.deviationId, 'Send back', currentPersona, currentPersona, comment.trim())
     } else if (sendBack.approve.kind === 'delay') {
@@ -154,82 +183,52 @@ function ApprovalsPanel() {
     setSendBack(null); setComment('')
   }
 
-  const allOn = rows.length > 0 && rows.every((r) => selected.has(r.key))
+  const allOn = selectableShown.length > 0 && selectableShown.every((r) => selected.has(r.key))
   const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
 
   return (
     <div>
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <span className="text-[12px] font-semibold text-[#101828]">{rows.length} approval{rows.length === 1 ? '' : 's'} waiting</span>
+        <Tabs
+          activeId={segment}
+          onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setPicked(new Set()) }}
+          items={[
+            { id: 'all', label: 'All', badge: rows.length || undefined },
+            { id: 'enter', label: 'To enter', badge: enterRows.length || undefined },
+            { id: 'approve', label: 'To approve', badge: approveRows.length || undefined }
+          ]}
+        />
         <div className="ml-auto flex items-center gap-2">
           {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          {selectableShown.length > 0 && (
+            <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
+              <input type="checkbox" checked={allOn} onChange={() => setPicked(allOn ? new Set() : new Set(selectableShown.map((r) => r.key)))} />
+              Select all
+            </label>
+          )}
           <Button variant="primary" size="sm" disabled={selected.size === 0} onClick={approveSelected}>
             Approve selected ({selected.size})
           </Button>
         </div>
       </section>
 
-      <Card flush className="!overflow-visible">
-        <div className="table-scroll">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <th className="w-8 px-3 py-2.5">
-                  {rows.length > 0 && (
-                    <input type="checkbox" aria-label="Select all" checked={allOn}
-                      onChange={() => setPicked(allOn ? new Set() : new Set(rows.map((r) => r.key)))} />
-                  )}
-                </th>
-                <th className={aThCls}>Part Number</th>
-                <th className={aThCls}>Vendor</th>
-                <th className={aThCls}>Model</th>
-                <th className={aThCls}>Trial</th>
-                <th className={aThCls}>Approval Type</th>
-                <th className={aThCls}>Submitted by</th>
-                <th className={aThCls}>Submitted On</th>
-                <th className={`${aThCls} text-right`}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.key} className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40"
-                  onClick={() => openForm(r)}>
-                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" aria-label={`Select ${r.partNo} ${r.type}`} checked={selected.has(r.key)} onChange={() => toggle(r.key)} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-mono text-[11px] text-[#101828]">{r.partNo}</div>
-                    <div className="text-[11px] text-[var(--color-muted)]">{r.title}</div>
-                  </td>
-                  <td className="px-3 py-2.5 text-[12px]">
-                    <div className="font-mono text-[11px]">{r.vendorCode}</div>
-                    <div className="text-[11px] text-[var(--color-muted)]">{r.vendorName}</div>
-                  </td>
-                  <td className="px-3 py-2.5 text-[12px]">{r.model}</td>
-                  <td className="px-3 py-2.5"><span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{r.trial}</span></td>
-                  <td className="px-3 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_TYPE_STYLE[r.type]}`}>{r.type}</span></td>
-                  <td className="px-3 py-2.5 text-[12px]">
-                    {r.submittedByName || r.submittedByRole}
-                    {r.submittedByName && r.submittedByRole ? <div className="text-[10px] text-[var(--color-muted)]">{r.submittedByRole}</div> : null}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[var(--color-muted)]">{fmtDateTime(r.submittedOn)}</td>
-                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button variant="primary" size="sm" onClick={() => { approveOne(r); setNotice('Approved.') }}>Approve</Button>
-                      {r.type !== 'Action' && (
-                        <Button variant="secondary" size="sm" onClick={() => { setSendBack(r); setComment('') }}>Send back</Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-[var(--color-muted)]">Nothing is waiting for your approval.</td></tr>
-              )}
-            </tbody>
-          </table>
+      {shown.length === 0 ? (
+        <Card><p className="py-12 text-center text-sm text-[var(--color-muted)]">Nothing here right now.</p></Card>
+      ) : (
+        <div className="space-y-3">
+          {shown.map((r) => (
+            <ApprovalCard
+              key={r.key}
+              r={r}
+              selected={selected.has(r.key)}
+              onToggle={() => toggle(r.key)}
+              onOpen={() => setOpenRow(r)}
+              onApprove={() => { approveOne(r); setNotice(r.type === 'Delay Reason' ? 'Accepted.' : r.type === 'Action' ? 'Marked done.' : 'Approved.') }}
+              onSendBack={() => { setSendBack(r); setComment('') }}
+            />
+          ))}
         </div>
-      </Card>
+      )}
 
       {/* Send-back reason (required) */}
       <Modal
@@ -293,19 +292,15 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
 export function MyWorkPage() {
   const { activities, entries, templateRows, models, parts, partReleases, partAcks, picAssignments } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  const canEnter = canEnterWork(currentPersona)
-  const canValidateWork = canValidate(currentPersona)
   const upcomingOnly = useUpcomingOnly()
 
   // Top-level view toggle: graphical "Workspace", the "Worklist" of grouped cards, or "My Approvals".
   // Opened on the approvals tab when returning from an activity form (?view=approvals).
   const [searchParams] = useSearchParams()
-  const [view, setView] = useState<'workspace' | 'worklist' | 'approvals'>(
-    searchParams.get('view') === 'approvals' ? 'approvals' : 'workspace'
+  const [view, setView] = useState<'workspace' | 'worklist'>(
+    searchParams.get('view') === 'worklist' || searchParams.get('view') === 'approvals' ? 'worklist' : 'workspace'
   )
-  // Worklist enter/validate mode.
-  const [tab, setTab] = useState<WorkMode>('enter')
-  // Approvals across the app that wait on the current role (validations + deviations + actions + delay reasons).
+  // Worklist (merged): work to enter + things to approve, for this role.
   const approvalRows = useApprovalRows()
 
   // Filters (the client's set). 'All' by default.
@@ -442,11 +437,6 @@ export function MyWorkPage() {
   }
   const anyColFilter = Object.values(colFilters).some(Boolean)
 
-  // Worklist (card) data.
-  const counts = useMemo(() => countWork(instances, currentPersona), [instances, currentPersona])
-  const enterGroups = useMemo(() => (canEnter ? buildWorkGroups(instances, currentPersona, 'enter') : []), [instances, currentPersona, canEnter])
-  const validateGroups = useMemo(() => (canValidateWork ? buildWorkGroups(instances, currentPersona, 'validate') : []), [instances, currentPersona, canValidateWork])
-
   if (!hasMyWork(currentPersona)) {
     return (
       <div>
@@ -456,13 +446,10 @@ export function MyWorkPage() {
     )
   }
 
-  const activeMode: WorkMode = canEnter && canValidateWork ? tab : canValidateWork ? 'validate' : 'enter'
-  const cardGroups = activeMode === 'enter' ? enterGroups : validateGroups
 
-  // ── My Approvals: everything across the app waiting on this role to decide ──
-  const approvalCount = approvalRows.length
-  // Approvals is a validator concern; fall back to the Worklist view for roles that cannot validate.
-  const effectiveView = view === 'approvals' && !canValidateWork ? 'worklist' : view
+  // ── Worklist (merged): everything for this role — work to enter + things to approve ──
+  const worklistCount = approvalRows.length
+  const effectiveView = view
 
   const groupDimLabel = { model: 'Model', vendor: 'Vendor', department: 'Department', milestone: 'Trial status' }[groupDim]
 
@@ -475,8 +462,8 @@ export function MyWorkPage() {
         actions={<UpcomingToggle />}
       />
 
-      {/* Release + delay panels belong to the parts views; My Approvals lists its own approval items. */}
-      {effectiveView !== 'approvals' && (
+      {/* Release + delay panels belong to the Workspace view; the Worklist lists its own items. */}
+      {effectiveView === 'workspace' && (
         <>
           {/* Release handshake: released / pending / returned (PIC side) or acknowledge / return (vendor side) */}
           <ReleasePanel />
@@ -488,16 +475,14 @@ export function MyWorkPage() {
       <Tabs
         className="mb-4"
         activeId={effectiveView}
-        onChange={(id) => setView(id as 'workspace' | 'worklist' | 'approvals')}
+        onChange={(id) => setView(id as 'workspace' | 'worklist')}
         items={[
           { id: 'workspace', label: 'Workspace' },
-          { id: 'worklist', label: 'Worklist' },
-          ...(canValidateWork ? [{ id: 'approvals', label: 'My Approvals', badge: approvalCount || undefined }] : [])
+          { id: 'worklist', label: 'Worklist', badge: worklistCount || undefined }
         ]}
       />
 
-      {/* Filters — the client's set (not shown on My Approvals, which lists approval items directly) */}
-      {effectiveView !== 'approvals' && (
+      {/* Filters — the client's set, applied to both the Workspace and the Worklist */}
       <section className="epmp-card mb-4 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
           <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
@@ -523,11 +508,10 @@ export function MyWorkPage() {
           </div>
         )}
       </section>
-      )}
 
-      {effectiveView === 'approvals' ? (
-        <ApprovalsPanel />
-      ) : effectiveView === 'workspace' ? (
+      {effectiveView === 'worklist' ? (
+        <ApprovalsPanel filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, part: fPart, partCode: fPartCode, vendorCode: fVendorCode, vendor: fVendor }} />
+      ) : (
         <>
           {/* Tiles: Upcoming / Completed / Delayed / NG */}
           <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -693,31 +677,6 @@ export function MyWorkPage() {
               </table>
             </div>
           </Card>
-        </>
-      ) : (
-        <>
-          {canEnter && <AiImportPanel role={currentPersona} />}
-          {canEnter && canValidateWork && (
-            <Tabs
-              className="mb-4"
-              activeId={activeMode}
-              onChange={(id) => setTab(id as WorkMode)}
-              items={[
-                { id: 'enter', label: 'To enter', badge: counts.sentBack + counts.draft + counts.notStarted },
-                { id: 'validate', label: 'To validate', badge: counts.toValidate }
-              ]}
-            />
-          )}
-          {cardGroups.length === 0 ? (
-            <Card>
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <p className="text-sm font-medium text-[var(--color-text)]">{activeMode === 'enter' ? 'Nothing waiting for your input' : 'Nothing waiting for your validation'}</p>
-                <p className="max-w-sm text-xs text-[var(--color-muted)]">Parts marked Not applicable and parts already submitted or approved do not appear here.</p>
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-3">{cardGroups.map((g) => <GroupCard key={g.key} group={g} mode={activeMode} />)}</div>
-          )}
         </>
       )}
     </div>
