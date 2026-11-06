@@ -224,7 +224,7 @@ const WORK_SORT_OPTIONS: { key: WorkSortKey; label: string }[] = [
   { key: 'model', label: 'Model' },
   { key: 'department', label: 'Department' },
   { key: 'vendorName', label: 'Vendor' },
-  { key: 'trial', label: 'Trial status' },
+  { key: 'trial', label: 'Trial' },
   { key: 'type', label: 'Type' },
 ]
 const workSortValue = (r: ApprovalRow, k: WorkSortKey): string =>
@@ -473,7 +473,7 @@ function CompactFilterBar(f: FilterBarProps) {
       </div>
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
-          <MultiSelect label="Trial status" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
+          <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
           <MultiSelect label="Activity" options={plain(f.activityOptions)} selected={f.activity} onChange={f.setActivity} />
           <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />
           <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
