@@ -26,6 +26,9 @@ import { useExceptionData } from '../exceptions/useExceptionData'
 import { DownloadMenu } from '../export/DownloadMenu'
 import { ExportSection } from '../export/ExportSection'
 import { useViewMode, ViewModeToggle } from '../viewmode'
+import { MultiSelect } from '../intake/MultiSelect'
+import { SortMenu } from './SortMenu'
+import type { SortDir } from './SortMenu'
 
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
@@ -205,26 +208,58 @@ function ApprovalTable({
  * Multi-select to approve in one go; clicking a card opens the activity form in a drawer.
  */
 interface WorkFilters {
-  model: string; dept: string; milestone: string; pic: string
-  partNo: string; vendorCode: string; activity: string
+  model: string[]; dept: string[]; milestone: string[]; pic: string[]
+  partNo: string[]; vendorCode: string[]; activity: string[]
 }
+
+// Sort fields for the worklist (both card and table views use these).
+type WorkSortKey = 'submittedOn' | 'partNo' | 'model' | 'department' | 'vendorName' | 'trial' | 'activity' | 'type'
+const WORK_SORT_OPTIONS: { key: WorkSortKey; label: string }[] = [
+  { key: 'submittedOn', label: 'Submitted / updated' },
+  { key: 'partNo', label: 'Part number' },
+  { key: 'activity', label: 'Activity' },
+  { key: 'model', label: 'Model' },
+  { key: 'department', label: 'Department' },
+  { key: 'vendorName', label: 'Vendor' },
+  { key: 'trial', label: 'Trial status' },
+  { key: 'type', label: 'Type' },
+]
+const workSortValue = (r: ApprovalRow, k: WorkSortKey): string =>
+  k === 'submittedOn' ? (r.submittedOn ?? '')
+    : k === 'partNo' ? r.partNo
+    : k === 'model' ? r.model
+    : k === 'department' ? (r.department ?? '')
+    : k === 'vendorName' ? r.vendorName
+    : k === 'trial' ? r.trial
+    : k === 'activity' ? r.title
+    : r.type
 
 function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBar?: React.ReactNode }) {
   const allRows = useApprovalRows()
-  const rows = useMemo(
+  const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
+  const filtered = useMemo(
     () =>
       allRows.filter((r) => {
-        if (filters.model !== 'All' && r.model !== filters.model) return false
-        if (filters.dept !== 'All' && r.department !== filters.dept) return false
-        if (filters.milestone !== 'All' && r.trial !== filters.milestone) return false
-        if (filters.vendorCode !== 'All' && r.vendorCode !== filters.vendorCode) return false
-        if (filters.pic !== 'All' && r.pic !== filters.pic) return false
-        if (filters.partNo !== 'All' && r.partNo !== filters.partNo) return false
-        if (filters.activity !== 'All' && r.title !== filters.activity) return false
+        if (!inSel(filters.model, r.model)) return false
+        if (!inSel(filters.dept, r.department)) return false
+        if (!inSel(filters.milestone, r.trial)) return false
+        if (!inSel(filters.vendorCode, r.vendorCode)) return false
+        if (!inSel(filters.pic, r.pic)) return false
+        if (!inSel(filters.partNo, r.partNo)) return false
+        if (!inSel(filters.activity, r.title)) return false
         return true
       }),
     [allRows, filters]
   )
+  const [sortKey, setSortKey] = useState<WorkSortKey>('submittedOn')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const rows = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const cmp = workSortValue(a, sortKey).localeCompare(workSortValue(b, sortKey), undefined, { numeric: true })
+      return (cmp || a.partNo.localeCompare(b.partNo)) * dir
+    })
+  }, [filtered, sortKey, sortDir])
   const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>('all')
@@ -293,6 +328,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         />
         <div className="ml-auto flex items-center gap-2">
           {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          <SortMenu options={WORK_SORT_OPTIONS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
           {selectableShown.length > 0 && (
             <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
@@ -394,41 +430,30 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
 interface LabeledOption { value: string; label: string }
 
 interface FilterBarProps {
-  model: string; setModel: (v: string) => void; modelOptions: string[]
-  dept: string; setDept: (v: string) => void; deptOptions: string[]
-  vendorCode: string; setVendorCode: (v: string) => void; vendorOptions: LabeledOption[]
-  milestone: string; setMilestone: (v: string) => void; milestoneOptions: string[]
-  pic: string; setPic: (v: string) => void; picOptions: LabeledOption[]
-  partNo: string; setPartNo: (v: string) => void; partOptions: LabeledOption[]
-  activity: string; setActivity: (v: string) => void; activityOptions: string[]
+  model: string[]; setModel: (v: string[]) => void; modelOptions: string[]
+  dept: string[]; setDept: (v: string[]) => void; deptOptions: string[]
+  vendorCode: string[]; setVendorCode: (v: string[]) => void; vendorOptions: LabeledOption[]
+  milestone: string[]; setMilestone: (v: string[]) => void; milestoneOptions: string[]
+  pic: string[]; setPic: (v: string[]) => void; picOptions: LabeledOption[]
+  partNo: string[]; setPartNo: (v: string[]) => void; partOptions: LabeledOption[]
+  activity: string[]; setActivity: (v: string[]) => void; activityOptions: string[]
   hasFilters: boolean; clearFilters: () => void
 }
 
-const fbSel = 'h-8 max-w-[200px] rounded-lg border border-[var(--color-border)] bg-[#f9fafb] pl-2 pr-6 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
-
-/** Primary filters inline (name shown in the control); the rest hide behind "More filters". */
+/**
+ * Primary filters inline, the rest behind "More filters". Every filter is a multi-select (MultiSelect) so the
+ * user can pick several values at once — nothing ticked means "All". Uses the shared MultiSelect for a look
+ * that matches the Exception/Intake filter bars.
+ */
 function CompactFilterBar(f: FilterBarProps) {
   const [more, setMore] = useState(false)
-  // Plain select: the "All" option reads as the field name so no separate label row is needed.
-  const sel = (label: string, value: string, onChange: (v: string) => void, options: string[]) => (
-    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={fbSel}>
-      <option value="All">{label}: All</option>
-      {options.map((o) => <option key={o} value={o}>{label}: {o}</option>)}
-    </select>
-  )
-  // Merged "code: name" select: the label already contains both code and name.
-  const selPair = (label: string, value: string, onChange: (v: string) => void, options: LabeledOption[]) => (
-    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={fbSel}>
-      <option value="All">{label}: All</option>
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  )
+  const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
   return (
     <section className="epmp-card mb-3 px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        {sel('Model', f.model, f.setModel, f.modelOptions)}
-        {sel('Dept', f.dept, f.setDept, f.deptOptions)}
-        {selPair('Vendor', f.vendorCode, f.setVendorCode, f.vendorOptions)}
+        <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
+        <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
+        <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
         <button
           onClick={() => setMore((v) => !v)}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
@@ -441,10 +466,10 @@ function CompactFilterBar(f: FilterBarProps) {
       </div>
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
-          {sel('Trial status', f.milestone, f.setMilestone, f.milestoneOptions)}
-          {sel('Activity', f.activity, f.setActivity, f.activityOptions)}
-          {selPair('PIC', f.pic, f.setPic, f.picOptions)}
-          {selPair('Part', f.partNo, f.setPartNo, f.partOptions)}
+          <MultiSelect label="Trial status" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
+          <MultiSelect label="Activity" options={plain(f.activityOptions)} selected={f.activity} onChange={f.setActivity} />
+          <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />
+          <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         </div>
       )}
     </section>
@@ -577,14 +602,14 @@ export function MyWorkPage() {
     return { pending, returned, awaitingAck }
   }, [parts, currentPersona, partReleases, partAcks])
 
-  // Filters (the client's set). 'All' by default. Vendor/Part/PIC are single "code: name" pickers.
-  const [fModel, setFModel] = useState('All')
-  const [fDept, setFDept] = useState('All')
-  const [fMilestone, setFMilestone] = useState('All')
-  const [fPic, setFPic] = useState('All')          // PIC name (shown as "staffId: name")
-  const [fPartNo, setFPartNo] = useState('All')     // exact part number (shown as "partNo: name")
-  const [fVendorCode, setFVendorCode] = useState('All') // vendor code (shown as "code: name")
-  const [fActivity, setFActivity] = useState('All') // activity name
+  // Filters (the client's set). Multi-select: empty array = All. Vendor/Part/PIC are "code: name" pickers.
+  const [fModel, setFModel] = useState<string[]>([])
+  const [fDept, setFDept] = useState<string[]>([])
+  const [fMilestone, setFMilestone] = useState<string[]>([])
+  const [fPic, setFPic] = useState<string[]>([])          // PIC names (shown as "staffId: name")
+  const [fPartNo, setFPartNo] = useState<string[]>([])     // exact part numbers (shown as "partNo: name")
+  const [fVendorCode, setFVendorCode] = useState<string[]>([]) // vendor codes (shown as "code: name")
+  const [fActivity, setFActivity] = useState<string[]>([]) // activity names
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
@@ -640,23 +665,25 @@ export function MyWorkPage() {
     [allInstances, picAssignments]
   )
 
-  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity].some((v) => v !== 'All')
+  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity].some((v) => v.length > 0)
   function clearFilters() {
-    setFModel('All'); setFDept('All'); setFMilestone('All'); setFPic('All')
-    setFPartNo('All'); setFVendorCode('All'); setFActivity('All')
+    setFModel([]); setFDept([]); setFMilestone([]); setFPic([])
+    setFPartNo([]); setFVendorCode([]); setFActivity([])
   }
+  // Multi-select match: an empty picker means "All"; otherwise the value must be one of the ticked ones.
+  const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
 
   // Apply the filters.
   const instances = useMemo(
     () =>
       allInstances.filter((i) => {
-        if (fModel !== 'All' && i.part.model !== fModel) return false
-        if (fDept !== 'All' && (i.part.department || 'Other') !== fDept) return false
-        if (fMilestone !== 'All' && i.row.milestoneId !== fMilestone) return false
-        if (fVendorCode !== 'All' && i.part.vendorCode !== fVendorCode) return false
-        if (fPic !== 'All' && getPicOn(i.part, picAssignments, DEMO_TODAY).name !== fPic) return false
-        if (fPartNo !== 'All' && i.part.partNo !== fPartNo) return false
-        if (fActivity !== 'All' && i.activity.name !== fActivity) return false
+        if (!inSel(fModel, i.part.model)) return false
+        if (!inSel(fDept, i.part.department || 'Other')) return false
+        if (!inSel(fMilestone, i.row.milestoneId)) return false
+        if (!inSel(fVendorCode, i.part.vendorCode)) return false
+        if (!inSel(fPic, getPicOn(i.part, picAssignments, DEMO_TODAY).name)) return false
+        if (!inSel(fPartNo, i.part.partNo)) return false
+        if (!inSel(fActivity, i.activity.name)) return false
         return true
       }),
     [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, picAssignments]
@@ -893,6 +920,7 @@ export function MyWorkPage() {
                 {(selectedBucket || selectedGroup) && (
                   <button onClick={() => { setSelectedBucket(null); setSelectedGroup(null) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
+                <SortMenu options={TABLE_COLS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
                 <ViewModeToggle value={detailView} onChange={setDetailView} />
               </div>
             </div>
