@@ -319,27 +319,29 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
       {/* Filters + toolbar pin to the top of the scroll area while the cards scroll under them. */}
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-3 lg:-mx-7 lg:px-7">
       {filterBar}
-      <section className="epmp-card flex flex-wrap items-center gap-3 px-4 py-3">
-        <Tabs
-          activeId={segment}
-          onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setPicked(new Set()) }}
-          items={[
-            { id: 'all', label: 'All', badge: rows.length || undefined },
-            { id: 'enter', label: 'To enter', badge: enterRows.length || undefined },
-            { id: 'approve', label: 'To approve', badge: approveRows.length || undefined }
-          ]}
-        />
-        <div className="ml-auto flex items-center gap-2">
-          {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+      <section className="epmp-card flex items-center gap-3 overflow-x-auto px-4 py-3">
+        <div className="flex-none">
+          <Tabs
+            activeId={segment}
+            onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setPicked(new Set()) }}
+            items={[
+              { id: 'all', label: 'All', badge: rows.length || undefined },
+              { id: 'enter', label: 'To enter', badge: enterRows.length || undefined },
+              { id: 'approve', label: 'To approve', badge: approveRows.length || undefined }
+            ]}
+          />
+        </div>
+        <div className="ml-auto flex flex-none items-center gap-2">
+          {notice && <span className="whitespace-nowrap text-[11px] text-emerald-700" role="status">{notice}</span>}
           <SortMenu options={WORK_SORT_OPTIONS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
           {selectableShown.length > 0 && (
-            <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
+            <label className="flex flex-none items-center gap-1.5 whitespace-nowrap text-[11px] text-[#344054]">
               <input type="checkbox" checked={allOn} onChange={() => setPicked(allOn ? new Set() : new Set(selectableShown.map((r) => r.key)))} />
               Select all
             </label>
           )}
-          <Button variant="primary" size="sm" disabled={selected.size === 0} onClick={approveSelected}>
+          <Button variant="primary" size="sm" className="whitespace-nowrap" disabled={selected.size === 0} onClick={approveSelected}>
             Approve selected ({selected.size})
           </Button>
         </div>
