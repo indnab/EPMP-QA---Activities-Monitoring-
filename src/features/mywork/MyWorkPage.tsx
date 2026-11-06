@@ -117,7 +117,7 @@ function ApprovalCard({
  */
 interface WorkFilters {
   model: string; dept: string; milestone: string; pic: string
-  part: string; partCode: string; vendorCode: string; vendor: string
+  partNo: string; vendorCode: string
 }
 
 function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBar?: React.ReactNode }) {
@@ -128,11 +128,9 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         if (filters.model !== 'All' && r.model !== filters.model) return false
         if (filters.dept !== 'All' && r.department !== filters.dept) return false
         if (filters.milestone !== 'All' && r.trial !== filters.milestone) return false
-        if (filters.vendor !== 'All' && r.vendorName !== filters.vendor) return false
         if (filters.vendorCode !== 'All' && r.vendorCode !== filters.vendorCode) return false
         if (filters.pic !== 'All' && r.pic !== filters.pic) return false
-        if (filters.part && !r.partName.toLowerCase().includes(filters.part.toLowerCase())) return false
-        if (filters.partCode && !r.partNo.toLowerCase().includes(filters.partCode.toLowerCase())) return false
+        if (filters.partNo !== 'All' && r.partNo !== filters.partNo) return false
         return true
       }),
     [allRows, filters]
@@ -292,29 +290,35 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
 
 // ── Compact filter bar ─────────────────────────────────────────────────────
 
+interface LabeledOption { value: string; label: string }
+
 interface FilterBarProps {
   model: string; setModel: (v: string) => void; modelOptions: string[]
   dept: string; setDept: (v: string) => void; deptOptions: string[]
-  vendor: string; setVendor: (v: string) => void; vendorOptions: string[]
+  vendorCode: string; setVendorCode: (v: string) => void; vendorOptions: LabeledOption[]
   milestone: string; setMilestone: (v: string) => void; milestoneOptions: string[]
-  pic: string; setPic: (v: string) => void; picOptions: string[]
-  vendorCode: string; setVendorCode: (v: string) => void; vendorCodeOptions: string[]
-  part: string; setPart: (v: string) => void
-  partCode: string; setPartCode: (v: string) => void
+  pic: string; setPic: (v: string) => void; picOptions: LabeledOption[]
+  partNo: string; setPartNo: (v: string) => void; partOptions: LabeledOption[]
   hasFilters: boolean; clearFilters: () => void
 }
 
-const fbSel = 'h-8 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] pl-2 pr-6 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
-const fbInput = 'h-8 w-36 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054] placeholder-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+const fbSel = 'h-8 max-w-[200px] rounded-lg border border-[var(--color-border)] bg-[#f9fafb] pl-2 pr-6 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 
 /** Primary filters inline (name shown in the control); the rest hide behind "More filters". */
 function CompactFilterBar(f: FilterBarProps) {
   const [more, setMore] = useState(false)
-  // A labelled select: the "All" option reads as the field name so no separate label row is needed.
+  // Plain select: the "All" option reads as the field name so no separate label row is needed.
   const sel = (label: string, value: string, onChange: (v: string) => void, options: string[]) => (
     <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={fbSel}>
       <option value="All">{label}: All</option>
       {options.map((o) => <option key={o} value={o}>{label}: {o}</option>)}
+    </select>
+  )
+  // Merged "code: name" select: the label already contains both code and name.
+  const selPair = (label: string, value: string, onChange: (v: string) => void, options: LabeledOption[]) => (
+    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={fbSel}>
+      <option value="All">{label}: All</option>
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   )
   return (
@@ -322,7 +326,7 @@ function CompactFilterBar(f: FilterBarProps) {
       <div className="flex flex-wrap items-center gap-2">
         {sel('Model', f.model, f.setModel, f.modelOptions)}
         {sel('Dept', f.dept, f.setDept, f.deptOptions)}
-        {sel('Vendor', f.vendor, f.setVendor, f.vendorOptions)}
+        {selPair('Vendor', f.vendorCode, f.setVendorCode, f.vendorOptions)}
         <button
           onClick={() => setMore((v) => !v)}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
@@ -336,10 +340,8 @@ function CompactFilterBar(f: FilterBarProps) {
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
           {sel('Trial status', f.milestone, f.setMilestone, f.milestoneOptions)}
-          {sel('PIC name', f.pic, f.setPic, f.picOptions)}
-          {sel('Vendor code', f.vendorCode, f.setVendorCode, f.vendorCodeOptions)}
-          <input aria-label="Part name" value={f.part} onChange={(e) => f.setPart(e.target.value)} placeholder="Part name" className={fbInput} />
-          <input aria-label="Part code" value={f.partCode} onChange={(e) => f.setPartCode(e.target.value)} placeholder="Part code" className={fbInput} />
+          {selPair('PIC', f.pic, f.setPic, f.picOptions)}
+          {selPair('Part', f.partNo, f.setPartNo, f.partOptions)}
         </div>
       )}
     </section>
@@ -470,15 +472,13 @@ export function MyWorkPage() {
     return { pending, returned, awaitingAck }
   }, [parts, currentPersona, partReleases, partAcks])
 
-  // Filters (the client's set). 'All' by default.
+  // Filters (the client's set). 'All' by default. Vendor/Part/PIC are single "code: name" pickers.
   const [fModel, setFModel] = useState('All')
   const [fDept, setFDept] = useState('All')
   const [fMilestone, setFMilestone] = useState('All')
-  const [fPic, setFPic] = useState('All')
-  const [fPart, setFPart] = useState('') // Part name (free text)
-  const [fPartCode, setFPartCode] = useState('') // Part code (free text)
-  const [fVendorCode, setFVendorCode] = useState('All')
-  const [fVendor, setFVendor] = useState('All')
+  const [fPic, setFPic] = useState('All')          // PIC name (shown as "staffId: name")
+  const [fPartNo, setFPartNo] = useState('All')     // exact part number (shown as "partNo: name")
+  const [fVendorCode, setFVendorCode] = useState('All') // vendor code (shown as "code: name")
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
@@ -511,17 +511,31 @@ export function MyWorkPage() {
   const modelOptions = useMemo(() => opt(allInstances.map((i) => i.part.model)), [allInstances])
   const deptOptions = useMemo(() => opt(allInstances.map((i) => i.part.department || 'Other')), [allInstances])
   const milestoneOptions = useMemo(() => opt(allInstances.map((i) => i.row.milestoneId)), [allInstances])
-  const vendorOptions = useMemo(() => opt(allInstances.map((i) => i.part.vendorName)), [allInstances])
-  const vendorCodeOptions = useMemo(() => opt(allInstances.map((i) => i.part.vendorCode)), [allInstances])
-  const picOptions = useMemo(
-    () => opt(allInstances.map((i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)),
+  // Merged "code: name" pickers — one row per distinct code, value = code (or name for PIC).
+  const uniqBy = <T,>(rows: T[], key: (r: T) => string) => {
+    const m = new Map<string, T>()
+    for (const r of rows) { const k = key(r); if (k && !m.has(k)) m.set(k, r) }
+    return Array.from(m.values())
+  }
+  const vendorOptions = useMemo<LabeledOption[]>(
+    () => uniqBy(allInstances, (i) => i.part.vendorCode).map((i) => ({ value: i.part.vendorCode, label: `${i.part.vendorCode}: ${i.part.vendorName}` })).sort((a, b) => a.label.localeCompare(b.label)),
+    [allInstances]
+  )
+  const partOptions = useMemo<LabeledOption[]>(
+    () => uniqBy(allInstances, (i) => i.part.partNo).map((i) => ({ value: i.part.partNo, label: `${i.part.partNo}: ${i.part.partName}` })).sort((a, b) => a.label.localeCompare(b.label)),
+    [allInstances]
+  )
+  const picOptions = useMemo<LabeledOption[]>(
+    () => uniqBy(allInstances, (i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)
+      .map((i) => { const name = getPicOn(i.part, picAssignments, DEMO_TODAY).name; const sid = i.part.attrs?.qa_pic_staff_id; return { value: name, label: sid ? `${sid}: ${name}` : name } })
+      .sort((a, b) => a.label.localeCompare(b.label)),
     [allInstances, picAssignments]
   )
 
-  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fVendor].some((v) => v !== 'All') || fPart !== '' || fPartCode !== ''
+  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo].some((v) => v !== 'All')
   function clearFilters() {
     setFModel('All'); setFDept('All'); setFMilestone('All'); setFPic('All')
-    setFPart(''); setFPartCode(''); setFVendorCode('All'); setFVendor('All')
+    setFPartNo('All'); setFVendorCode('All')
   }
 
   // Apply the filters.
@@ -531,14 +545,12 @@ export function MyWorkPage() {
         if (fModel !== 'All' && i.part.model !== fModel) return false
         if (fDept !== 'All' && (i.part.department || 'Other') !== fDept) return false
         if (fMilestone !== 'All' && i.row.milestoneId !== fMilestone) return false
-        if (fVendor !== 'All' && i.part.vendorName !== fVendor) return false
         if (fVendorCode !== 'All' && i.part.vendorCode !== fVendorCode) return false
         if (fPic !== 'All' && getPicOn(i.part, picAssignments, DEMO_TODAY).name !== fPic) return false
-        if (fPart && !i.part.partName.toLowerCase().includes(fPart.toLowerCase())) return false
-        if (fPartCode && !i.part.partNo.toLowerCase().includes(fPartCode.toLowerCase())) return false
+        if (fPartNo !== 'All' && i.part.partNo !== fPartNo) return false
         return true
       }),
-    [allInstances, fModel, fDept, fMilestone, fVendor, fVendorCode, fPic, fPart, fPartCode, picAssignments]
+    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, picAssignments]
   )
 
   // Workspace rollups.
@@ -654,12 +666,10 @@ export function MyWorkPage() {
         <CompactFilterBar
           model={fModel} setModel={setFModel} modelOptions={modelOptions}
           dept={fDept} setDept={setFDept} deptOptions={deptOptions}
-          vendor={fVendor} setVendor={setFVendor} vendorOptions={vendorOptions}
+          vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
           milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
           pic={fPic} setPic={setFPic} picOptions={picOptions}
-          vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorCodeOptions={vendorCodeOptions}
-          part={fPart} setPart={setFPart}
-          partCode={fPartCode} setPartCode={setFPartCode}
+          partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
       </div>
@@ -667,17 +677,15 @@ export function MyWorkPage() {
 
       {effectiveView === 'worklist' ? (
         <ApprovalsPanel
-          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, part: fPart, partCode: fPartCode, vendorCode: fVendorCode, vendor: fVendor }}
+          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode }}
           filterBar={
             <CompactFilterBar
               model={fModel} setModel={setFModel} modelOptions={modelOptions}
               dept={fDept} setDept={setFDept} deptOptions={deptOptions}
-              vendor={fVendor} setVendor={setFVendor} vendorOptions={vendorOptions}
+              vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
               milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
               pic={fPic} setPic={setFPic} picOptions={picOptions}
-              vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorCodeOptions={vendorCodeOptions}
-              part={fPart} setPart={setFPart}
-              partCode={fPartCode} setPartCode={setFPartCode}
+              partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
               hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
