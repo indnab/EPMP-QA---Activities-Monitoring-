@@ -145,23 +145,6 @@ export function WorkspacePage() {
     return map
   }, [row, applicableParts, modelRecords, activity])
 
-  const awaitingCount = useMemo(
-    () => applicableParts.filter((p) => datesByPart.get(p.partNo)?.status === 'awaitingMrd').length,
-    [applicableParts, datesByPart]
-  )
-
-  // Header date range across parts whose MRD is known
-  const dateRange = useMemo(() => {
-    let start: string | undefined
-    let end: string | undefined
-    for (const d of datesByPart.values()) {
-      if (d.status !== 'resolved') continue
-      if (!start || d.start < start) start = d.start
-      if (!end || d.end > end) end = d.end
-    }
-    return start && end ? { start, end } : null
-  }, [datesByPart])
-
   // Unique models + vendors for filter dropdowns
   const models = useMemo(() => Array.from(new Set(applicableParts.map((p) => p.model))).sort(), [applicableParts])
   const vendors = useMemo(() => Array.from(new Set(applicableParts.map((p) => p.vendorName))).sort(), [applicableParts])
@@ -349,15 +332,7 @@ export function WorkspacePage() {
               {activity.name}
               {row.subType && <span className="ml-2 align-middle rounded bg-secondary px-2 py-0.5 text-xs font-semibold text-primary">{row.milestoneId} · {row.subType}</span>}
             </h1>
-            {activity.description && (
-              <p className="text-sm text-[var(--color-muted)] mt-1">{activity.description}</p>
-            )}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-[var(--color-muted)]">
-              <span>
-                <FbIcon name="calendar-month" size={16} className="mr-1.5 text-[var(--color-muted)]" />
-                {dateRange ? `${fmtDate(dateRange.start)} → ${fmtDate(dateRange.end)}` : <em>Awaiting MRD</em>}
-                {awaitingCount > 0 && dateRange && ` (+${awaitingCount} awaiting MRD)`}
-              </span>
               <span>Owner: <strong className="text-[var(--color-text)]">{activity.ownerPersona}</strong></span>
               <UpcomingToggle />
             </div>
