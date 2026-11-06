@@ -33,6 +33,9 @@ import type { SortDir } from './SortMenu'
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
+// Mirrors <Button variant="primary" size="sm"> so a navigating <Link> looks identical to the worklist "Open form" button.
+const openFormBtnCls =
+  'inline-flex items-center justify-center gap-1.5 rounded-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] bg-[var(--color-primary)] border border-[var(--color-primary)] text-white hover:brightness-105 px-3 py-1.5 text-[11px]'
 
 // Detail-table columns: sortable + per-column filterable.
 type TableColKey = 'status' | 'partNo' | 'partName' | 'model' | 'department' | 'vendorName' | 'milestoneId' | 'activity' | 'planned'
@@ -437,6 +440,9 @@ interface FilterBarProps {
   pic: string[]; setPic: (v: string[]) => void; picOptions: LabeledOption[]
   partNo: string[]; setPartNo: (v: string[]) => void; partOptions: LabeledOption[]
   activity: string[]; setActivity: (v: string[]) => void; activityOptions: string[]
+  status: string[]; setStatus: (v: string[]) => void; statusOptions: string[]
+  /** Status (work bucket) is an Insights concept; the Worklist hides it. */
+  showStatus?: boolean
   hasFilters: boolean; clearFilters: () => void
 }
 
@@ -451,6 +457,7 @@ function CompactFilterBar(f: FilterBarProps) {
   return (
     <section className="epmp-card mb-3 px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
+        {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
         <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
         <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
         <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
@@ -610,6 +617,7 @@ export function MyWorkPage() {
   const [fPartNo, setFPartNo] = useState<string[]>([])     // exact part numbers (shown as "partNo: name")
   const [fVendorCode, setFVendorCode] = useState<string[]>([]) // vendor codes (shown as "code: name")
   const [fActivity, setFActivity] = useState<string[]>([]) // activity names
+  const [fStatus, setFStatus] = useState<string[]>([]) // work bucket: Upcoming/Completed/Delayed/NG
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
@@ -665,10 +673,10 @@ export function MyWorkPage() {
     [allInstances, picAssignments]
   )
 
-  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity].some((v) => v.length > 0)
+  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity, fStatus].some((v) => v.length > 0)
   function clearFilters() {
     setFModel([]); setFDept([]); setFMilestone([]); setFPic([])
-    setFPartNo([]); setFVendorCode([]); setFActivity([])
+    setFPartNo([]); setFVendorCode([]); setFActivity([]); setFStatus([])
   }
   // Multi-select match: an empty picker means "All"; otherwise the value must be one of the ticked ones.
   const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
@@ -684,9 +692,10 @@ export function MyWorkPage() {
         if (!inSel(fPic, getPicOn(i.part, picAssignments, DEMO_TODAY).name)) return false
         if (!inSel(fPartNo, i.part.partNo)) return false
         if (!inSel(fActivity, i.activity.name)) return false
+        if (!inSel(fStatus, workBucket(i) ?? '')) return false
         return true
       }),
-    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, picAssignments]
+    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, picAssignments]
   )
 
   // Workspace rollups.
@@ -810,6 +819,7 @@ export function MyWorkPage() {
           pic={fPic} setPic={setFPic} picOptions={picOptions}
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
+          status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
       </div>
@@ -827,6 +837,7 @@ export function MyWorkPage() {
               pic={fPic} setPic={setFPic} picOptions={picOptions}
               partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
               activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
+              status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]}
               hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
@@ -952,8 +963,8 @@ export function MyWorkPage() {
                       </div>
                       <Link
                         to={`/activities/${i.row.id}?part=${encodeURIComponent(i.part.partNo)}`}
-                        className="mt-auto self-start text-[11px] font-semibold text-[var(--color-accent)] hover:underline"
-                      >Open →</Link>
+                        className={`mt-auto self-start ${openFormBtnCls}`}
+                      >Open form</Link>
                     </div>
                   )
                 })}
@@ -1037,8 +1048,8 @@ export function MyWorkPage() {
                           <Link
                             // Opens this part's form for this activity (the part drawer), not the whole part list.
                             to={`/activities/${i.row.id}?part=${encodeURIComponent(i.part.partNo)}`}
-                            className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline"
-                          >Open →</Link>
+                            className={openFormBtnCls}
+                          >Open form</Link>
                         </td>
                       </tr>
                     )
