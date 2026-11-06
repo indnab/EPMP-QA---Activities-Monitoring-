@@ -9,6 +9,8 @@ import { useExceptionData } from './useExceptionData'
 import type { Attention, ExceptionTab } from './useExceptionData'
 import { EMPTY_EXC_FILTERS, ExcFilterProvider, ExceptionFilterBar } from './exceptionFilters'
 import type { ExcFilters } from './exceptionFilters'
+import { DownloadMenu } from '../export/DownloadMenu'
+import { ExportSection } from '../export/ExportSection'
 
 type TabId = ExceptionTab
 
@@ -23,6 +25,8 @@ function SummaryCard(props: { title: string; color: string; main: number; mainLa
   return (
     <button
       onClick={props.onOpen}
+      data-export-stat={props.title}
+      data-export-stat-value={props.main}
       className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
     >
       <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
@@ -72,13 +76,14 @@ function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters
         title="Exception Management"
         section="Modules"
         description="Everything that went off plan, in one place: deviations, actions and delay reasons. See what needs you and act on it."
+        actions={<DownloadMenu title="Exception Management" />}
       />
       <ExceptionFilterBar value={filters} onChange={onFilters} />
       <Tabs className="mb-4" activeId={tab} onChange={(id) => go(id as TabId)} items={tabs} />
 
       {tab === 'overview' && (
         <div>
-          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <ExportSection id="exc-summary" label="Exception summary cards" className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             {!isVendor && (
               <SummaryCard
                 title="Deviations" color="#d97706" main={devRows.filter((d) => d.open).length} mainLabel="open, in the approval chain"
@@ -101,8 +106,8 @@ function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters
               lines={[['reason needed', delays.needed.length], ['to review', delays.review.length], ['accepted', delays.accepted.length]]}
               onOpen={() => go('delays')}
             />
-          </div>
-          <section id="exc-attention" className="epmp-card overflow-hidden">
+          </ExportSection>
+          <ExportSection id="exc-attention-sec" label="Needs your attention"><section id="exc-attention" className="epmp-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
               <h2 className="m-0 text-[13px] font-semibold text-[var(--color-text)]">Needs your attention</h2>
               <span className="text-[11px] text-[var(--color-muted)]">{attention.length} item{attention.length === 1 ? '' : 's'}</span>
@@ -137,12 +142,12 @@ function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters
                 </table>
               </div>
             )}
-          </section>
+          </section></ExportSection>
         </div>
       )}
-      {tab === 'deviations' && <DeviationsView />}
-      {tab === 'actions' && <ActionsView />}
-      {tab === 'delays' && <DelayPanel showEmpty />}
+      {tab === 'deviations' && <ExportSection id="exc-deviations" label="Deviations"><DeviationsView /></ExportSection>}
+      {tab === 'actions' && <ExportSection id="exc-actions" label="Actions"><ActionsView /></ExportSection>}
+      {tab === 'delays' && <ExportSection id="exc-delays" label="Delay reasons"><DelayPanel showEmpty /></ExportSection>}
     </div>
   )
 }

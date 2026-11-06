@@ -4,6 +4,8 @@ import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { ActivityDefinition, PartRecord, TemplateRow } from '../../domain'
 import { canMarkNotApplicable, canReverseNotApplicable, partInScope, rowInScope } from '../scope'
+import { DownloadMenu } from '../export/DownloadMenu'
+import { ExportSection } from '../export/ExportSection'
 
 const inputCls =
   'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054] placeholder-[var(--color-muted)]'
@@ -153,6 +155,7 @@ export function ApplicabilityMatrixPage() {
         title="Applicability"
         section="Modules"
         description="Tick the parts an activity does not apply to. Only activities that Admin has opened for part-level Not applicable appear as columns. Changes are staged until you apply them."
+        actions={<DownloadMenu title="Applicability Matrix" />}
       />
 
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3.5">
@@ -220,7 +223,7 @@ export function ApplicabilityMatrixPage() {
         </div>
       )}
 
-      <Card flush>
+      <ExportSection id="appl-matrix" label="Applicability matrix"><Card flush>
         {columns.length === 0 ? (
           <div className="px-4 py-12 text-center text-[var(--color-muted)]">
             <p className="font-medium">No activities allow part-level Not applicable</p>
@@ -298,6 +301,7 @@ export function ApplicabilityMatrixPage() {
                               disabled={!isEditable(key)}
                               onChange={(e) => stageCells([key], e.target.checked)}
                             />
+                            {isChecked(key) && <span className="sr-only">NA</span>}
                             {pending && <span className="sr-only">staged</span>}
                           </td>
                         )
@@ -314,7 +318,7 @@ export function ApplicabilityMatrixPage() {
             </table>
           </div>
         )}
-      </Card>
+      </Card></ExportSection>
       <p className="mt-2 text-[11px] text-[var(--color-muted)]">
         Ticked = Not applicable. A "—" means the activity does not apply to that part's type or section. Highlighted cells are staged and not yet saved.
       </p>

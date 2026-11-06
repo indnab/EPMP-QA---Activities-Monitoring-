@@ -35,6 +35,9 @@ const ICONS: Record<string, Node[]> = {
   'circle-plus': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M12 7.757v8.486M7.757 12h8.486M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"}]],
   'info-circle': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"}]],
   'list': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "d": "M9 8h10M9 12h10M9 16h10M4.99 8H5m-.02 4h.01m0 4H5"}]],
+  'download': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M12 4v12m0 0 4-4m-4 4-4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"}]],
+  'table': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M4 10h16M4 14h16M10 4v16M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"}]],
+  'presentation': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M4 4h16M5 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4M12 15v4m0 0-3 2m3-2 3 2"}]],
 }
 
 export type IconName = keyof typeof ICONS

@@ -23,6 +23,7 @@ import type { RawDrill } from './drill'
 import { DEFAULT_CHART_PROPS, applyChartChange, chartTitle, stackedBarToChart } from './chartEditor'
 import { DEMO_TODAY, rowInScope } from '../scope'
 import { clientDashboardUrl } from './clientDashboards'
+import { DownloadMenu } from '../export/DownloadMenu'
 
 const ReactGridLayout = WidthProvider(GridLayout)
 
@@ -437,14 +438,6 @@ export function DashboardsPage() {
     [chips.length, entries, activities, parts, templateRows, modelRecords, effectiveFilters, selectedActivityId]
   )
 
-  // Export Mocks
-  const handleExport = (format: 'PDF' | 'Excel') => {
-    showToast(`Exporting dashboard config & aggregated metrics to ${format}... Please wait.`)
-    setTimeout(() => {
-      showToast(`Export to ${format} completed! (Downloaded to local mocks directory)`)
-    }, 1500)
-  }
-
   // Prepare standard layout structures required by react-grid-layout
   const rglLayout = useMemo(() => {
     return activeDashboard.widgets.map((w) => ({
@@ -637,13 +630,8 @@ export function DashboardsPage() {
               </Button>
             )}
 
-            {/* Export Actions */}
-            <Button variant="secondary" size="sm" onClick={() => handleExport('PDF')}>
-              <FbIcon name="printer" size={14} className="mr-1" />PDF
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleExport('Excel')}>
-              <FbIcon name="file-lines" size={14} className="mr-1" />Excel
-            </Button>
+            {/* Export: pick widgets + format (PDF / PowerPoint / Excel) */}
+            <DownloadMenu title="Dashboard" />
           </div>
         </div>
 
@@ -902,6 +890,8 @@ export function DashboardsPage() {
               return (
                 <div
                   key={widget.id}
+                  data-export-section={`widget-${widget.id}`}
+                  data-export-label={widget.title || 'Widget'}
                   className={`bg-white border rounded-lg p-3 overflow-hidden relative group transition-all duration-200 ${
                     isActive
                       ? 'ring-2 ring-primary border-transparent shadow-md'
@@ -915,7 +905,7 @@ export function DashboardsPage() {
                 >
                   {/* EDIT WIDGET OVERLAY OPTION BOXES */}
                   {editMode && (
-                    <div className="absolute top-2 right-2 flex gap-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-xs p-1 rounded border border-border shadow-sm">
+                    <div data-export-ignore="true" className="absolute top-2 right-2 flex gap-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-xs p-1 rounded border border-border shadow-sm">
                       <button
                         title="Configure properties"
                         onClick={(e) => {

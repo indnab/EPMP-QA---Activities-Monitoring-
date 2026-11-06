@@ -23,6 +23,8 @@ import { useApprovalRows } from './approvalRows'
 import type { ApprovalRow, ApprovalType } from './approvalRows'
 import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
 import { useExceptionData } from '../exceptions/useExceptionData'
+import { DownloadMenu } from '../export/DownloadMenu'
+import { ExportSection } from '../export/ExportSection'
 
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
@@ -355,6 +357,8 @@ function KpiCard({ title, value, color, icon, onClick }: { title: string; value:
     <button
       type="button"
       onClick={onClick}
+      data-export-stat={title}
+      data-export-stat-value={value}
       className="epmp-card flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
     >
       <span className="flex items-center gap-1.5 text-[11px] font-medium leading-tight" style={{ color }}>
@@ -386,17 +390,17 @@ function OverviewTab({
       {/* Frozen top: KPIs + snapshot stay put; only Priority actions below scrolls. */}
       <div className="flex-none">
       {/* Key KPIs */}
-      <div className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-6">
+      <ExportSection id="mw-ov-kpis" label="Overview – key metrics" className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
         <KpiCard title="Awaiting acknowledgement" value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} />
         <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
         <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="clipboard-list" onClick={() => onGo('actions', { focus: 'delay' })} />
         <KpiCard title="Delayed activities" value={totals.Delayed} color="#d97706" icon="calendar-month" onClick={() => onGo('insights', { bucket: 'Delayed' })} />
         <KpiCard title="NG / Rework" value={totals.NG} color="#dc2626" icon="exclamation-circle" onClick={() => onGo('insights', { bucket: 'NG' })} />
-      </div>
+      </ExportSection>
 
       {/* Activity snapshot */}
-      <section className="epmp-card mb-4 px-5 py-3">
+      <ExportSection id="mw-ov-snapshot" label="Overview – activity snapshot"><section className="epmp-card mb-4 px-5 py-3">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Activity snapshot</h3>
           <button onClick={() => onGo('worklist')} className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">View worklist →</button>
@@ -409,11 +413,11 @@ function OverviewTab({
             </div>
           ))}
         </div>
-      </section>
+      </section></ExportSection>
       </div>
 
       {/* Priority actions — fills the remaining height; its list scrolls while the top stays frozen. */}
-      <section className="epmp-card flex min-h-0 flex-1 flex-col px-5 py-3">
+      <ExportSection id="mw-ov-priority" label="Overview – priority actions"><section className="epmp-card flex min-h-0 flex-1 flex-col px-5 py-3">
         <div className="mb-2 flex flex-none items-center justify-between">
           <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
           {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
@@ -433,7 +437,7 @@ function OverviewTab({
             ))}
           </div>
         )}
-      </section>
+      </section></ExportSection>
     </div>
   )
 }
@@ -657,7 +661,10 @@ export function MyWorkPage() {
             { id: 'insights', label: 'Insights' }
           ]}
         />
-        <UpcomingToggle />
+        <div className="flex items-center gap-2">
+          <UpcomingToggle />
+          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Worklist', insights: 'Insights' }[effectiveView]}`} />
+        </div>
       </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
@@ -676,7 +683,7 @@ export function MyWorkPage() {
       )}
 
       {effectiveView === 'worklist' ? (
-        <ApprovalsPanel
+        <ExportSection id="mw-worklist" label="Worklist / Approval"><ApprovalsPanel
           filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode }}
           filterBar={
             <CompactFilterBar
@@ -689,7 +696,7 @@ export function MyWorkPage() {
               hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
-        />
+        /></ExportSection>
       ) : effectiveView === 'overview' ? (
         <OverviewTab
           totals={totals}
@@ -702,13 +709,13 @@ export function MyWorkPage() {
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake + delay reason approvals — the PIC's transactional approvals */}
-          <div id="mw-release"><ReleasePanel /></div>
-          <div id="mw-delay"><DelayPanel /></div>
+          <ExportSection id="mw-release-sec" label="Release to vendor"><div id="mw-release"><ReleasePanel /></div></ExportSection>
+          <ExportSection id="mw-delay-sec" label="Delay reasons"><div id="mw-delay"><DelayPanel /></div></ExportSection>
         </>
       ) : (
         <>
           {/* Insights: tiles + performance charts (no transactional tables) */}
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <ExportSection id="mw-ins-tiles" label="Insights – bucket totals" className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {WORK_BUCKETS.map((b) => (
               <BucketTile
                 key={b} bucket={b} count={totals[b]}
@@ -716,10 +723,10 @@ export function MyWorkPage() {
                 onClick={() => setSelectedBucket(selectedBucket === b ? null : b)}
               />
             ))}
-          </div>
+          </ExportSection>
 
           {/* Graphical: stacked bars by the chosen dimension */}
-          <Card className="mb-4">
+          <ExportSection id="mw-ins-chart" label="Insights – performance chart"><Card className="mb-4">
             <div className="mb-3 flex items-center gap-3">
               <h3 className="flex-none whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
               <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
@@ -755,11 +762,11 @@ export function MyWorkPage() {
               </div>
             )}
             <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>
-          </Card>
+          </Card></ExportSection>
 
           {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
           <div id="mw-detail" />
-          <Card flush className="!overflow-visible">
+          <ExportSection id="mw-ins-detail" label="Insights – parts detail"><Card flush className="!overflow-visible">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
               <h3 className="text-[13px] font-semibold text-[var(--color-text)]">
                 {selectedBucket ? (
@@ -800,7 +807,7 @@ export function MyWorkPage() {
                     <th className={`${thCls} text-right`}>Actions</th>
                   </tr>
                   {/* Per-column filter row */}
-                  <tr className="border-b border-[var(--color-border)] bg-white">
+                  <tr data-export-ignore="true" className="border-b border-[var(--color-border)] bg-white">
                     {tableCols.map((c) => (
                       <th key={c.key} className="px-2 py-1.5">
                         <input
@@ -871,7 +878,7 @@ export function MyWorkPage() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </Card></ExportSection>
         </>
       )}
     </div>
