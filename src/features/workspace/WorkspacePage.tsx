@@ -344,9 +344,6 @@ export function WorkspacePage() {
                 {row.section}
               </span>
               <span className="text-xs text-[var(--color-muted)]">{fmtOffsetRange(row)}</span>
-              <span className="text-xs text-[var(--color-muted)]">
-                {activity.scope === 'Both' ? 'New Part + ECN' : activity.scope === 'NewPart' ? 'New Part' : 'ECN'}
-              </span>
             </div>
             <h1 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)] max-sm:text-[20px] max-sm:leading-7">
               {activity.name}
@@ -533,8 +530,8 @@ export function WorkspacePage() {
             <p className="font-medium">No parts match your filters</p>
           </div>
         ) : (
-          // Mobile: sideways scroll with the Open column pinned right (laptop unchanged).
-          <div className={`table-scroll ${isMobile ? 'tbl-sleeve tbl-sleeve-r' : ''}`}>
+          // The Open (CTA) column stays pinned right while the row scrolls sideways (same as My Work).
+          <div className={`table-scroll cta-pin ${isMobile ? 'tbl-sleeve tbl-sleeve-r' : ''}`}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -644,13 +641,8 @@ export function WorkspacePage() {
                       <td className="px-3 py-2.5">
                         {isNa ? <span className="text-xs text-[var(--color-muted)]">—</span> : <RygDot status={ryg} size={10} />}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          className="text-xs text-[var(--color-accent)] hover:underline"
-                          onClick={(e) => { e.stopPropagation(); setOpenPartNo(part.partNo) }}
-                        >
-                          Open →
-                        </button>
+                      <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="primary" size="sm" onClick={() => setOpenPartNo(part.partNo)}>Open form</Button>
                       </td>
                     </tr>
                   )
