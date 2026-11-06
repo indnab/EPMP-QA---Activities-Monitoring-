@@ -119,7 +119,7 @@ function ApprovalCard({
  */
 interface WorkFilters {
   model: string; dept: string; milestone: string; pic: string
-  partNo: string; vendorCode: string
+  partNo: string; vendorCode: string; activity: string
 }
 
 function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBar?: React.ReactNode }) {
@@ -133,6 +133,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         if (filters.vendorCode !== 'All' && r.vendorCode !== filters.vendorCode) return false
         if (filters.pic !== 'All' && r.pic !== filters.pic) return false
         if (filters.partNo !== 'All' && r.partNo !== filters.partNo) return false
+        if (filters.activity !== 'All' && r.title !== filters.activity) return false
         return true
       }),
     [allRows, filters]
@@ -301,6 +302,7 @@ interface FilterBarProps {
   milestone: string; setMilestone: (v: string) => void; milestoneOptions: string[]
   pic: string; setPic: (v: string) => void; picOptions: LabeledOption[]
   partNo: string; setPartNo: (v: string) => void; partOptions: LabeledOption[]
+  activity: string; setActivity: (v: string) => void; activityOptions: string[]
   hasFilters: boolean; clearFilters: () => void
 }
 
@@ -342,6 +344,7 @@ function CompactFilterBar(f: FilterBarProps) {
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
           {sel('Trial status', f.milestone, f.setMilestone, f.milestoneOptions)}
+          {sel('Activity', f.activity, f.setActivity, f.activityOptions)}
           {selPair('PIC', f.pic, f.setPic, f.picOptions)}
           {selPair('Part', f.partNo, f.setPartNo, f.partOptions)}
         </div>
@@ -483,6 +486,7 @@ export function MyWorkPage() {
   const [fPic, setFPic] = useState('All')          // PIC name (shown as "staffId: name")
   const [fPartNo, setFPartNo] = useState('All')     // exact part number (shown as "partNo: name")
   const [fVendorCode, setFVendorCode] = useState('All') // vendor code (shown as "code: name")
+  const [fActivity, setFActivity] = useState('All') // activity name
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
@@ -515,6 +519,7 @@ export function MyWorkPage() {
   const modelOptions = useMemo(() => opt(allInstances.map((i) => i.part.model)), [allInstances])
   const deptOptions = useMemo(() => opt(allInstances.map((i) => i.part.department || 'Other')), [allInstances])
   const milestoneOptions = useMemo(() => opt(allInstances.map((i) => i.row.milestoneId)), [allInstances])
+  const activityOptions = useMemo(() => opt(allInstances.map((i) => i.activity.name)), [allInstances])
   // Merged "code: name" pickers — one row per distinct code, value = code (or name for PIC).
   const uniqBy = <T,>(rows: T[], key: (r: T) => string) => {
     const m = new Map<string, T>()
@@ -536,10 +541,10 @@ export function MyWorkPage() {
     [allInstances, picAssignments]
   )
 
-  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo].some((v) => v !== 'All')
+  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity].some((v) => v !== 'All')
   function clearFilters() {
     setFModel('All'); setFDept('All'); setFMilestone('All'); setFPic('All')
-    setFPartNo('All'); setFVendorCode('All')
+    setFPartNo('All'); setFVendorCode('All'); setFActivity('All')
   }
 
   // Apply the filters.
@@ -552,9 +557,10 @@ export function MyWorkPage() {
         if (fVendorCode !== 'All' && i.part.vendorCode !== fVendorCode) return false
         if (fPic !== 'All' && getPicOn(i.part, picAssignments, DEMO_TODAY).name !== fPic) return false
         if (fPartNo !== 'All' && i.part.partNo !== fPartNo) return false
+        if (fActivity !== 'All' && i.activity.name !== fActivity) return false
         return true
       }),
-    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, picAssignments]
+    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, picAssignments]
   )
 
   // Workspace rollups.
@@ -677,6 +683,7 @@ export function MyWorkPage() {
           milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
           pic={fPic} setPic={setFPic} picOptions={picOptions}
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
+          activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
       </div>
@@ -684,7 +691,7 @@ export function MyWorkPage() {
 
       {effectiveView === 'worklist' ? (
         <ExportSection id="mw-worklist" label="Worklist / Approval"><ApprovalsPanel
-          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode }}
+          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode, activity: fActivity }}
           filterBar={
             <CompactFilterBar
               model={fModel} setModel={setFModel} modelOptions={modelOptions}
@@ -693,6 +700,7 @@ export function MyWorkPage() {
               milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
               pic={fPic} setPic={setFPic} picOptions={picOptions}
               partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
+              activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
               hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
