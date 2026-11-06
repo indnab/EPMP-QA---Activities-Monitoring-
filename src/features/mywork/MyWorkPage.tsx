@@ -8,7 +8,7 @@ import { PageHeader, Card, Tabs, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import {
-  getFilteredData, isWorkableByVendor, getPicOn,
+  getFilteredData, isWorkableByVendor, getPicOn, getReleaseState,
   workBucket, bucketTotals, workspaceGroups,
   WORK_BUCKETS, WORK_BUCKET_COLORS, WORK_BUCKET_DESC
 } from '../../engine'
@@ -22,6 +22,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useApprovalRows } from './approvalRows'
 import type { ApprovalRow, ApprovalType } from './approvalRows'
 import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
+import { useExceptionData } from '../exceptions/useExceptionData'
 
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
@@ -291,6 +292,95 @@ function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; co
   )
 }
 
+// ── Overview tab ─────────────────────────────────────────────────────────────
+
+function KpiCard({ title, value, color, icon }: { title: string; value: number; color: string; icon: string }) {
+  return (
+    <div className="epmp-card px-4 py-3">
+      <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color }}>
+        <FbIcon name={icon} size={14} /> {title}
+      </div>
+      <div className="mt-1 text-[30px] font-bold leading-[34px]" style={{ color }}>{value}</div>
+    </div>
+  )
+}
+
+/** Overview: key KPIs, the priority actions that need the role now, and an activity snapshot. No full worklist/charts. */
+function OverviewTab({
+  persona, totals, pendingRelease, returned, delayReviews, ngCount, onGo
+}: {
+  persona: string
+  totals: Record<WorkBucket, number>
+  pendingRelease: number
+  returned: number
+  delayReviews: number
+  ngCount: number
+  onGo: (t: 'overview' | 'actions' | 'worklist' | 'insights') => void
+}) {
+  const greeting = (() => {
+    const h = new Date().getHours()
+    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+  })()
+  const priorities: { title: string; sub: string; n: number }[] = []
+  if (pendingRelease > 0) priorities.push({ title: `${pendingRelease} part${pendingRelease === 1 ? '' : 's'} pending vendor release`, sub: 'Review and release', n: pendingRelease })
+  if (delayReviews > 0) priorities.push({ title: `${delayReviews} vendor delay reason${delayReviews === 1 ? '' : 's'}`, sub: 'Awaiting your review', n: delayReviews })
+  if (returned > 0) priorities.push({ title: `${returned} returned part${returned === 1 ? '' : 's'}`, sub: 'Sent back by the vendor', n: returned })
+
+  return (
+    <div>
+      <h2 className="text-[17px] font-semibold text-[var(--color-text)]">{greeting}, {persona}</h2>
+      <p className="mb-4 text-[12px] text-[var(--color-muted)]">Items requiring attention across your assigned parts</p>
+
+      {/* Key KPIs */}
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" />
+        <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="clipboard-list" />
+        <KpiCard title="Delayed activities" value={totals.Delayed} color="#d97706" icon="calendar-month" />
+        <KpiCard title="NG / Rework" value={ngCount || totals.NG} color="#dc2626" icon="exclamation-circle" />
+      </div>
+
+      {/* Priority actions */}
+      <section className="epmp-card mb-5 px-5 py-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
+          {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
+        </div>
+        {priorities.length === 0 ? (
+          <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">Nothing urgent right now.</p>
+        ) : (
+          <div className="divide-y divide-[var(--color-border)]">
+            {priorities.map((p) => (
+              <div key={p.title} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium text-[var(--color-text)]">{p.title}</div>
+                  <div className="text-[11px] text-[var(--color-muted)]">{p.sub}</div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => onGo('actions')}>Open</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Activity snapshot */}
+      <section className="epmp-card px-5 py-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Activity snapshot</h3>
+          <button onClick={() => onGo('worklist')} className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">View worklist →</button>
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {([['Upcoming', totals.Upcoming, '#2153f5'], ['Completed', totals.Completed, '#10b981'], ['Delayed', totals.Delayed, '#d97706'], ['NG', totals.NG, '#dc2626']] as const).map(([label, n, c]) => (
+            <div key={label}>
+              <div className="text-[24px] font-bold" style={{ color: c }}>{n}</div>
+              <div className="text-[11px] text-[var(--color-muted)]">{label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export function MyWorkPage() {
@@ -298,14 +388,31 @@ export function MyWorkPage() {
   const { currentPersona } = usePersonaStore()
   const upcomingOnly = useUpcomingOnly()
 
-  // Top-level view toggle: graphical "Workspace", the "Worklist" of grouped cards, or "My Approvals".
-  // Opened on the approvals tab when returning from an activity form (?view=approvals).
+  // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
+  // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
+  type MwTab = 'overview' | 'actions' | 'worklist' | 'insights'
   const [searchParams] = useSearchParams()
-  const [view, setView] = useState<'workspace' | 'worklist'>(
-    searchParams.get('view') === 'worklist' || searchParams.get('view') === 'approvals' ? 'worklist' : 'workspace'
+  const viewParam = searchParams.get('view')
+  const [view, setView] = useState<MwTab>(
+    viewParam === 'worklist' || viewParam === 'approvals' ? 'worklist'
+      : viewParam === 'actions' ? 'actions'
+      : viewParam === 'insights' ? 'insights'
+      : 'overview'
   )
   // Worklist (merged): work to enter + things to approve, for this role.
   const approvalRows = useApprovalRows()
+  // Counts for the Overview KPIs and Activity snapshot.
+  const { delays: excDelays, ngRows: excNg } = useExceptionData()
+  const releaseCounts = useMemo(() => {
+    let pending = 0, returned = 0
+    for (const p of parts) {
+      if (p.supersededBy || !partInScope(p, currentPersona)) continue
+      const st = getReleaseState(p.partNo, partReleases, partAcks)
+      if (st === 'Pending') pending++
+      else if (st === 'Returned') returned++
+    }
+    return { pending, returned }
+  }, [parts, currentPersona, partReleases, partAcks])
 
   // Filters (the client's set). 'All' by default.
   const [fModel, setFModel] = useState('All')
@@ -465,28 +572,21 @@ export function MyWorkPage() {
         actions={<UpcomingToggle />}
       />
 
-      {/* Release + delay panels belong to the Workspace view; the Worklist lists its own items. */}
-      {effectiveView === 'workspace' && (
-        <>
-          {/* Release handshake: released / pending / returned (PIC side) or acknowledge / return (vendor side) */}
-          <ReleasePanel />
-          {/* Delay reasons: vendor gives them, PIC accepts or sends back */}
-          <DelayPanel />
-        </>
-      )}
-      {/* View toggle */}
+      {/* Four-tab toggle */}
       <Tabs
         className="mb-4"
         activeId={effectiveView}
-        onChange={(id) => setView(id as 'workspace' | 'worklist')}
+        onChange={(id) => setView(id as MwTab)}
         items={[
-          { id: 'workspace', label: 'Workspace' },
-          { id: 'worklist', label: 'Worklist', badge: worklistCount || undefined }
+          { id: 'overview', label: 'Overview' },
+          { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
+          { id: 'worklist', label: 'Worklist', badge: worklistCount || undefined },
+          { id: 'insights', label: 'Insights' }
         ]}
       />
 
-      {/* Filters — the client's set, applied to both the Workspace and the Worklist */}
-      {effectiveView !== 'worklist' && (
+      {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
+      {effectiveView === 'insights' && (
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-2 lg:-mx-7 lg:px-7">
       <section className="epmp-card px-4 py-3.5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
@@ -547,9 +647,25 @@ export function MyWorkPage() {
             </section>
           }
         />
+      ) : effectiveView === 'overview' ? (
+        <OverviewTab
+          persona={currentPersona}
+          totals={totals}
+          pendingRelease={releaseCounts.pending}
+          returned={releaseCounts.returned}
+          delayReviews={excDelays.review.length}
+          ngCount={excNg.length}
+          onGo={setView}
+        />
+      ) : effectiveView === 'actions' ? (
+        <>
+          {/* Release handshake + delay reason approvals — the PIC's transactional approvals */}
+          <ReleasePanel />
+          <DelayPanel />
+        </>
       ) : (
         <>
-          {/* Tiles: Upcoming / Completed / Delayed / NG */}
+          {/* Insights: tiles + performance charts (no transactional tables) */}
           <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {WORK_BUCKETS.map((b) => (
               <BucketTile
