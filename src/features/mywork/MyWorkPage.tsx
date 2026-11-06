@@ -326,7 +326,9 @@ function OverviewTab({
   if (returned > 0) priorities.push({ title: `${returned} returned part${returned === 1 ? '' : 's'}`, sub: 'Sent back by the vendor', n: returned })
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-col" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+      {/* Frozen top: KPIs + snapshot stay put; only Priority actions below scrolls. */}
+      <div className="flex-none">
       {/* Key KPIs */}
       <div className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
@@ -352,17 +354,18 @@ function OverviewTab({
           ))}
         </div>
       </section>
+      </div>
 
-      {/* Priority actions — last; the list scrolls inside the card so the page stays one screen. */}
-      <section className="epmp-card px-5 py-3">
-        <div className="mb-2 flex items-center justify-between">
+      {/* Priority actions — fills the remaining height; its list scrolls while the top stays frozen. */}
+      <section className="epmp-card flex min-h-0 flex-1 flex-col px-5 py-3">
+        <div className="mb-2 flex flex-none items-center justify-between">
           <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
           {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
         </div>
         {priorities.length === 0 ? (
           <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">Nothing urgent right now.</p>
         ) : (
-          <div className="max-h-[200px] divide-y divide-[var(--color-border)] overflow-y-auto">
+          <div className="min-h-0 flex-1 divide-y divide-[var(--color-border)] overflow-y-auto">
             {priorities.map((p) => (
               <div key={p.title} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
@@ -576,24 +579,20 @@ export function MyWorkPage() {
 
   return (
     <div>
-      <PageHeader
-        title="My Workspace"
-        section="Workspace"
-        actions={<UpcomingToggle />}
-      />
-
-      {/* Four-tab toggle */}
-      <Tabs
-        className="mb-4"
-        activeId={effectiveView}
-        onChange={(id) => setView(id as MwTab)}
-        items={[
-          { id: 'overview', label: 'Overview' },
-          { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
-          { id: 'worklist', label: 'Worklist', badge: worklistCount || undefined },
-          { id: 'insights', label: 'Insights' }
-        ]}
-      />
+      {/* No page header here — the four-tab bar is the page's own heading. The 30-day toggle sits beside it. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          activeId={effectiveView}
+          onChange={(id) => setView(id as MwTab)}
+          items={[
+            { id: 'overview', label: 'Overview' },
+            { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
+            { id: 'worklist', label: 'Worklist / Approval', badge: worklistCount || undefined },
+            { id: 'insights', label: 'Insights' }
+          ]}
+        />
+        <UpcomingToggle />
+      </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
       {effectiveView === 'insights' && (

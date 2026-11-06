@@ -10,26 +10,22 @@ interface PageHeaderProps {
   actions?: React.ReactNode
 }
 
-/** EPMP page header: "EPMP › Section › Page" breadcrumb, 25px title, grey description, right-aligned actions. */
-export function PageHeader({ title, description, section = 'Workspace', crumb, actions }: PageHeaderProps) {
+/**
+ * Compact page header: the "EPMP › Section › Page" breadcrumb on one row with the page actions. The large title
+ * block and description were dropped to save vertical space — the breadcrumb already names the page. `title` is
+ * still used as the breadcrumb's last segment (and `description` is accepted but no longer shown).
+ */
+export function PageHeader({ title, section = 'Workspace', crumb, actions }: PageHeaderProps) {
   return (
-    <>
-      <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <nav className="flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>
         <span>{section}</span>
         <span aria-hidden="true">›</span>
         <span className="text-[#344054]" aria-current="page">{crumb ?? title}</span>
       </nav>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] sm:text-[25px]">{title}</h1>
-          {description && (
-            <p className="mb-0 mt-1 max-w-[620px] text-xs leading-5 text-[var(--color-muted)]">{description}</p>
-          )}
-        </div>
-        {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:[&_a]:whitespace-nowrap max-sm:[&_button]:whitespace-nowrap max-sm:[&_label]:whitespace-nowrap">{actions}</div>}
-      </div>
-    </>
+      {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:[&_a]:whitespace-nowrap max-sm:[&_button]:whitespace-nowrap max-sm:[&_label]:whitespace-nowrap">{actions}</div>}
+    </div>
   )
 }
