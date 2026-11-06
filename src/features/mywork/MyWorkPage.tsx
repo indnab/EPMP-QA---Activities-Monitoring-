@@ -1,6 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { Fragment, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
@@ -22,6 +22,7 @@ import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useApprovalRows } from './approvalRows'
 import type { ApprovalRow, ApprovalType } from './approvalRows'
+import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
 import type { WorkGroup, WorkMode } from './workQueue'
 
 const filterCls =
@@ -111,14 +112,18 @@ const fmtDateTime = (iso?: string) => (iso ? fmtDate(iso.slice(0, 10)) : '—')
  * approve in one go; clicking a row opens the activity form for the detailed view.
  */
 function ApprovalsPanel() {
-  const navigate = useNavigate()
   const rows = useApprovalRows()
-  const { transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
+  const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
   const [sendBack, setSendBack] = useState<ApprovalRow | null>(null)
   const [comment, setComment] = useState('')
+  // The approval whose form is open in the drawer (over this list; closing returns here).
+  const [openRow, setOpenRow] = useState<ApprovalRow | null>(null)
+  const openForm = (r: ApprovalRow) => setOpenRow(r)
+  const openActivity = openRow ? activities.find((a) => a.id === (templateRows.find((t) => t.id === openRow.rowId)?.activityId)) : undefined
+  const openTemplateRow = openRow ? templateRows.find((t) => t.id === openRow.rowId) : undefined
 
   const keys = useMemo(() => new Set(rows.map((r) => r.key)), [rows])
   const selected = useMemo(() => new Set([...picked].filter((k) => keys.has(k))), [picked, keys])
@@ -148,7 +153,6 @@ function ApprovalsPanel() {
     }
     setSendBack(null); setComment('')
   }
-  const openForm = (r: ApprovalRow) => navigate(`/activities/${r.rowId}?part=${encodeURIComponent(r.partNo)}&from=approvals`)
 
   const allOn = rows.length > 0 && rows.every((r) => selected.has(r.key))
   const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -246,6 +250,16 @@ function ApprovalsPanel() {
             className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
         </label>
       </Modal>
+
+      {/* The activity form opens as a drawer over this list; closing returns here. */}
+      {openRow && openActivity && openTemplateRow && (
+        <PartDetailDrawer
+          activity={openActivity}
+          row={openTemplateRow}
+          partNo={openRow.partNo}
+          onClose={() => setOpenRow(null)}
+        />
+      )}
     </div>
   )
 }
