@@ -12,6 +12,8 @@ interface Picked {
 const RULES = [
   'Nothing is submitted automatically. You review every value first.',
   'AI never approves, edits or sends back on anyone’s behalf.',
+  'A PIC can update data for their own department only.',
+  'For dropdown fields, only the values available in the dropdown are allowed.',
   'AI-assisted values are marked in the history with the source file and the person who reviewed them.'
 ]
 

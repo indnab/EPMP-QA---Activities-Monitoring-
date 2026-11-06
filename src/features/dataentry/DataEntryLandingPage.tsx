@@ -60,19 +60,19 @@ export function DataEntryLandingPage() {
           There is nothing to enter for the {currentPersona} role here.
         </div>
       ) : (
-        <div className="epmp-card p-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="epmp-card p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {available.map((d) => (
               <button
                 key={d.to}
                 type="button"
                 onClick={() => navigate(d.to)}
-                className="group flex flex-col items-start rounded-2xl border border-[var(--color-border)] bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+                className="group flex flex-col items-start rounded-2xl border border-[var(--color-border)] bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
               >
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#eef2ff]">{d.icon}</span>
-                <span className="text-[15px] font-semibold text-[var(--color-text)]">{d.title}</span>
-                <span className="mt-1 text-[12px] leading-5 text-[var(--color-muted)]">{d.desc}</span>
-                <span className="mt-3 text-[12px] font-medium text-[var(--color-accent)]">
+                <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#eef2ff]">{d.icon}</span>
+                <span className="text-[14px] font-semibold text-[var(--color-text)]">{d.title}</span>
+                <span className="mt-0.5 text-[11px] leading-4 text-[var(--color-muted)]">{d.desc}</span>
+                <span className="mt-2 text-[12px] font-medium text-[var(--color-accent)]">
                   Open →
                 </span>
               </button>
@@ -83,7 +83,7 @@ export function DataEntryLandingPage() {
 
       {/* AI-based entry: bring a file or paste text; AI maps it to the fields you may fill (review before saving). */}
       {canEnterWork(currentPersona) && (
-        <div className="mt-4">
+        <div className="mt-3">
           <AiImportPanel role={currentPersona} />
         </div>
       )}

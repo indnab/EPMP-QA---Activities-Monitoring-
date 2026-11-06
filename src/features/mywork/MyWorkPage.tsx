@@ -119,7 +119,7 @@ interface WorkFilters {
   part: string; partCode: string; vendorCode: string; vendor: string
 }
 
-function ApprovalsPanel({ filters }: { filters: WorkFilters }) {
+function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBar?: React.ReactNode }) {
   const allRows = useApprovalRows()
   const rows = useMemo(
     () =>
@@ -188,7 +188,10 @@ function ApprovalsPanel({ filters }: { filters: WorkFilters }) {
 
   return (
     <div>
-      <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+      {/* Filters + toolbar pin to the top of the scroll area while the cards scroll under them. */}
+      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-3 lg:-mx-7 lg:px-7">
+      {filterBar}
+      <section className="epmp-card flex flex-wrap items-center gap-3 px-4 py-3">
         <Tabs
           activeId={segment}
           onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setPicked(new Set()) }}
@@ -211,6 +214,7 @@ function ApprovalsPanel({ filters }: { filters: WorkFilters }) {
           </Button>
         </div>
       </section>
+      </div>
 
       {shown.length === 0 ? (
         <Card><p className="py-12 text-center text-sm text-[var(--color-muted)]">Nothing here right now.</p></Card>
@@ -482,6 +486,7 @@ export function MyWorkPage() {
       />
 
       {/* Filters — the client's set, applied to both the Workspace and the Worklist */}
+      {effectiveView !== 'worklist' && (
       <section className="epmp-card mb-4 px-4 py-3.5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
           <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
@@ -507,9 +512,39 @@ export function MyWorkPage() {
           </div>
         )}
       </section>
+      )}
 
       {effectiveView === 'worklist' ? (
-        <ApprovalsPanel filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, part: fPart, partCode: fPartCode, vendorCode: fVendorCode, vendor: fVendor }} />
+        <ApprovalsPanel
+          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, part: fPart, partCode: fPartCode, vendorCode: fVendorCode, vendor: fVendor }}
+          filterBar={
+            <section className="epmp-card mb-3 px-4 py-3">
+              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Model</span>
+                  <select value={fModel} onChange={(e) => setFModel(e.target.value)} className={filterCls}><option value="All">All</option>{modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Department</span>
+                  <select value={fDept} onChange={(e) => setFDept(e.target.value)} className={filterCls}><option value="All">All</option>{deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Trial status</span>
+                  <select value={fMilestone} onChange={(e) => setFMilestone(e.target.value)} className={filterCls}><option value="All">All</option>{milestoneOptions.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">PIC name</span>
+                  <select value={fPic} onChange={(e) => setFPic(e.target.value)} className={filterCls}><option value="All">All</option>{picOptions.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part name</span>
+                  <input value={fPart} onChange={(e) => setFPart(e.target.value)} placeholder="All" className={filterCls} /></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Part code</span>
+                  <input value={fPartCode} onChange={(e) => setFPartCode(e.target.value)} placeholder="All" className={filterCls} /></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor code</span>
+                  <select value={fVendorCode} onChange={(e) => setFVendorCode(e.target.value)} className={filterCls}><option value="All">All</option>{vendorCodeOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
+                <label className="block"><span className="mb-1 block text-[10px] font-semibold text-[var(--color-muted)]">Vendor name</span>
+                  <select value={fVendor} onChange={(e) => setFVendor(e.target.value)} className={filterCls}><option value="All">All</option>{vendorOptions.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
+              </div>
+              {hasFilters && (
+                <div className="mt-2.5">
+                  <button onClick={clearFilters} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear all filters</button>
+                </div>
+              )}
+            </section>
+          }
+        />
       ) : (
         <>
           {/* Tiles: Upcoming / Completed / Delayed / NG */}
