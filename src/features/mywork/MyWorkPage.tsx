@@ -1,6 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { Fragment, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
@@ -12,7 +12,7 @@ import {
   workBucket, bucketTotals, workspaceGroups,
   WORK_BUCKETS, WORK_BUCKET_COLORS, WORK_BUCKET_DESC
 } from '../../engine'
-import type { WorkBucket } from '../../engine'
+import type { WorkBucket, FilteredInstance } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { hasMyWork } from './workQueue'
@@ -33,9 +33,6 @@ import type { SortDir } from './SortMenu'
 const filterCls =
   'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
-// Mirrors <Button variant="primary" size="sm"> so a navigating <Link> looks identical to the worklist "Open form" button.
-const openFormBtnCls =
-  'inline-flex items-center justify-center gap-1.5 rounded-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] bg-[var(--color-primary)] border border-[var(--color-primary)] text-white hover:brightness-105 px-3 py-1.5 text-[11px]'
 
 // Detail-table columns: sortable + per-column filterable.
 type TableColKey = 'status' | 'partNo' | 'partName' | 'model' | 'department' | 'vendorName' | 'milestoneId' | 'activity' | 'planned'
@@ -624,6 +621,8 @@ export function MyWorkPage() {
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+  // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
+  const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
   // Detail-table sort + per-column filter.
   const [detailView, setDetailView] = useViewMode('insights-detail', 'table')
   const [sortKey, setSortKey] = useState<TableColKey>('partNo')
@@ -963,10 +962,7 @@ export function MyWorkPage() {
                           <span className="col-span-2">Planned <span className="text-[var(--color-text)]">{planned}</span></span>
                         </div>
                       </div>
-                      <Link
-                        to={`/activities/${i.row.id}?part=${encodeURIComponent(i.part.partNo)}`}
-                        className={`mt-auto self-start ${openFormBtnCls}`}
-                      >Open form</Link>
+                      <Button variant="primary" size="sm" className="mt-auto self-start" onClick={() => setOpenInstance(i)}>Open form</Button>
                     </div>
                   )
                 })}
@@ -1047,11 +1043,8 @@ export function MyWorkPage() {
                           ),
                         } as Record<TableColKey, React.ReactNode>)[c.key]}</Fragment>)}
                         <td className="px-3 py-2.5 text-right">
-                          <Link
-                            // Opens this part's form for this activity (the part drawer), not the whole part list.
-                            to={`/activities/${i.row.id}?part=${encodeURIComponent(i.part.partNo)}`}
-                            className={openFormBtnCls}
-                          >Open form</Link>
+                          {/* Opens the form as a drawer over Insights; closing returns here, not the Activity page. */}
+                          <Button variant="primary" size="sm" onClick={() => setOpenInstance(i)}>Open form</Button>
                         </td>
                       </tr>
                     )
@@ -1065,6 +1058,16 @@ export function MyWorkPage() {
             )}
           </Card></ExportSection>
         </>
+      )}
+
+      {/* Insights "Open form": the activity form opens over this page; closing returns to Insights. */}
+      {openInstance && (
+        <PartDetailDrawer
+          activity={openInstance.activity}
+          row={openInstance.row}
+          partNo={openInstance.part.partNo}
+          onClose={() => setOpenInstance(null)}
+        />
       )}
     </div>
   )
