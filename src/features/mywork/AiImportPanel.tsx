@@ -9,23 +9,9 @@ interface Picked {
   label: string
 }
 
-const COPY: Record<'Vendor' | 'PIC', { brings: string; example: string }> = {
-  Vendor: {
-    brings: 'tables in Excel or CSV, pasted tables, emails, PDFs, scans, or plain sentences',
-    example: 'All Swift parts: PPVT closed, tool ready, target 30 Oct'
-  },
-  PIC: {
-    brings: 'review notes, meeting minutes, email threads, marked-up drawing lists, or typed notes',
-    example: 'ORVM LH drawing available, proprietary, target 12 Nov'
-  }
-}
-
 const RULES = [
   'Nothing is submitted automatically. You review every value first.',
-  'Attachments, other roles’ fields, calculated fields, parts outside your scope, and submitted, approved or not-applicable rows are never touched.',
   'AI never approves, edits or sends back on anyone’s behalf.',
-  'For fields that only accept listed values, AI may pick the nearest allowed value. The pick is shown as an exact or closest match, with the allowed list, and closest matches always need your decision.',
-  'Anything AI could not update (no fitting value, invalid date, fetched field, unknown part) is listed with the reason. Nothing is changed for it.',
   'AI-assisted values are marked in the history with the source file and the person who reviewed them.'
 ]
 
@@ -40,7 +26,6 @@ interface Props {
  * only shows what was picked and states that AI mapping is not part of this prototype. Nothing is read or changed.
  */
 export function AiImportPanel({ role, defaultOpen = true }: Props) {
-  const copy = COPY[role === 'PIC' ? 'PIC' : 'Vendor']
   const fileRef = useRef<HTMLInputElement>(null)
   const [picked, setPicked] = useState<Picked | null>(null)
   const [pasted, setPasted] = useState('')
@@ -83,11 +68,6 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
       </summary>
 
       <div className="mt-3 space-y-3">
-        <p className="text-[11px] leading-5 text-[var(--color-muted)]">
-          Bring anything: {copy.brings}. For example: <em>“{copy.example}”</em>. AI will match it to parts and the fields you are allowed
-          to fill, then ask you to review before anything is saved.
-        </p>
-
         <div className="grid gap-3 md:grid-cols-2">
           <div
             onDragOver={(e) => {

@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components'
 import { usePersonaStore } from '../../store/personaStore'
 import type { PersonaId } from '../../store/personaStore'
+import { AiImportPanel } from '../mywork/AiImportPanel'
+import { canEnterWork } from '../mywork/workQueue'
 
 interface Dest {
   to: string
@@ -76,6 +78,13 @@ export function DataEntryLandingPage() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* AI-based entry: bring a file or paste text; AI maps it to the fields you may fill (review before saving). */}
+      {canEnterWork(currentPersona) && (
+        <div className="mt-4">
+          <AiImportPanel role={currentPersona} />
         </div>
       )}
     </div>

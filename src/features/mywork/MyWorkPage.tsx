@@ -458,7 +458,6 @@ export function MyWorkPage() {
       <PageHeader
         title="My Workspace"
         section="Workspace"
-        description="Your parts at a glance — graphical and as tiles. Filter, then click a bar or a tile (NG especially) to pull up the exact parts to work on."
         actions={<UpcomingToggle />}
       />
 
