@@ -127,7 +127,7 @@ function ApprovalTable({
   const th = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
   return (
     <Card flush>
-      <div className="table-scroll">
+      <div className="table-scroll cta-pin">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -590,6 +590,7 @@ export function MyWorkPage() {
   const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
   // Detail-table sort + per-column filter.
+  const [detailView, setDetailView] = useViewMode('insights-detail', 'table')
   const [sortKey, setSortKey] = useState<TableColKey>('partNo')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [colFilters, setColFilters] = useState<Record<TableColKey, string>>({
@@ -885,17 +886,53 @@ export function MyWorkPage() {
                 <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[11px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
               </h3>
               <div className="ml-auto flex items-center gap-3">
-                {anyColFilter && (
+                {anyColFilter && detailView === 'table' && (
                   <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '' })}
                     className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
                 )}
                 {(selectedBucket || selectedGroup) && (
                   <button onClick={() => { setSelectedBucket(null); setSelectedGroup(null) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
+                <ViewModeToggle value={detailView} onChange={setDetailView} />
               </div>
             </div>
-            {/* Mobile: the table scrolls sideways inside this wrapper (Activity first); only Open is pinned right (.tbl-sleeve-r). */}
-            <div className={`page-sticky-head ${isMobile ? 'tbl-sleeve tbl-sleeve-r overflow-x-auto' : ''}`}>
+            {detailView === 'card' ? (
+              <div className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2 xl:grid-cols-3">
+                {tableRows.length === 0 ? (
+                  <p className="col-span-full px-4 py-10 text-center text-[var(--color-muted)]">No parts in this selection.</p>
+                ) : tableRows.map((i) => {
+                  const b = workBucket(i)!
+                  const planned = i.dates.status === 'resolved' ? `${fmtDate(i.dates.start)} → ${fmtDate(i.dates.end)}` : 'Awaiting MRD'
+                  return (
+                    <div key={`${i.row.id}-${i.part.partNo}`} className="epmp-card flex flex-col gap-2 px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          style={{ background: `${WORK_BUCKET_COLORS[b]}1a`, color: WORK_BUCKET_COLORS[b] }}>
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}
+                        </span>
+                        <span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span>
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-semibold text-[var(--color-text)]">{i.activity.name}</div>
+                        <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] text-[var(--color-muted)]">
+                          <span>Part <span className="font-mono text-[var(--color-text)]">{i.part.partNo}</span></span>
+                          <span>Model <span className="text-[var(--color-text)]">{i.part.model}</span></span>
+                          <span>Dept <span className="text-[var(--color-text)]">{i.part.department}</span></span>
+                          <span>Vendor <span className="text-[var(--color-text)]">{i.part.vendorName}</span></span>
+                          <span className="col-span-2">Planned <span className="text-[var(--color-text)]">{planned}</span></span>
+                        </div>
+                      </div>
+                      <Link
+                        to={`/activities/${i.row.id}?part=${encodeURIComponent(i.part.partNo)}`}
+                        className="mt-auto self-start text-[11px] font-semibold text-[var(--color-accent)] hover:underline"
+                      >Open →</Link>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+            /* Table: the row scrolls sideways inside this wrapper; the Open (CTA) column stays pinned right (.cta-pin). */
+            <div className="page-sticky-head cta-pin">
               <table className="w-full text-sm">
                 <thead>
                   {/* Sortable header row */}
@@ -984,6 +1021,7 @@ export function MyWorkPage() {
                 </tbody>
               </table>
             </div>
+            )}
           </Card></ExportSection>
         </>
       )}

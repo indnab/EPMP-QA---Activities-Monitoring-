@@ -246,6 +246,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   .tbl-sleeve.tbl-sleeve-r thead tr:nth-child(2) th:first-child { background: #fff; }
 }
 
+/* ── Pinned CTA column (all widths) ──────────────────────────────────────────
+   Keeps the row's action cell (the last column) visible when a wide table scrolls
+   sideways. Put `.cta-pin` on a horizontal-scroll wrapper around the table; its
+   last column in every row (header + body) sticks to the right edge. */
+.cta-pin { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cta-pin > table { min-width: 100%; }
+.cta-pin th:last-child,
+.cta-pin td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: #fff;
+  box-shadow: inset 1px 0 0 var(--color-border), -6px 0 8px -6px rgba(16, 24, 40, .18);
+}
+/* Header's pinned action cell must sit above the sticky top header row. */
+.cta-pin thead th:last-child { z-index: 7; background: var(--color-table-head); }
+/* The filter row (2nd header row) action cell is empty — keep it white and pinned. */
+.cta-pin.page-sticky-head thead tr:nth-child(2) th:last-child { background: #fff; z-index: 7; }
+.cta-pin tbody tr:hover td:last-child { background: var(--color-secondary, #eef4ff); }
+.cta-pin td[colspan] { position: static; box-shadow: none; }
+
 /* ── Sitewide rhythm: headings balance their lines (no single hanging word) and secondary text
    keeps a clear gap from the primary line above it. */
 h1, h2, h3, h4 { text-wrap: balance; }
