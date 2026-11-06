@@ -1,6 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { Fragment, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
@@ -148,7 +148,7 @@ function ApprovalsPanel() {
     }
     setSendBack(null); setComment('')
   }
-  const openForm = (r: ApprovalRow) => navigate(`/activities/${r.rowId}?part=${encodeURIComponent(r.partNo)}`)
+  const openForm = (r: ApprovalRow) => navigate(`/activities/${r.rowId}?part=${encodeURIComponent(r.partNo)}&from=approvals`)
 
   const allOn = rows.length > 0 && rows.every((r) => selected.has(r.key))
   const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -284,7 +284,11 @@ export function MyWorkPage() {
   const upcomingOnly = useUpcomingOnly()
 
   // Top-level view toggle: graphical "Workspace", the "Worklist" of grouped cards, or "My Approvals".
-  const [view, setView] = useState<'workspace' | 'worklist' | 'approvals'>('workspace')
+  // Opened on the approvals tab when returning from an activity form (?view=approvals).
+  const [searchParams] = useSearchParams()
+  const [view, setView] = useState<'workspace' | 'worklist' | 'approvals'>(
+    searchParams.get('view') === 'approvals' ? 'approvals' : 'workspace'
+  )
   // Worklist enter/validate mode.
   const [tab, setTab] = useState<WorkMode>('enter')
   // Approvals across the app that wait on the current role (validations + deviations + actions + delay reasons).

@@ -92,6 +92,10 @@ export function WorkspacePage() {
 
   // Drawer: the open part lives in the URL (?part=) so a link, for example from the dashboards, opens a part's form
   const partParam = searchParams.get('part')
+  // Where "Back" returns to. Opened from My Approvals → back to that tab; otherwise the Activities list.
+  const cameFromApprovals = searchParams.get('from') === 'approvals'
+  const backTo = cameFromApprovals ? '/mywork?view=approvals' : '/activities'
+  const backLabel = cameFromApprovals ? 'My Approvals' : 'Activities'
   const setOpenPartNo = (partNo: string | null) => {
     setSearchParams((prev) => {
       if (partNo) prev.set('part', partNo)
@@ -242,7 +246,7 @@ export function WorkspacePage() {
       <div className="flex flex-col items-center justify-center py-20 text-[var(--color-muted)]">
         <p className="mb-3 text-[var(--color-muted)]"><FbIcon name="search" size={36} /></p>
         <p className="font-medium">Activity not found</p>
-        <Link to="/activities" className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to Activities</Link>
+        <Link to={backTo} className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to {backLabel}</Link>
       </div>
     )
   }
@@ -253,7 +257,7 @@ export function WorkspacePage() {
         <p className="mb-3 text-[var(--color-muted)]"><FbIcon name="lock" size={36} /></p>
         <p className="font-medium">Not available for your role</p>
         <p className="text-sm mt-1">This activity belongs to section {row.section}, which is outside your scope.</p>
-        <Link to="/activities" className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to Activities</Link>
+        <Link to={backTo} className="mt-4 text-sm text-[var(--color-accent)] hover:underline">← Back to {backLabel}</Link>
       </div>
     )
   }
@@ -322,7 +326,7 @@ export function WorkspacePage() {
       <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>
-        <Link to="/activities" className="hover:underline">Activities</Link>
+        <Link to={backTo} className="hover:underline">{backLabel}</Link>
         <span aria-hidden="true">›</span>
         <span className="text-[#344054]" aria-current="page">{activity.name}</span>
       </nav>
