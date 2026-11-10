@@ -13,7 +13,9 @@ import {
   WORK_BUCKETS, WORK_BUCKET_COLORS, WORK_BUCKET_DESC
 } from '../../engine'
 import type { WorkBucket, FilteredInstance } from '../../engine'
-import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
+import { DEMO_TODAY, fmtDate, partInScope, canPersonaEdit } from '../scope'
+import { makeEntryId } from '../../domain'
+import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { hasMyWork } from './workQueue'
 import { ReleasePanel } from './ReleasePanel'
@@ -577,7 +579,7 @@ function OverviewTab({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export function MyWorkPage() {
-  const { activities, entries, templateRows, models, parts, partReleases, partAcks, picAssignments } = useQAStore()
+  const { activities, entries, templateRows, models, parts, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const upcomingOnly = useUpcomingOnly()
 
@@ -623,6 +625,10 @@ export function MyWorkPage() {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
+  // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
+  const [insPicked, setInsPicked] = useState<Set<string>>(new Set())
+  const [insBulkOpen, setInsBulkOpen] = useState(false)
+  const [insNotice, setInsNotice] = useState('')
   // Detail-table sort + per-column filter.
   const [detailView, setDetailView] = useViewMode('insights-detail', 'table')
   const [sortKey, setSortKey] = useState<TableColKey>('partNo')
@@ -755,6 +761,24 @@ export function MyWorkPage() {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instances, selectedBucket, selectedGroup, groupDim, colFilters, sortKey, sortDir])
+
+  // ── Insights bulk fill ──
+  const insKey = (i: FilteredInstance) => `${i.row.id}|${i.part.partNo}`
+  // Only ticks on rows still shown count (filters/drill can hide ticked rows).
+  const insSelected = useMemo(() => tableRows.filter((i) => insPicked.has(insKey(i))), [tableRows, insPicked])
+  const insAllOn = tableRows.length > 0 && insSelected.length === tableRows.length
+  const insToggle = (i: FilteredInstance) =>
+    setInsPicked((prev) => { const n = new Set(prev); const k = insKey(i); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  const insToggleAll = () => setInsPicked(insAllOn ? new Set() : new Set(tableRows.map(insKey)))
+  // Rows can be different activities: offer only fields every selected row has (same key) and this persona can fill.
+  const insCommonFields = useMemo(() => {
+    if (insSelected.length === 0) return []
+    const fillable = (i: FilteredInstance) =>
+      i.activity.fields.filter((f) => !f.dataOnly && f.type !== 'table' && canPersonaEdit(f, currentPersona, i.entry))
+    const [first, ...rest] = insSelected
+    return fillable(first).filter((f) => rest.every((i) => fillable(i).some((g) => g.key === f.key)))
+  }, [insSelected, currentPersona])
+  const insActivityCount = new Set(insSelected.map((i) => i.activity.id)).size
 
   function toggleSort(key: TableColKey) {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -936,6 +960,27 @@ export function MyWorkPage() {
                 <ViewModeToggle value={detailView} onChange={setDetailView} />
               </div>
             </div>
+            {/* Bulk bar: appears when rows are ticked; fills the fields they share for all of them at once. */}
+            {(insSelected.length > 0 || insNotice) && (
+              <div data-export-ignore="true" className="flex flex-wrap items-center gap-3 border-b border-[#bfdbfe] bg-secondary px-4 py-2 text-sm">
+                {insSelected.length > 0 && (
+                  <>
+                    <span className="font-medium text-primary">{insSelected.length} selected</span>
+                    <Button variant="primary" size="sm" disabled={insCommonFields.length === 0} onClick={() => setInsBulkOpen(true)}
+                      title={insCommonFields.length === 0 ? 'The selected rows have no fields in common that you can fill' : undefined}>
+                      Fill selected ({insSelected.length})
+                    </Button>
+                    {insCommonFields.length === 0 && (
+                      <span className="text-[11px] text-[var(--color-muted)]">No common fields you can fill for these rows.</span>
+                    )}
+                  </>
+                )}
+                {insNotice && <span className="text-[11px] text-emerald-700" role="status">{insNotice}</span>}
+                {insSelected.length > 0 && (
+                  <button onClick={() => setInsPicked(new Set())} className="ml-auto text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]">Clear selection</button>
+                )}
+              </div>
+            )}
             {detailView === 'card' ? (
               <div className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2 xl:grid-cols-3">
                 {tableRows.length === 0 ? (
@@ -944,9 +989,11 @@ export function MyWorkPage() {
                   const b = workBucket(i)!
                   const planned = i.dates.status === 'resolved' ? `${fmtDate(i.dates.start)} → ${fmtDate(i.dates.end)}` : 'Awaiting MRD'
                   return (
-                    <div key={`${i.row.id}-${i.part.partNo}`} className="epmp-card flex flex-col gap-2 px-4 py-3">
+                    <div key={`${i.row.id}-${i.part.partNo}`} className={`epmp-card flex flex-col gap-2 px-4 py-3 ${insPicked.has(insKey(i)) ? 'ring-2 ring-[#bfdbfe]' : ''}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        <input type="checkbox" aria-label={`Select ${i.part.partNo} ${i.activity.name}`}
+                          checked={insPicked.has(insKey(i))} onChange={() => insToggle(i)} />
+                        <span className="mr-auto inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium"
                           style={{ background: `${WORK_BUCKET_COLORS[b]}1a`, color: WORK_BUCKET_COLORS[b] }}>
                           <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}
                         </span>
@@ -974,6 +1021,9 @@ export function MyWorkPage() {
                 <thead>
                   {/* Sortable header row */}
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+                    <th className={`${thCls} w-8`} data-export-ignore="true">
+                      <input type="checkbox" aria-label="Select all rows" checked={insAllOn} onChange={insToggleAll} />
+                    </th>
                     {tableCols.map((c) => (
                       <th key={c.key} className={`${thCls} cursor-pointer select-none hover:text-[var(--color-text)]`}
                         onClick={() => toggleSort(c.key)}
@@ -988,6 +1038,7 @@ export function MyWorkPage() {
                   </tr>
                   {/* Per-column filter row */}
                   <tr data-export-ignore="true" className="border-b border-[var(--color-border)] bg-white">
+                    <th></th>
                     {tableCols.map((c) => (
                       <th key={c.key} className="px-2 py-1.5">
                         <input
@@ -1007,7 +1058,11 @@ export function MyWorkPage() {
                     const b = workBucket(i)!
                     const planned = i.dates.status === 'resolved' ? `${fmtDate(i.dates.start)} → ${fmtDate(i.dates.end)}` : 'Awaiting MRD'
                     return (
-                      <tr key={`${i.row.id}-${i.part.partNo}`} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
+                      <tr key={`${i.row.id}-${i.part.partNo}`} className={`border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40 ${insPicked.has(insKey(i)) ? 'bg-secondary/60' : ''}`}>
+                        <td className="px-3 py-2.5" data-export-ignore="true">
+                          <input type="checkbox" aria-label={`Select ${i.part.partNo} ${i.activity.name}`}
+                            checked={insPicked.has(insKey(i))} onChange={() => insToggle(i)} />
+                        </td>
                         {tableCols.map((c) => <Fragment key={c.key}>{({
                           status: (
                         <td className="px-3 py-2.5">
@@ -1050,7 +1105,7 @@ export function MyWorkPage() {
                     )
                   })}
                   {tableRows.length === 0 && (
-                    <tr><td colSpan={10} className="px-4 py-10 text-center text-[var(--color-muted)]">No parts in this selection.</td></tr>
+                    <tr><td colSpan={11} className="px-4 py-10 text-center text-[var(--color-muted)]">No parts in this selection.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1058,6 +1113,28 @@ export function MyWorkPage() {
             )}
           </Card></ExportSection>
         </>
+      )}
+
+      {/* Insights bulk fill: the shared fields of the ticked rows, written to each row's own activity entry. */}
+      {insBulkOpen && (
+        <BulkFillDialog
+          title={`Fill ${insSelected.length} row${insSelected.length === 1 ? '' : 's'}`}
+          note={insActivityCount > 1 ? `${insActivityCount} activities — only the fields they share are shown` : insSelected[0]?.activity.name}
+          fields={insCommonFields}
+          targetCount={insSelected.length}
+          currentPersona={currentPersona}
+          onClose={() => setInsBulkOpen(false)}
+          onApply={(values, submit) => {
+            for (const i of insSelected) {
+              updateEntryValues(i.row.id, i.part.partNo, values, currentPersona)
+              if (submit) transitionEntryState(makeEntryId(i.row.id, i.part.partNo), 'Submit', undefined, currentPersona)
+            }
+            const n = insSelected.length
+            setInsNotice(`${submit ? 'Saved and submitted' : 'Saved'} for ${n} row${n === 1 ? '' : 's'}.`)
+            setInsBulkOpen(false)
+            setInsPicked(new Set())
+          }}
+        />
       )}
 
       {/* Insights "Open form": the activity form opens over this page; closing returns to Insights. */}

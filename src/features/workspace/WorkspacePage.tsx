@@ -4,12 +4,12 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { calculateRYG, resolveInstanceDates, resolveTrackedDates, completionPct, getMilestoneMrd, isWorkableByVendor } from '../../engine'
-import { Button, Card, Modal, RygDot, StatusPill, ApplicabilityDialog, getFieldRenderer, SourceBadge } from '../../components'
-import type { SourceType } from '../../components'
+import { Button, Card, RygDot, StatusPill, ApplicabilityDialog } from '../../components'
 import type { RygStatus } from '../../components/RygDot'
 import type { StatusValue } from '../../components/StatusPill'
-import type { PartRecord, ActivityDefinition, TemplateRow, FieldDefinition } from '../../domain'
+import type { PartRecord } from '../../domain'
 import { makeEntryId } from '../../domain'
+import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { PartDetailDrawer } from './PartDetailDrawer'
 import { listColumnFields, listCellTexts } from '../listColumns'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -655,10 +655,10 @@ export function WorkspacePage() {
 
       {bulkFillOpen && (
         <BulkFillDialog
-          activity={activity}
-          row={row}
+          title={`Fill ${bulkTargets.length} part${bulkTargets.length === 1 ? '' : 's'} · ${activity.name}`}
+          note={row.milestoneId}
           fields={bulkEditableFields}
-          targetPartNos={bulkTargets}
+          targetCount={bulkTargets.length}
           currentPersona={currentPersona}
           onClose={() => setBulkFillOpen(false)}
           onApply={(values, submit) => {
@@ -685,67 +685,3 @@ export function WorkspacePage() {
   )
 }
 
-/**
- * Bulk fill: one form of the activity's common fields. Whatever is entered here is written to every selected
- * part at once, so a PIC/vendor can fill the same answers for many parts in a single pass. Only fields that
- * are actually changed get written (blank fields are left untouched per part).
- */
-function BulkFillDialog({
-  activity, row, fields, targetPartNos, currentPersona, onClose, onApply
-}: {
-  activity: ActivityDefinition
-  row: TemplateRow
-  fields: FieldDefinition[]
-  targetPartNos: string[]
-  currentPersona: string
-  onClose: () => void
-  onApply: (values: Record<string, unknown>, submit: boolean) => void
-}) {
-  const [draft, setDraft] = useState<Record<string, unknown>>({})
-  const setField = (key: string, v: unknown) => setDraft((d) => ({ ...d, [key]: v }))
-  // Only write fields the user actually touched (and left non-empty), so bulk-fill never blanks existing values.
-  const filled = Object.fromEntries(
-    Object.entries(draft).filter(([, v]) => v !== undefined && v !== null && v !== '')
-  )
-  const filledCount = Object.keys(filled).length
-  const n = targetPartNos.length
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      size="lg"
-      title={`Fill ${n} part${n === 1 ? '' : 's'} · ${activity.name}`}
-      footer={
-        <div className="flex w-full items-center gap-2">
-          <span className="text-[11px] text-[var(--color-muted)]">
-            {filledCount === 0 ? 'Enter at least one field.' : `${filledCount} field${filledCount === 1 ? '' : 's'} → ${n} part${n === 1 ? '' : 's'}`}
-          </span>
-          <div className="ml-auto flex gap-2">
-            <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="secondary" size="md" disabled={filledCount === 0} onClick={() => onApply(filled, false)}>Save draft</Button>
-            <Button variant="primary" size="md" disabled={filledCount === 0} onClick={() => onApply(filled, true)}>Save &amp; submit</Button>
-          </div>
-        </div>
-      }
-    >
-      <p className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-3 py-2 text-[12px] text-primary">
-        {row.milestoneId} · the values below are written to all {n} selected part{n === 1 ? '' : 's'}. Fields left blank keep each part's current value.
-      </p>
-      <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-        {fields.map((field) => {
-          const renderer = getFieldRenderer(field.type)
-          return (
-            <div key={field.key} className="min-w-0">
-              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                <span className="text-[12px] font-medium text-[#344054]">{field.label}</span>
-                {field.source && <SourceBadge source={field.source as SourceType} />}
-              </div>
-              {renderer.editor({ field, value: draft[field.key], onChange: (v) => setField(field.key, v), currentPersona })}
-            </div>
-          )
-        })}
-      </div>
-    </Modal>
-  )
-}
