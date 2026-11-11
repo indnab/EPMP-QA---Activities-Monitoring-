@@ -11,6 +11,8 @@ import type { RowModel } from '../mywork/gridModel'
 import { CellEditor } from '../mywork/GridCell'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import type { GlobalFilters, FieldDefinition, PartRecord } from '../../domain'
+import { makeEntryId } from '../../domain'
+import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { DEMO_TODAY } from '../scope'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { EMPTY_PART_FILTERS, ExceptionFilterBar, useExcMatcher } from '../exceptions/exceptionFilters'
@@ -35,7 +37,7 @@ interface ActivityCols {
 }
 
 export function BulkEntryPage() {
-  const { activities, entries, templateRows, models, parts, updateEntryValues, logAudit } = useQAStore()
+  const { activities, entries, templateRows, models, parts, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const role = currentPersona as PersonaId
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'
@@ -111,6 +113,12 @@ export function BulkEntryPage() {
   const [edits, setEdits] = useState<Record<string, Record<string, any>>>({})
   const [toast, setToast] = useState<string | null>(null)
 
+  // ── Select parts, then click an activity name to fill that activity for all of them at once ──
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [fillRowId, setFillRowId] = useState<string | null>(null)
+  const togglePick = (partNo: string) =>
+    setPicked((prev) => { const n = new Set(prev); if (n.has(partNo)) n.delete(partNo); else n.add(partNo); return n })
+
   const setCell = (rowId: string, partNo: string, key: string, value: any) =>
     setEdits((prev) => {
       const k = `${rowId}|${partNo}`
@@ -118,6 +126,57 @@ export function BulkEntryPage() {
     })
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000) }
+
+  // Only ticks on parts still shown count (filters can hide ticked parts).
+  const pickedRows = partRows.filter((r) => picked.has(r.part.partNo))
+  const allPicked = partRows.length > 0 && pickedRows.length === partRows.length
+  // How many ticked parts an activity applies to (it may not apply to every part).
+  const pickedFor = (rowId: string) => pickedRows.filter((r) => r.byRow.has(rowId))
+
+  // The activity whose form is open, its target parts, and each part's editable keys right now.
+  const fillCol = fillRowId ? activityCols.find((a) => a.rowId === fillRowId) : undefined
+  const fillTargets = useMemo(() => {
+    if (!fillCol) return []
+    return pickedFor(fillCol.rowId).map(({ part, byRow }) => {
+      const m = buildRowModel(byRow.get(fillCol.rowId)!, role, edits[`${fillCol.rowId}|${part.partNo}`] ?? {}, 'enter')
+      return { partNo: part.partNo, editable: new Set(fillCol.columns.filter((c) => m.editable[c.key]).map((c) => c.key)) }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillCol, pickedRows, edits, role])
+  // Offer a field if at least one target part can still edit it (table fields are per-row, so not bulk-filled).
+  const fillFields = fillCol
+    ? fillCol.columns.filter((c) => c.type !== 'table' && fillTargets.some((t) => t.editable.has(c.key)))
+    : []
+  // Parts that can still take values vs. ones that are locked (submitted/approved) and get skipped.
+  const fillEditable = fillTargets.filter((t) => t.editable.size > 0).length
+  const fillLocked = fillTargets.length - fillEditable
+
+  function applyFill(values: Record<string, unknown>, submit: boolean) {
+    if (!fillCol) return
+    let written = 0
+    for (const t of fillTargets) {
+      // Write only what this part may still edit (a submitted/approved part is skipped for locked fields).
+      const own = Object.fromEntries(Object.entries(values).filter(([k]) => t.editable.has(k)))
+      if (Object.keys(own).length === 0) continue
+      updateEntryValues(fillCol.rowId, t.partNo, own, role)
+      if (submit) transitionEntryState(makeEntryId(fillCol.rowId, t.partNo), 'Submit', undefined, role)
+      written += 1
+    }
+    // Drop any staged grid edits for the written fields so the grid shows the newly saved values.
+    setEdits((prev) => {
+      const next = { ...prev }
+      for (const t of fillTargets) {
+        const k = `${fillCol.rowId}|${t.partNo}`
+        if (!next[k]) continue
+        const rest = Object.fromEntries(Object.entries(next[k]).filter(([key]) => !(key in values)))
+        if (Object.keys(rest).length) next[k] = rest
+        else delete next[k]
+      }
+      return next
+    })
+    setFillRowId(null)
+    showToast(`${fillCol.name}: ${submit ? 'saved and submitted' : 'saved'} for ${written} part${written === 1 ? '' : 's'}.`)
+  }
 
   function saveAll() {
     let saved = 0
@@ -251,8 +310,16 @@ export function BulkEntryPage() {
 
       {/* Toolbar */}
       <div className="epmp-card mb-4 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <span className="text-[12px] font-semibold text-[#101828]">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold text-[#101828]">
           {partRows.length} parts · {activityCols.length} activities · {totalCols} fields
+          {pickedRows.length > 0 ? (
+            <span className="inline-flex items-center gap-2 font-normal text-[var(--color-primary)]">
+              {pickedRows.length} selected · click an activity name to fill it for all of them
+              <button onClick={() => setPicked(new Set())} className="text-[11px] text-[var(--color-muted)] hover:underline">Clear</button>
+            </span>
+          ) : (
+            <span className="font-normal text-[11px] text-[var(--color-muted)]">Tick parts, then click an activity name to fill it for all of them.</span>
+          )}
         </span>
         <div className="flex items-center gap-2">
           {toast && <span className="text-[11px] font-medium text-emerald-700">{toast}</span>}
@@ -283,17 +350,35 @@ export function BulkEntryPage() {
                   rowSpan={2}
                   className="sticky left-0 top-0 z-30 min-w-[180px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left align-bottom text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]"
                 >
-                  Part
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" aria-label="Select all parts" checked={allPicked}
+                      onChange={() => setPicked(allPicked ? new Set() : new Set(partRows.map((r) => r.part.partNo)))} />
+                    Part
+                  </label>
                 </th>
-                {activityCols.map((a, ai) => (
-                  <th
-                    key={a.rowId}
-                    colSpan={a.columns.length}
-                    className={`sticky top-0 z-20 whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 text-left text-[11px] font-semibold text-[#101828] ${ai % 2 ? 'bg-[#eef2ff]' : 'bg-[#f3f4f6]'}`}
-                  >
-                    {a.name} <span className="font-normal text-[var(--color-muted)]">· {a.milestoneId}</span>
-                  </th>
-                ))}
+                {activityCols.map((a, ai) => {
+                  const n = pickedFor(a.rowId).length
+                  return (
+                    <th
+                      key={a.rowId}
+                      colSpan={a.columns.length}
+                      className={`sticky top-0 z-20 whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 text-left text-[11px] font-semibold text-[#101828] ${ai % 2 ? 'bg-[#eef2ff]' : 'bg-[#f3f4f6]'}`}
+                    >
+                      {n > 0 ? (
+                        // With parts ticked, the activity name opens its form for all of them.
+                        <button type="button" onClick={() => setFillRowId(a.rowId)}
+                          title={`Fill ${a.name} for ${n} selected part${n === 1 ? '' : 's'}`}
+                          className="font-semibold text-[var(--color-primary)] hover:underline">
+                          {a.name}
+                        </button>
+                      ) : (
+                        <span title="Tick parts first, then click an activity name to fill it for all of them">{a.name}</span>
+                      )}
+                      <span className="font-normal text-[var(--color-muted)]"> · {a.milestoneId}</span>
+                      {n > 0 && <span className="ml-1.5 rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-[10px] font-semibold text-white">{n}</span>}
+                    </th>
+                  )
+                })}
               </tr>
               {/* Tier 2: field headers */}
               <tr>
@@ -314,9 +399,15 @@ export function BulkEntryPage() {
             <tbody>
               {partRows.map(({ part, byRow }) => (
                 <tr key={part.partNo} className="hover:bg-[#fafbff]">
-                  <td className="sticky left-0 z-10 min-w-[180px] border-b border-r border-[var(--color-border)] bg-white px-3 py-2">
-                    <div className="font-medium text-[#101828]">{part.partNo}</div>
-                    <div className="text-[10px] text-[var(--color-muted)]">{part.model} · {part.vendorName}</div>
+                  <td className={`sticky left-0 z-10 min-w-[180px] border-b border-r border-[var(--color-border)] px-3 py-2 ${picked.has(part.partNo) ? 'bg-[#eef4ff]' : 'bg-white'}`}>
+                    <label className="flex cursor-pointer items-start gap-2">
+                      <input type="checkbox" className="mt-0.5" aria-label={`Select ${part.partNo}`}
+                        checked={picked.has(part.partNo)} onChange={() => togglePick(part.partNo)} />
+                      <span>
+                        <span className="block font-medium text-[#101828]">{part.partNo}</span>
+                        <span className="block text-[10px] text-[var(--color-muted)]">{part.model} · {part.vendorName}</span>
+                      </span>
+                    </label>
                   </td>
                   {activityCols.flatMap((a) => {
                     const inst = byRow.get(a.rowId)
@@ -350,6 +441,21 @@ export function BulkEntryPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Activity form for the ticked parts: fill once, saved to every one of them. */}
+      {fillCol && (
+        <BulkFillDialog
+          title={`${fillCol.name} · ${fillEditable} part${fillEditable === 1 ? '' : 's'}`}
+          note={fillLocked > 0
+            ? `${fillCol.milestoneId} · ${fillLocked} selected part${fillLocked === 1 ? ' is' : 's are'} already submitted/approved and will be skipped`
+            : fillCol.milestoneId}
+          fields={fillFields}
+          targetCount={fillEditable}
+          currentPersona={role}
+          onClose={() => setFillRowId(null)}
+          onApply={applyFill}
+        />
       )}
     </div>
   )

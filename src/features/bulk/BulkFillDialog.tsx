@@ -50,7 +50,7 @@ export function BulkFillDialog({
       }
     >
       <p className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-3 py-2 text-[12px] text-primary">
-        {note ? `${note} · ` : ''}The values below are written to all {items}. Fields left blank keep each one's current value.
+        {note ? `${note} · ` : ''}The values below are written to {n === 1 ? '1 item' : `all ${items}`}. Fields left blank keep each one's current value.
       </p>
       {fields.length === 0 ? (
         <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">
