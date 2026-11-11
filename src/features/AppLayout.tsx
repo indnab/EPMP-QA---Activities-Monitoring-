@@ -10,6 +10,7 @@ import type { PersonaId } from '../store/personaStore'
 import { DemoTour } from './home/DemoTour'
 import { HeaderSearch } from './header/HeaderSearch'
 import { NotificationBell } from './header/NotificationBell'
+import { UpdateBanner, BUILD_ID } from './UpdateBanner'
 import { useQAStore } from '../store/qaStore'
 import epmpLogo from '../assets/epmp-logo.png'
 import epmpSub from '../assets/epmp-sub.png'
@@ -273,11 +274,12 @@ export function AppLayout() {
 
         <footer className="app-footer flex flex-none flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-1 text-[10px] text-[var(--color-muted)] lg:px-7">
           <span>QA Activity Tracker · EPMP design language</span>
-          <span>Prototype data · Light mode</span>
+          <span>Prototype data · Light mode · build {BUILD_ID}</span>
         </footer>
       </div>
 
       {tourOpen && <DemoTour onClose={() => setTourOpen(false)} />}
+      <UpdateBanner />
     </div>
   )
 }
