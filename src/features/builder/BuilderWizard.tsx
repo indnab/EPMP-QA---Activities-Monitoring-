@@ -11,7 +11,7 @@ import { Icon as FbIcon } from '../../components/Icon'
  */
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
 import type { BuilderDraft } from '../../domain'
 import { Button } from '../../components'
@@ -56,6 +56,11 @@ export function BuilderWizard() {
   const { id: routeId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { activities, drafts, saveDraft, publishDraft } = useQAStore()
+  // Opened from an archetype's WBS row ("Build activity") → go back to that archetype; otherwise the Builder list.
+  const [params] = useSearchParams()
+  const fromArc = params.get('from')
+  const backTo = fromArc ? `/governance/${encodeURIComponent(fromArc)}` : '/builder'
+  const backLabel = fromArc ? 'Back to Archetype' : 'Back to Activity Builder'
 
   const [currentStep, setCurrentStep] = useState<StepId>('basics')
   const [publishing, setPublishing] = useState(false)
@@ -96,10 +101,12 @@ export function BuilderWizard() {
     setPublishing(true)
     // Simulate a brief async delay for UX
     setTimeout(() => {
+      // The draft is only autosaved on edits; save it now so publishing an untouched activity still works.
+      saveDraft(draft)
       publishDraft(draftId)
       setPublishing(false)
       setPublished(true)
-      setTimeout(() => navigate('/activities'), 1500)
+      setTimeout(() => navigate(backTo), 1500)
     }, 600)
   }
 
@@ -116,6 +123,9 @@ export function BuilderWizard() {
   const validationMessages = validateDraft(draft)
   const hasErrors = validationMessages.some((m) => m.severity === 'error')
 
+  // New activities start as QA objects in a project archetype's WBS (Governance), not here.
+  if (isNew) return <Navigate to="/governance" replace />
+
   if (sourceActivity?.retired) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -123,8 +133,8 @@ export function BuilderWizard() {
         <p className="mb-4 max-w-md text-sm text-[var(--color-muted)]">
           It was deleted. Its existing template rows, entries and dashboards keep working, but it cannot be edited or used for anything new.
         </p>
-        <Button variant="secondary" onClick={() => navigate('/activities')}>
-          Back to Activities
+        <Button variant="secondary" onClick={() => navigate(backTo)}>
+          {backLabel}
         </Button>
       </div>
     )
@@ -135,7 +145,7 @@ export function BuilderWizard() {
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="mb-4 text-[#059669]"><FbIcon name="check-circle" size={40} /></div>
         <h2 className="text-xl font-semibold text-[var(--color-text)] mb-2">Activity Published!</h2>
-        <p className="text-sm text-[var(--color-muted)]">Redirecting to Activities…</p>
+        <p className="text-sm text-[var(--color-muted)]">Redirecting…</p>
       </div>
     )
   }
@@ -146,10 +156,10 @@ export function BuilderWizard() {
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div>
           <button
-            onClick={() => navigate('/activities')}
+            onClick={() => navigate(backTo)}
             className="text-[11px] text-[#596579] hover:underline flex items-center gap-1 mb-1"
           >
-            ← Back to Activities
+            ← {backLabel}
           </button>
           <h2 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)]">
             {isNew ? 'New Activity' : `Edit: ${sourceActivity?.name ?? 'Activity'}`}

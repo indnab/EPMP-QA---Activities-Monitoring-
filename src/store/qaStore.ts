@@ -27,9 +27,11 @@ import type {
   ActivityDocument,
   AuditEntry,
   HistoryTransferRequest,
+  ProjectArchetype,
 } from '../domain'
 import type { PersonaId } from './personaStore'
-import { makeEntryId, DELAY_REASON_OTHERS } from '../domain'
+import { makeEntryId, makeTemplateRowId, DELAY_REASON_OTHERS } from '../domain'
+import { syncArchetype } from '../domain/governance'
 import { putBlob, deleteBlob, clearBlobs } from './docBlobs'
 import { DEMO_TODAY, canMarkNotApplicable, canReverseNotApplicable } from '../features/scope'
 import {
@@ -47,6 +49,7 @@ import {
   SEED_VENDOR_INFO,
   SEED_VENDOR_VISITS,
   MOCK_PART_LIST,
+  SEED_ARCHETYPES,
 } from '../mock'
 import { deriveTechnicalCategory } from '../domain/timelineCatalog'
 import { buildDemoData } from '../mock/demoParts'
@@ -93,6 +96,11 @@ interface QAStoreState {
   addCrossDashboard: (dash: Omit<CrossActivityDashboard, 'id' | 'createdAt'>) => void
   updateCrossDashboard: (id: string, patch: Partial<Omit<CrossActivityDashboard, 'id' | 'createdAt' | 'createdBy'>>) => void
   deleteCrossDashboard: (id: string) => void
+  /** Governance: project archetypes (WBS templates). QA objects become Activity Builder activities. */
+  archetypes: ProjectArchetype[]
+  /** Create or update an archetype and sync its QA objects into activities (create / rename / checklist / retire). */
+  saveArchetype: (archetype: ProjectArchetype) => void
+  setArchetypeActive: (id: string, active: boolean) => void
   /** Activity-to-activity dependencies, per technical category (Activity Dependencies module). */
   activityDependencies: ActivityDependency[]
   addActivityDependency: (dep: Omit<ActivityDependency, 'id'>) => void
@@ -398,10 +406,26 @@ export const useQAStore = create<QAStoreState>()(
       delayReasons: SEED_DELAY_REASONS,
       crossDashboards: [],
       activityDependencies: [],
+      archetypes: SEED_ARCHETYPES,
       vendorInfo: SEED_VENDOR_INFO,
       vendorVisits: SEED_VENDOR_VISITS,
       drafts: [],
       savedViews: [],
+
+      saveArchetype: (archetype) =>
+        set((state) => {
+          const previous = state.archetypes.find((a) => a.id === archetype.id)
+          const r = syncArchetype(archetype, previous, state.activities, state.drafts)
+          return {
+            archetypes: previous
+              ? state.archetypes.map((a) => (a.id === archetype.id ? r.archetype : a))
+              : [...state.archetypes, r.archetype],
+            activities: r.activities,
+            drafts: r.drafts,
+          }
+        }),
+      setArchetypeActive: (id, active) =>
+        set((state) => ({ archetypes: state.archetypes.map((a) => (a.id === id ? { ...a, active } : a)) })),
 
       addActivityDependency: (dep) =>
         set((state) => ({
@@ -967,10 +991,29 @@ export const useQAStore = create<QAStoreState>()(
             dashboards.push(generateDashboardConfig({ ...publishedActivity, id: targetId }))
           }
 
+          // First publish of an archetype activity: place it in every section under its WBS trial (default offsets),
+          // so it is tracked straight away. Department Co-ordinators adjust offsets in Section Template.
+          let templateRows = state.templateRows
+          const trial = publishedActivity.defaultMilestoneId
+          if (trial && !templateRows.some((r) => r.activityId === targetId)) {
+            templateRows = [
+              ...templateRows,
+              ...state.sections.map((sec) => ({
+                id: makeTemplateRowId(sec.id, targetId, trial),
+                section: sec.id,
+                activityId: targetId,
+                milestoneId: trial,
+                startOffset: -23,
+                endOffset: 3,
+              })),
+            ]
+          }
+
           return {
             activities: newActivities,
             drafts: state.drafts.filter((d) => d.id !== draftId),
             dashboards,
+            templateRows,
           }
         }),
 
@@ -1602,6 +1645,7 @@ export const useQAStore = create<QAStoreState>()(
           delayReasons: SEED_DELAY_REASONS,
           crossDashboards: [],
           activityDependencies: [],
+          archetypes: SEED_ARCHETYPES,
           vendorInfo: SEED_VENDOR_INFO,
           vendorVisits: SEED_VENDOR_VISITS,
           drafts: [],
@@ -1610,8 +1654,8 @@ export const useQAStore = create<QAStoreState>()(
     }),
     {
       name: 'qa-tracker-store',
-      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. Stale data is dropped.
-      version: 43,
+      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). Stale data is dropped.
+      version: 44,
       migrate: () => ({})
     }
   )

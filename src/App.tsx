@@ -19,6 +19,8 @@ import { LessonsPage } from './features/lessons/LessonsPage'
 import { AuditLogPage } from './features/audit/AuditLogPage'
 import { WbsPage } from './features/wbs/WbsPage'
 import { DependenciesPage } from './features/dependencies/DependenciesPage'
+import { ArchetypesPage } from './features/governance/ArchetypesPage'
+import { ArchetypeDetailsPage } from './features/governance/ArchetypeDetailsPage'
 const DashboardsPage = lazy(() =>
   import('./features/dashboard/DashboardsPage').then(m => ({ default: m.DashboardsPage })),
 )
@@ -80,6 +82,8 @@ export default function App() {
           <Route path="intake" element={<Navigate to="/parts" replace />} />
           <Route path="wbs" element={<WbsPage />} />
           <Route path="dependencies" element={<DependenciesPage />} />
+          <Route path="governance" element={<ArchetypesPage />} />
+          <Route path="governance/:id" element={<ArchetypeDetailsPage />} />
           <Route path="applicability" element={<ApplicabilityMatrixPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />

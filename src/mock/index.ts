@@ -14,7 +14,8 @@ import type {
   MilestoneDef,
   ModelRecord,
   Section,
-  TemplateRow
+  TemplateRow,
+  ProjectArchetype
 } from '../domain'
 import { ACTIVITY_MILESTONE, ALL_BLUEPRINTS } from './ppActivities'
 
@@ -61,7 +62,7 @@ function addDaysLocal(date: string, days: number): string {
  * backward compatibility). The optional milestones (Jig, Kani, Weld, Engine, Assembly) are filled on some models
  * and left blank on others so "Awaiting MRD" can be demonstrated.
  */
-export const SEED_MODELS: ModelRecord[] = [
+const BASE_MODELS: ModelRecord[] = [
   { name: 'Swift', mrds: { PP: '2026-10-24', MPP: '2026-11-05', Pilot: '2026-11-25', SOP: '2026-12-15', Jig: '2026-10-30', Weld: '2026-11-10', ...subTypeSeed('2026-10-24', '2026-11-05', '2026-11-25') } },
   { name: 'Brezza', mrds: { PP: '2026-10-26', MPP: '2026-11-08', Pilot: '2026-11-28', SOP: '2026-12-18', Engine: '2026-11-12', Assembly: '2026-11-20', ...subTypeSeed('2026-10-26', '2026-11-08', '2026-11-28') } },
   { name: 'Baleno', mrds: { PP: '2026-10-12', MPP: '2026-10-16', Pilot: '2026-11-05', SOP: '2026-11-30', ...subTypeSeed('2026-10-12', '2026-10-16', '2026-11-05') } },
@@ -72,6 +73,8 @@ export const SEED_MODELS: ModelRecord[] = [
   { name: 'Fronx', mrds: { PP: '2026-10-22', MPP: '2026-11-04', Pilot: '2026-11-24', SOP: '2026-12-14', Jig: '2026-10-28', ...subTypeSeed('2026-10-22', '2026-11-04', '2026-11-24') } },
   { name: 'Dzire', mrds: { PP: '2026-10-20', MPP: '2026-11-02', Pilot: '2026-11-22', SOP: '2026-12-12', Kani: '2026-11-05', ...subTypeSeed('2026-10-20', '2026-11-02', '2026-11-22') } }
 ]
+/** Every seed model (project) follows the seed archetype. */
+export const SEED_MODELS: ModelRecord[] = BASE_MODELS.map((m) => ({ ...m, archetypeId: 'ARC-001' }))
 
 /**
  * NP1 template rows: every PP activity (pp-1 … pp-16), placed in the PP window.
@@ -117,8 +120,34 @@ export const SEED_TEMPLATE_ROWS: TemplateRow[] = ALL_BLUEPRINTS.flatMap((a) => {
     ...(PP_OFFSETS[a.id] ?? { startOffset: -23, endOffset: 3 })
   }]
 })
-/** Seed activity definitions: the PP activity list only (see ./ppActivities). */
-export const SEED_ACTIVITIES: ActivityDefinition[] = ALL_BLUEPRINTS
+/**
+ * Governance seed: one archetype whose WBS template holds every existing QA activity (one QA object each, in trial
+ * order). New QA objects added to it (or to new archetypes) show up in the Activity Builder.
+ */
+export const SEED_ARCHETYPE_ID = 'ARC-001'
+export const SEED_ARCHETYPES: ProjectArchetype[] = [
+  {
+    id: SEED_ARCHETYPE_ID,
+    name: 'Vehicle Development – QA',
+    description: 'QA activities for a new vehicle model: Prototype (PP), Mass Pre-Production (MPP) and Pilot/SOP trials.',
+    active: true,
+    wbs: ALL_BLUEPRINTS.map((a, i) => ({
+      id: `wbs-${i + 1}`,
+      name: a.name,
+      type: 'QA' as const,
+      trial: ACTIVITY_MILESTONE[a.id] ?? 'PP',
+      activityId: a.id,
+    })),
+  },
+]
+
+/** Seed activity definitions: the PP activity list only (see ./ppActivities), linked to the seed archetype. */
+export const SEED_ACTIVITIES: ActivityDefinition[] = ALL_BLUEPRINTS.map((a) => ({
+  ...a,
+  archetypeId: SEED_ARCHETYPE_ID,
+  wbsObjectId: SEED_ARCHETYPES[0].wbs.find((o) => o.activityId === a.id)!.id,
+  defaultMilestoneId: ACTIVITY_MILESTONE[a.id] ?? 'PP',
+}))
 /** Part master: empty. Parts are added by the Department Co-ordinator, a PIC or Admin. */
 export const MOCK_PART_LIST: PartRecord[] = []
 /** No PIC assignments until parts exist. */

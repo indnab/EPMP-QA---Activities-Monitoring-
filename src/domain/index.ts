@@ -195,6 +195,12 @@ export interface ActivityDefinition {
   retired?: boolean
   /** ID of the draft copy in the builder store while editing */
   draftId?: string
+  /** Governance: the project archetype whose WBS template this activity comes from. */
+  archetypeId?: string
+  /** Governance: the WBS object (QA type) this activity configures. */
+  wbsObjectId?: string
+  /** Trial set on the WBS object; used to create the activity's template rows when it is first published. */
+  defaultMilestoneId?: string
 }
 
 /** Technical category a timeline template applies to (Admin picks these when designing an activity). */
@@ -242,6 +248,51 @@ export interface ActivityDependency {
   lagDays: number
 }
 
+// ── Governance: project archetypes and their WBS templates ────────────────────
+
+/** Kind of WBS object. Only QA objects become activities in the Activity Builder; the rest stay WBS-only. */
+export type WbsObjectType = 'General' | 'QA' | 'VCF' | 'RiskSphere' | 'ImportJira' | 'EAReview'
+
+/** One QA checklist item on a QA WBS object. Each becomes a Yes/No field on the object's activity. */
+export interface WbsChecklistItem {
+  id: string
+  label: string
+  mandatory: boolean
+}
+
+/** A WBS object's dependency on another object of the same archetype (the predecessor). */
+export interface WbsDependency {
+  /** The predecessor WBS object id. */
+  onObjectId: string
+  type: DependencyType
+  lagDays: number
+}
+
+/** One row of an archetype's WBS template. */
+export interface WbsObject {
+  id: string
+  name: string
+  type: WbsObjectType
+  /** Trial (milestone id, e.g. 'PP') — set for QA objects; becomes the activity's default milestone. */
+  trial?: string
+  dependency?: WbsDependency
+  /** QA objects: checklist items (Mandatory / Non-mandatory). */
+  checklist?: WbsChecklistItem[]
+  /** QA objects: "QA ownership to be with Release Manager". */
+  qaOwnershipReleaseManager?: boolean
+  /** The ActivityDefinition this QA object is configured as (set when the archetype is saved). */
+  activityId?: string
+}
+
+/** Admin-defined project archetype: a reusable WBS template. Models (projects) are associated to one. */
+export interface ProjectArchetype {
+  id: string // e.g. 'ARC-001'
+  name: string
+  description: string
+  active: boolean
+  wbs: WbsObject[]
+}
+
 /**
  * A builder draft: mirrors ActivityDefinition but is stored separately
  * and only promoted to the main activities store on publish.
@@ -278,6 +329,8 @@ export interface Section {
 /** A vehicle model with its milestone MRD dates. */
 export interface ModelRecord {
   name: string // unique; matches PartRecord.model
+  /** Governance: the project archetype this model (project) follows. */
+  archetypeId?: string
   /**
    * MRD dates keyed by milestone or milestone sub-type -> YYYY-MM-DD. A missing key = blank ("Awaiting MRD").
    * Top-level milestone dates use the plain milestone id (e.g. 'PP'). Sub-type MRD dates (Model Coordinator

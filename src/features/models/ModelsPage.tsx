@@ -176,6 +176,9 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
   const isEdit = initial !== null
   const [name, setName] = useState(initial?.name ?? '')
   const [mrds, setMrds] = useState<Record<string, string>>({ ...(initial?.mrds ?? {}) })
+  // Governance: the project archetype this model (project) follows.
+  const archetypes = useQAStore((s) => s.archetypes)
+  const [archetypeId, setArchetypeId] = useState<string>(initial?.archetypeId ?? archetypes.find((a) => a.active)?.id ?? '')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const outOfOrder = useMemo(() => findOutOfOrderMilestones(milestones, mrds), [milestones, mrds])
@@ -198,7 +201,7 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
       }
       setErrors(next)
       if (Object.keys(next).length > 0) return
-      onSave({ name: name.trim(), mrds })
+      onSave({ name: name.trim(), mrds, archetypeId: archetypeId || undefined })
     }
   }
 
@@ -235,6 +238,21 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
         {errors['_name'] && (
           <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors['_name']}</p>
         )}
+      </div>
+
+      {/* Project archetype (Governance) */}
+      <div className="mb-5">
+        <label className="mb-1 block text-xs font-medium text-[var(--color-text)]" htmlFor="model-archetype">Project archetype</label>
+        <select id="model-archetype" value={archetypeId} onChange={(e) => setArchetypeId(e.target.value)}
+          className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]">
+          <option value="">None</option>
+          {archetypes.map((a) => (
+            <option key={a.id} value={a.id} disabled={!a.active && a.id !== initial?.archetypeId}>
+              {a.name} ({a.id}){a.active ? '' : ' · inactive'}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[11px] text-[var(--color-muted)]">The model is counted as a project of this archetype.</p>
       </div>
 
       {/* Non-blocking ordering warning */}
@@ -320,7 +338,8 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export function ModelsPage() {
-  const { models, milestones, addModel, updateModel, deleteModel } = useQAStore()
+  const { models, milestones, addModel, updateModel, deleteModel, archetypes } = useQAStore()
+  const archetypeName = (id: string) => archetypes.find((a) => a.id === id)?.name ?? id
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ModelRecord | null>(null)
@@ -349,7 +368,7 @@ export function ModelsPage() {
 
   function handleSave(model: ModelRecord) {
     if (editing) {
-      updateModel(editing.name, { mrds: model.mrds })
+      updateModel(editing.name, { mrds: model.mrds, archetypeId: model.archetypeId })
     } else {
       addModel(model)
     }
@@ -411,6 +430,7 @@ export function ModelsPage() {
               {/* Group row: PP / MPP / Pilot span their sub-type columns */}
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
                 <th rowSpan={2} className="px-4 py-2 text-left font-semibold text-[var(--color-text)] min-w-[110px] align-bottom">Model</th>
+                <th rowSpan={2} className="px-3 py-2 text-left font-medium text-[var(--color-muted)] align-bottom whitespace-nowrap">Archetype</th>
                 {groupSpans.map((g, i) => (
                   <th key={i} colSpan={g.span} className={`px-3 py-1.5 text-center font-semibold whitespace-nowrap ${g.grouped ? 'text-primary border-l border-[var(--color-border)]' : 'text-transparent'}`}>
                     {g.grouped ? g.label : '·'}
@@ -432,7 +452,7 @@ export function ModelsPage() {
               {models.length === 0 && (
                 <tr>
                   <td
-                    colSpan={tableCols.length + 2}
+                    colSpan={tableCols.length + 3}
                     className="px-4 py-10 text-center text-[var(--color-muted)]"
                   >
                     No models yet. Click "+ Add model" to get started.
@@ -445,6 +465,11 @@ export function ModelsPage() {
                   className="border-b border-[var(--color-border)] last:border-0 transition-colors hover:bg-[#fafafa]"
                 >
                   <td className="px-4 py-3 font-medium text-[var(--color-text)]">{model.name}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {model.archetypeId
+                      ? <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-medium text-primary" title={archetypeName(model.archetypeId)}>{model.archetypeId}</span>
+                      : <span className="italic text-[var(--color-muted)]">—</span>}
+                  </td>
                   {tableCols.map((c, i) => {
                     const date = model.mrds[c.key]
                     return (

@@ -155,8 +155,9 @@ export function ActivitiesPage() {
               ← Parts Data Entry
             </Link>
             {isAdmin ? (
-              <Button variant="primary" size="md" onClick={() => navigate('/builder/new')}>
-                + New Activity
+              <Button variant="primary" size="md" onClick={() => navigate('/governance')}
+                title="New activities are added as QA objects in a project archetype's WBS">
+                + New Activity (via Archetype)
               </Button>
             ) : hasMyWork(currentPersona) ? (
               <Button variant="secondary" size="md" onClick={() => navigate('/mywork')}>
