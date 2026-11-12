@@ -20,7 +20,7 @@ const STATUS_CLS: Record<Status, string> = {
   Published: 'bg-emerald-100 text-emerald-800',
 }
 
-export function BuilderPage() {
+export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const { archetypes, activities, drafts, milestones } = useQAStore()
   const { currentPersona } = usePersonaStore()
@@ -62,7 +62,7 @@ export function BuilderPage() {
   if (!isAdmin) {
     return (
       <div>
-        <PageHeader title="Activity Builder" section="Governance" />
+        {!embedded && <PageHeader title="Activity Builder" section="Governance" />}
         <Card>
           <div className="py-10 text-center text-[var(--color-muted)]">
             <p className="mb-3"><FbIcon name="lock" size={32} /></p>
@@ -76,10 +76,8 @@ export function BuilderPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Activity Builder"
-        section="Governance"
-        actions={
+      {embedded ? (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <>
             <select aria-label="Archetype" value={arcFilter} onChange={(e) => setArcFilter(e.target.value)}
               className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
@@ -93,14 +91,36 @@ export function BuilderPage() {
               <option>Draft in progress</option>
               <option>Published</option>
             </select>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/governance')}>Manage Archetypes</Button>
+            {!embedded && <Button variant="secondary" size="sm" onClick={() => navigate('/governance?tab=archetypes')}>Manage Archetypes</Button>}
           </>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title="Activity Builder"
+          section="Governance"
+          actions={
+          <>
+            <select aria-label="Archetype" value={arcFilter} onChange={(e) => setArcFilter(e.target.value)}
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              <option value="all">All archetypes</option>
+              {groups.map((g) => <option key={g.key} value={g.key}>{g.title}</option>)}
+            </select>
+            <select aria-label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | Status)}
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              <option value="all">All statuses</option>
+              <option>Not configured</option>
+              <option>Draft in progress</option>
+              <option>Published</option>
+            </select>
+            {!embedded && <Button variant="secondary" size="sm" onClick={() => navigate('/governance?tab=archetypes')}>Manage Archetypes</Button>}
+          </>
+          }
+        />
+      )}
 
       <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[12px] text-primary">
         Activities come from the QA objects in each archetype’s WBS template. Add or rename them in{' '}
-        <Link to="/governance" className="font-semibold underline">Governance → Manage Archetypes</Link>, then configure fields, flow and timeline here.
+        <Link to="/governance?tab=archetypes" className="font-semibold underline">Governance → Archetypes</Link>, then configure fields, flow and timeline here.
         {counts.todo > 0 && <strong> {counts.todo} of {counts.total} still need configuring.</strong>}
       </div>
 

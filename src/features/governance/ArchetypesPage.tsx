@@ -29,7 +29,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
   )
 }
 
-export function ArchetypesPage() {
+export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
   const { archetypes, models, activities, setArchetypeActive } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const isAdmin = currentPersona === 'Admin'
@@ -50,10 +50,8 @@ export function ArchetypesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Manage Archetypes"
-        section="Governance"
-        actions={
+      {embedded ? (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <>
             <label className="sr-only" htmlFor="arc-filter">Show</label>
             <select id="arc-filter" value={filter} onChange={(e) => setFilter(e.target.value as ActiveFilter)}
@@ -67,8 +65,28 @@ export function ArchetypesPage() {
               <Button variant="primary" size="sm" onClick={() => navigate('/governance/new')}>+ Add</Button>
             )}
           </>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title="Manage Archetypes"
+          section="Governance"
+          actions={
+          <>
+            <label className="sr-only" htmlFor="arc-filter">Show</label>
+            <select id="arc-filter" value={filter} onChange={(e) => setFilter(e.target.value as ActiveFilter)}
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              <option value="all">All archetypes</option>
+              <option value="active">Active only</option>
+              <option value="inactive">Inactive only</option>
+            </select>
+            <DownloadMenu title="Manage Archetypes" />
+            {isAdmin && (
+              <Button variant="primary" size="sm" onClick={() => navigate('/governance/new')}>+ Add</Button>
+            )}
+          </>
+          }
+        />
+      )}
 
       <ExportSection id="arc-list" label="Project archetypes">
         <Card flush className="!overflow-visible">

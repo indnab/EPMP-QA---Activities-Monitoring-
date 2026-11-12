@@ -3,7 +3,6 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './features/AppLayout'
 import { HomePage } from './features/home/HomePage'
 import { ActivitiesPage } from './features/activities/ActivitiesPage'
-import { BuilderPage } from './features/builder/BuilderPage'
 import { BuilderWizard } from './features/builder/BuilderWizard'
 import { ModelsPage } from './features/models/ModelsPage'
 import { SectionTemplatePage } from './features/templates/SectionTemplatePage'
@@ -19,7 +18,7 @@ import { LessonsPage } from './features/lessons/LessonsPage'
 import { AuditLogPage } from './features/audit/AuditLogPage'
 import { WbsPage } from './features/wbs/WbsPage'
 import { DependenciesPage } from './features/dependencies/DependenciesPage'
-import { ArchetypesPage } from './features/governance/ArchetypesPage'
+import { GovernancePage } from './features/governance/GovernancePage'
 import { ArchetypeDetailsPage } from './features/governance/ArchetypeDetailsPage'
 const DashboardsPage = lazy(() =>
   import('./features/dashboard/DashboardsPage').then(m => ({ default: m.DashboardsPage })),
@@ -59,7 +58,7 @@ export default function App() {
           <Route path="bulk-entry" element={<BulkEntryPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="activities/:id" element={<WorkspacePage />} />
-          <Route path="builder" element={<BuilderPage />} />
+          <Route path="builder" element={<Navigate to="/governance?tab=builder" replace />} />
           <Route path="builder/:id" element={<BuilderWizard />} />
           <Route
             path="dashboards"
@@ -82,7 +81,7 @@ export default function App() {
           <Route path="intake" element={<Navigate to="/parts" replace />} />
           <Route path="wbs" element={<WbsPage />} />
           <Route path="dependencies" element={<DependenciesPage />} />
-          <Route path="governance" element={<ArchetypesPage />} />
+          <Route path="governance" element={<GovernancePage />} />
           <Route path="governance/:id" element={<ArchetypeDetailsPage />} />
           <Route path="applicability" element={<ApplicabilityMatrixPage />} />
           <Route path="settings" element={<SettingsPage />} />

@@ -36,10 +36,10 @@ const TOUR_STEPS: TourStep[] = [
     id: 'persona-admin',
     title: 'Step 2 — Admin designs the activity',
     body:
-      'The Admin defines each activity\'s fields and approval flow in the Builder. There are no planned dates here — those come from the Section Template. Sections and milestone lists are configured in Settings.',
+      'In Governance the Admin defines a project archetype and its WBS (the activities), then builds each activity\'s fields and approval flow in the Activity Builder. There are no planned dates here — those come from the Section Template. Sections and milestone lists are configured in Settings.',
     persona: 'Admin',
-    navigateTo: '/builder',
-    highlight: '[data-tour="nav-builder"]',
+    navigateTo: '/governance',
+    highlight: '[data-tour="nav-governance"]',
   },
   {
     id: 'builder-wizard',

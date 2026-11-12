@@ -59,8 +59,9 @@ export function BuilderWizard() {
   // Opened from an archetype's WBS row ("Build activity") → go back to that archetype; otherwise the Builder list.
   const [params] = useSearchParams()
   const fromArc = params.get('from')
-  const backTo = fromArc ? `/governance/${encodeURIComponent(fromArc)}` : '/builder'
-  const backLabel = fromArc ? 'Back to Archetype' : 'Back to Activity Builder'
+  const fromLibrary = params.get('back') === 'library'
+  const backTo = fromArc ? `/governance/${encodeURIComponent(fromArc)}` : fromLibrary ? '/governance?tab=library' : '/governance?tab=builder'
+  const backLabel = fromArc ? 'Back to Archetype' : fromLibrary ? 'Back to Activity Library' : 'Back to Activity Builder'
 
   const [currentStep, setCurrentStep] = useState<StepId>('basics')
   const [publishing, setPublishing] = useState(false)

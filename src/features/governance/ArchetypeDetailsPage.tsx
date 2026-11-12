@@ -99,7 +99,7 @@ export function ArchetypeDetailsPage() {
     return (
       <div className="py-20 text-center text-[var(--color-muted)]">
         <p className="font-medium">Archetype not found</p>
-        <Link to="/governance" className="mt-3 inline-block text-sm text-[var(--color-accent)] hover:underline">← Back to Manage Archetypes</Link>
+        <Link to="/governance" className="mt-3 inline-block text-sm text-[var(--color-accent)] hover:underline">← Back to Governance</Link>
       </div>
     )
   }
@@ -109,7 +109,7 @@ export function ArchetypeDetailsPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader title={isNew ? 'Add Archetype' : 'Archetype Details'} section="Governance › Manage Archetypes" />
+      <PageHeader title={isNew ? 'Add Archetype' : 'Archetype Details'} section="Governance › Archetypes" />
 
       <Card className="mb-4">
         <div className="mb-1 flex items-center justify-between">

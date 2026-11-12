@@ -8,14 +8,9 @@ import type { ActivityDefinition, TemplateRow } from '../../domain'
 import type { RygStatus } from '../../components/RygDot'
 import { getFilteredData } from '../../engine'
 import type { FilteredInstance } from '../../engine'
-import { DEMO_TODAY, activitiesForNewUse, fmtDate, fmtOffsetRange, partInScope, rowInScope } from '../scope'
+import { DEMO_TODAY, fmtDate, fmtOffsetRange, partInScope, rowInScope } from '../scope'
 import { hasMyWork } from '../mywork/workQueue'
-import { SEED_ACTIVITIES } from '../../mock'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
-
-function activityStatusLabel(act: ActivityDefinition): 'Published' | 'Draft' {
-  return act.published === false ? 'Draft' : 'Published'
-}
 
 interface RowSummary {
   row: TemplateRow
@@ -41,9 +36,8 @@ function worstRyg(instances: FilteredInstance[]): RygStatus {
 
 export function ActivitiesPage() {
   const navigate = useNavigate()
-  const { activities, templateRows, models, entries, parts, sections, milestones, deleteActivity, addActivity, restoreActivityDefault } = useQAStore()
+  const { activities, templateRows, models, entries, parts, sections, milestones } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  const isAdmin = currentPersona === 'Admin'
   const scope = getPersonaScope(currentPersona)
   const upcomingOnly = useUpcomingOnly()
 
@@ -51,9 +45,6 @@ export function ActivitiesPage() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [milestoneFilter, setMilestoneFilter] = useState('All')
   const [sectionFilter, setSectionFilter] = useState('All')
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  // Deleted (retired) activities are hidden here; their template rows and work still show in the table above
-  const libraryActivities = useMemo(() => activitiesForNewUse(activities), [activities])
 
   // One summary per template row, built from instances (part x row) the persona is allowed to see.
   const summaries = useMemo<RowSummary[]>(() => {
@@ -116,21 +107,6 @@ export function ActivitiesPage() {
     return true
   })
 
-  function handleDuplicate(act: ActivityDefinition) {
-    const newAct: ActivityDefinition = {
-      ...act,
-      id: `copy-${act.id}-${Date.now()}`,
-      name: `${act.name} (Copy)`,
-      published: false,
-    }
-    addActivity(newAct)
-  }
-
-  function handleDelete(id: string) {
-    deleteActivity(id)
-    setDeleteConfirm(null)
-  }
-
   const hasFilters = search !== '' || milestoneFilter !== 'All' || sectionFilter !== 'All'
   const scopeNote = scope.section
     ? `Showing section ${scope.section} only.`
@@ -143,23 +119,14 @@ export function ActivitiesPage() {
       <PageHeader
         title="Activities"
         section="Workspace"
-        description={
-          isAdmin
-            ? `${libraryActivities.length} activit${libraryActivities.length !== 1 ? 'ies' : 'y'} in the library. Edit an activity's fields or add a new one.`
-            : `${summaries.length} activit${summaries.length !== 1 ? 'ies' : 'y'} by milestone. Dates are calculated from each model's MRD. ${scopeNote}`
-        }
+        description={`${summaries.length} activit${summaries.length !== 1 ? 'ies' : 'y'} by milestone. Dates are calculated from each model's MRD. ${scopeNote}`}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <UpcomingToggle />
             <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
             </Link>
-            {isAdmin ? (
-              <Button variant="primary" size="md" onClick={() => navigate('/governance')}
-                title="New activities are added as QA objects in a project archetype's WBS">
-                + New Activity (via Archetype)
-              </Button>
-            ) : hasMyWork(currentPersona) ? (
+            {hasMyWork(currentPersona) ? (
               <Button variant="secondary" size="md" onClick={() => navigate('/mywork')}>
                 Open My Work
               </Button>
@@ -168,8 +135,7 @@ export function ActivitiesPage() {
         }
       />
 
-      {/* Everyone except Admin: filters + the activity instances table (Admin sees only the library below) */}
-      {!isAdmin && (
+      {/* Filters + the activity instances table (activity setup lives in Governance → Activity Library) */}
         <>
       {/* Filters — EPMP filter card */}
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3.5 max-sm:grid max-sm:grid-cols-1 max-sm:[&>*]:w-full">
@@ -301,90 +267,6 @@ export function ActivitiesPage() {
       </Card>
 
         </>
-      )}
-
-      {/* Admin: activity library (definitions, no dates) */}
-      {isAdmin && (
-        <div>
-          <h2 className="mb-2 text-[13px] font-semibold text-[var(--color-text)]">
-            Activity library ({libraryActivities.length})
-          </h2>
-          <Card flush className="!overflow-visible">
-            <div className="table-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Activity</th>
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Fields</th>
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Scope</th>
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Part N/A allowed</th>
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Used in</th>
-                    <th className="text-left px-4 py-3 font-medium text-[var(--color-muted)]">Status</th>
-                    <th className="text-right px-4 py-3 font-medium text-[var(--color-muted)]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {libraryActivities.map((act) => {
-                    const uses = templateRows.filter((r) => r.activityId === act.id).length
-                    return (
-                      <tr key={act.id} className="border-b border-[var(--color-border)]">
-                        <td className="px-4 py-3 font-medium text-[var(--color-text)]">{act.name}</td>
-                        <td className="px-4 py-3 text-[var(--color-text)]">{act.fields.length}</td>
-                        <td className="px-4 py-3 text-[var(--color-muted)]">
-                          {act.scope === 'Both' ? 'New Part + ECN' : act.scope === 'NewPart' ? 'New Part' : 'ECN'}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-muted)]">{act.allowNotApplicable ? 'Yes' : 'No'}</td>
-                        <td className="px-4 py-3 text-[var(--color-muted)]">
-                          {uses} template row{uses !== 1 ? 's' : ''}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-muted)]">{activityStatusLabel(act)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/builder/${act.id}`)}>
-                              Edit
-                            </Button>
-                            {SEED_ACTIVITIES.some((s) => s.id === act.id) && JSON.stringify(SEED_ACTIVITIES.find((s) => s.id === act.id)?.fields) !== JSON.stringify(act.fields) && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm(`Restore “${act.name}” to its shipped fields? Your edits to this activity’s fields are replaced.`)) restoreActivityDefault(act.id)
-                                }}
-                              >
-                                Restore default
-                              </Button>
-                            )}
-                            <Button variant="secondary" size="sm" onClick={() => handleDuplicate(act)}>
-                              Duplicate
-                            </Button>
-                            {deleteConfirm === act.id ? (
-                              <>
-                                <span className="max-w-[260px] text-left text-[11px] text-[var(--color-muted)]">
-                                  Existing template rows, entries and dashboards keep working. It cannot be used for anything new and cannot be restored.
-                                </span>
-                                <Button variant="danger" size="sm" onClick={() => handleDelete(act.id)}>
-                                  Confirm delete
-                                </Button>
-                                <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(act.id)}>
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

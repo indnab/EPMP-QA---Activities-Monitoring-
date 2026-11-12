@@ -79,11 +79,11 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
     ]
   },
   Admin: {
-    title: 'Admin', job: 'Define activities, fields and flows, and maintain sections and milestones.',
+    title: 'Admin', job: 'Define project archetypes and their activities, build each activity, and maintain sections and milestones.',
     links: [
-      { to: '/builder', label: 'Builder', desc: 'Define an activity', icon: 'gear' },
+      { to: '/governance', label: 'Governance', desc: 'Archetypes, WBS and activities', icon: 'gear' },
       { to: '/settings', label: 'Settings', desc: 'Sections and milestones', icon: 'grid' },
-      { to: '/activities', label: 'Activities', desc: 'Catalogue', icon: 'list' },
+      { to: '/governance?tab=library', label: 'Activity Library', desc: 'Edit, duplicate, delete', icon: 'list' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Overview', icon: 'chart' }
     ]
   }
