@@ -18,6 +18,7 @@ import type {
   ProjectArchetype
 } from '../domain'
 import { ACTIVITY_MILESTONE, ALL_BLUEPRINTS } from './ppActivities'
+import type { Project } from '../domain/projects'
 
 /** Configurable milestone list. PP, MPP, Pilot, SOP are mandatory. */
 export const SEED_MILESTONES: MilestoneDef[] = [
@@ -73,8 +74,7 @@ const BASE_MODELS: ModelRecord[] = [
   { name: 'Fronx', mrds: { PP: '2026-10-22', MPP: '2026-11-04', Pilot: '2026-11-24', SOP: '2026-12-14', Jig: '2026-10-28', ...subTypeSeed('2026-10-22', '2026-11-04', '2026-11-24') } },
   { name: 'Dzire', mrds: { PP: '2026-10-20', MPP: '2026-11-02', Pilot: '2026-11-22', SOP: '2026-12-12', Kani: '2026-11-05', ...subTypeSeed('2026-10-20', '2026-11-02', '2026-11-22') } }
 ]
-/** Every seed model (project) follows the seed archetype. */
-export const SEED_MODELS: ModelRecord[] = BASE_MODELS.map((m) => ({ ...m, archetypeId: 'ARC-001' }))
+export const SEED_MODELS: ModelRecord[] = BASE_MODELS
 
 /**
  * NP1 template rows: every PP activity (pp-1 … pp-16), placed in the PP window.
@@ -138,6 +138,23 @@ export const SEED_ARCHETYPES: ProjectArchetype[] = [
       trial: ACTIVITY_MILESTONE[a.id] ?? 'PP',
       activityId: a.id,
     })),
+  },
+]
+
+/**
+ * Seed project: the seed archetype initiated for every seed model, In Execution — so the work screens (which only
+ * show parts of In Execution projects) have their data from the start.
+ */
+export const SEED_PROJECTS: Project[] = [
+  {
+    no: 'PRJ-0001',
+    name: 'Vehicle Development – QA',
+    archetypeId: SEED_ARCHETYPE_ID,
+    master: 'Vehicle',
+    modelNames: BASE_MODELS.map((m) => m.name),
+    status: 'InExecution',
+    initiatedBy: 'ModelCoordinator',
+    initiatedAt: '2026-10-01T09:00:00.000Z',
   },
 ]
 

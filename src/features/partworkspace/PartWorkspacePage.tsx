@@ -4,6 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { PageHeader, Card, Button, getFieldRenderer, SourceBadge, StatusPill } from '../../components'
 import type { StatusValue } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import {
   evaluateConditionalRules,
@@ -42,7 +43,6 @@ function stateToStatus(state: string | undefined): StatusValue {
 
 export function PartWorkspacePage() {
   const {
-    parts: allParts,
     templateRows,
     activities,
     models: modelRecords,
@@ -50,6 +50,8 @@ export function PartWorkspacePage() {
     updateEntryValues,
     transitionEntryState
   } = useQAStore()
+  // Work screen: only parts of projects In Execution.
+  const allParts = useWorkParts()
   const { currentPersona } = usePersonaStore()
 
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'

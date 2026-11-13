@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, Cell
 } from 'recharts'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { Card, Button } from '../../components'
 import {
@@ -115,7 +116,8 @@ function CrossWidgetChart({
 // ── The dashboard view (render + inline widget builder) ────────────────────────
 
 export function CrossActivityView({ dashboard }: { dashboard: CrossActivityDashboard }) {
-  const { activities, entries, parts, templateRows, models, updateCrossDashboard, deleteCrossDashboard } = useQAStore()
+  const { activities, entries, templateRows, models, updateCrossDashboard, deleteCrossDashboard } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const canEdit = currentPersona === 'Admin' || currentPersona === 'SIC' || currentPersona === 'DPM'
 

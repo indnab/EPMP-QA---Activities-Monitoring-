@@ -284,7 +284,7 @@ export interface WbsObject {
   activityId?: string
 }
 
-/** Admin-defined project archetype: a reusable WBS template. Models (projects) are associated to one. */
+/** Admin-defined project archetype: a reusable WBS template. Projects are initiated from one (Project Initiation). */
 export interface ProjectArchetype {
   id: string // e.g. 'ARC-001'
   name: string
@@ -329,8 +329,6 @@ export interface Section {
 /** A vehicle model with its milestone MRD dates. */
 export interface ModelRecord {
   name: string // unique; matches PartRecord.model
-  /** Governance: the project archetype this model (project) follows. */
-  archetypeId?: string
   /**
    * MRD dates keyed by milestone or milestone sub-type -> YYYY-MM-DD. A missing key = blank ("Awaiting MRD").
    * Top-level milestone dates use the plain milestone id (e.g. 'PP'). Sub-type MRD dates (Model Coordinator

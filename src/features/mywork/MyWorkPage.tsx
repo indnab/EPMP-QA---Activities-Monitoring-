@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { PageHeader, Card, Tabs, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import {
   getFilteredData, isWorkableByVendor, getPicOn, getReleaseState,
@@ -579,7 +580,8 @@ function OverviewTab({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export function MyWorkPage() {
-  const { activities, entries, templateRows, models, parts, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
+  const { activities, entries, templateRows, models, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const upcomingOnly = useUpcomingOnly()
 

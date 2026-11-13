@@ -3,6 +3,7 @@ import { overlayFeed } from '../../mock/feed'
 import { useState, useMemo } from 'react'
 import GridLayout, { WidthProvider } from 'react-grid-layout/legacy'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore, getPersonaScope } from '../../store/personaStore'
 import { Card, Button } from '../../components'
 import { WidgetRenderer } from './WidgetRegistry'
@@ -35,7 +36,6 @@ export function DashboardsPage() {
     entries: storedEntries,
     templateRows,
     models: modelRecords,
-    parts,
     sections,
     milestones,
     dashboards,
@@ -46,6 +46,8 @@ export function DashboardsPage() {
     crossDashboards,
     addCrossDashboard
   } = useQAStore()
+  // Work screen: only parts of projects In Execution.
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   // Entries plus the system-fed values of data-only fields, so dashboards and drill-downs can use them.
   const entries = useMemo(

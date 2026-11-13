@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { partInScope } from '../scope'
 
@@ -13,7 +14,8 @@ interface Hit {
 
 /** Header search: pages, activities and parts the current role can see. */
 export function HeaderSearch({ pages }: { pages: { to: string; label: string }[] }) {
-  const { activities, templateRows, parts } = useQAStore()
+  const { activities, templateRows } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const navigate = useNavigate()
   const [q, setQ] = useState('')

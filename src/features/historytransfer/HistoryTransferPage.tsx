@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader, Card, Button } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { getPicOn } from '../../engine'
 import { DEMO_TODAY, partInScope, fmtDate } from '../scope'
@@ -12,7 +13,8 @@ const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[
  * and copy the source's activity history into every selected target at once.
  */
 export function HistoryTransferPage() {
-  const { parts, entries, activities, templateRows, picAssignments, requestHistoryTransfer, decideHistoryTransfer, historyTransferRequests, partEvents } = useQAStore()
+  const { entries, activities, templateRows, picAssignments, requestHistoryTransfer, decideHistoryTransfer, historyTransferRequests, partEvents } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const canTransfer = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin'
   const isSic = currentPersona === 'SIC'

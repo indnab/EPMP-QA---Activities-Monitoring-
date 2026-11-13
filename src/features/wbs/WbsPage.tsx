@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader, Card } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { getFilteredData } from '../../engine'
 import type { FilteredInstance, InstanceStatus } from '../../engine'
 import { EMPTY_FILTERS } from '../dashboard/drill'
@@ -51,7 +52,8 @@ function daySpan(start?: string, end?: string): number {
 }
 
 export function WbsPage() {
-  const { entries, activities, parts, templateRows, models } = useQAStore()
+  const { entries, activities, templateRows, models } = useQAStore()
+  const parts = useWorkParts()
 
   const modelNames = useMemo(() => models.map((m) => m.name), [models])
   const [model, setModel] = useState(modelNames[0] ?? '')

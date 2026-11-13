@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Button } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore, getPersonaScope } from '../../store/personaStore'
 import type { PersonaId } from '../../store/personaStore'
 import { getFilteredData } from '../../engine'
@@ -37,7 +38,8 @@ interface ActivityCols {
 }
 
 export function BulkEntryPage() {
-  const { activities, entries, templateRows, models, parts, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
+  const { activities, entries, templateRows, models, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const role = currentPersona as PersonaId
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'

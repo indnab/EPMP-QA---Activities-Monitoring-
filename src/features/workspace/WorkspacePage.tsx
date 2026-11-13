@@ -2,6 +2,7 @@ import { Icon as FbIcon } from '../../components/Icon'
 import { useState, useMemo } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { calculateRYG, resolveInstanceDates, resolveTrackedDates, completionPct, getMilestoneMrd, isWorkableByVendor } from '../../engine'
 import { Button, Card, RygDot, StatusPill, ApplicabilityDialog } from '../../components'
@@ -24,7 +25,8 @@ export function WorkspacePage() {
   // The route param is the template row id (an activity under a milestone for a section).
   const { id } = useParams<{ id: string }>()
   const isMobile = useIsMobile()
-  const { activities, entries, templateRows, models: modelRecords, parts, partReleases, partAcks, setNotApplicable, updateEntryValues, transitionEntryState } = useQAStore()
+  const { activities, entries, templateRows, models: modelRecords, partReleases, partAcks, setNotApplicable, updateEntryValues, transitionEntryState, projects } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
 
   const row = templateRows.find((r) => r.id === id)
@@ -96,8 +98,11 @@ export function WorkspacePage() {
   const partParam = searchParams.get('part')
   // Where "Back" returns to. Opened from My Approvals → back to that tab; otherwise the Activities list.
   const cameFromApprovals = searchParams.get('from') === 'approvals'
-  const backTo = cameFromApprovals ? '/mywork?view=approvals' : '/activities'
-  const backLabel = cameFromApprovals ? 'My Approvals' : 'Activities'
+  // Opened from a project's Execution tab → only that project's parts, and Back returns to the project.
+  const projectNo = searchParams.get('project')
+  const fromProject = projectNo ? projects.find((p) => p.no === projectNo) : undefined
+  const backTo = fromProject ? `/projects/${fromProject.no}` : cameFromApprovals ? '/mywork?view=approvals' : '/activities'
+  const backLabel = fromProject ? `${fromProject.no} · ${fromProject.name}` : cameFromApprovals ? 'My Approvals' : 'Activities'
   const setOpenPartNo = (partNo: string | null) => {
     setSearchParams((prev) => {
       if (partNo) prev.set('part', partNo)
@@ -117,6 +122,7 @@ export function WorkspacePage() {
     if (!activity || !row || !rowAllowed) return []
     return parts.filter((p) => {
       if (p.supersededBy) return false // superseded by ECN transfer — tracked under the new part
+      if (fromProject && !fromProject.modelNames.includes(p.model)) return false
       if (p.section !== row.section) return false
       if (!partInScope(p, currentPersona)) return false
       // Release gate: the vendor works only on parts it has acknowledged after the PIC released them.
@@ -125,7 +131,7 @@ export function WorkspacePage() {
       if (activity.scope === 'ECN') return p.type === 'ECN'
       return true
     })
-  }, [activity, row, rowAllowed, currentPersona, parts, partReleases, partAcks])
+  }, [activity, row, rowAllowed, currentPersona, parts, partReleases, partAcks, fromProject])
 
   // Tracked dates per part: a vendor-set timeline overrides the template (MRD-offset) dates.
   const datesByPart = useMemo(() => {

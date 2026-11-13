@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Card, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import type { Deviation, DeviationStatus } from '../../domain'
 import { fmtDate, partInScope } from '../scope'
@@ -32,7 +33,8 @@ interface DevRow {
 
 /** Deviation register (content only; hosted by the Exception Management page). */
 export function DeviationsView() {
-  const { entries, parts, templateRows, activities, advanceDeviation } = useQAStore()
+  const { entries, templateRows, activities, advanceDeviation } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const match = useExcMatcher()
 

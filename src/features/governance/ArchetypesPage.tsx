@@ -1,6 +1,6 @@
 /**
  * Governance → Manage Archetypes. Admin maintains project archetypes (reusable WBS templates). Each archetype's QA
- * WBS objects become activities in the Activity Builder. "Projects associated" = models that follow the archetype.
+ * WBS objects become activities in the Activity Builder. "Projects associated" = projects initiated from it.
  */
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -30,7 +30,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
 }
 
 export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
-  const { archetypes, models, activities, setArchetypeActive } = useQAStore()
+  const { archetypes, projects, activities, setArchetypeActive } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const isAdmin = currentPersona === 'Admin'
   const navigate = useNavigate()
@@ -43,9 +43,9 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
         .map((a) => {
           const qa = a.wbs.filter((o) => o.type === 'QA')
           const configured = qa.filter((o) => activities.some((x) => x.id === o.activityId && x.published !== false && !x.retired)).length
-          return { a, projects: models.filter((m) => m.archetypeId === a.id).length, objects: a.wbs.length, qa: qa.length, configured }
+          return { a, projects: projects.filter((p) => p.archetypeId === a.id).length, objects: a.wbs.length, qa: qa.length, configured }
         }),
-    [archetypes, models, activities, filter]
+    [archetypes, projects, activities, filter]
   )
 
   return (
@@ -137,7 +137,7 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
         </Card>
       </ExportSection>
       <p className="mt-2 text-[11px] text-[var(--color-muted)]">
-        Projects associated = vehicle models that follow the archetype (set on Models &amp; MRDs). QA objects in an archetype's WBS appear in the Activity Builder.
+        Projects associated = projects initiated from the archetype (Project Initiation). QA objects in an archetype's WBS appear in the Activity Builder.
       </p>
     </div>
   )

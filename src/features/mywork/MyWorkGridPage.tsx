@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Button, StatusPill, RygDot, Modal } from '../../components'
 import type { StatusValue } from '../../components/StatusPill'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import { getFilteredData, isWorkableByVendor } from '../../engine'
 import type { FilteredInstance } from '../../engine'
@@ -53,7 +54,8 @@ function statusFor(inst: FilteredInstance): StatusValue {
 export function MyWorkGridPage() {
   const { activityId = '', milestoneId = '' } = useParams()
   const [searchParams] = useSearchParams()
-  const { activities, entries, templateRows, models, parts, partReleases, partAcks, delayReasons, submitDelayReasons, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
+  const { activities, entries, templateRows, models, partReleases, partAcks, delayReasons, submitDelayReasons, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const mode: GridMode = searchParams.get('mode') === 'validate' ? 'validate' : 'enter'
   const validating = mode === 'validate'

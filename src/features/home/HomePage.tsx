@@ -6,6 +6,7 @@ import { Button } from '../../components'
 import { usePersonaStore, PERSONAS } from '../../store/personaStore'
 import type { PersonaId } from '../../store/personaStore'
 import { useQAStore } from '../../store'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { getFilteredData } from '../../engine'
 import type { FilteredInstance } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
@@ -61,11 +62,11 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
     ]
   },
   ModelCoordinator: {
-    title: 'Division Model Coordinator', job: 'Enter each model and its milestone MRDs; every planned date follows from them.',
+    title: 'Division Model Coordinator', job: 'Initiate projects and enter each model’s milestone MRDs; every planned date follows from them.',
     links: [
+      { to: '/projects', label: 'Project Initiation', desc: 'Start and close projects', icon: 'tree' },
       { to: '/models', label: 'Models & MRDs', desc: 'Milestone dates', icon: 'form' },
       { to: '/wbs', label: 'WBS / Project', desc: 'Milestone, part, activity', icon: 'tree' },
-      { to: '/dependencies', label: 'Dependencies', desc: 'Activity links', icon: 'link' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Model view', icon: 'chart' }
     ]
   },
@@ -83,7 +84,7 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
     links: [
       { to: '/governance', label: 'Governance', desc: 'Archetypes, WBS and activities', icon: 'gear' },
       { to: '/settings', label: 'Settings', desc: 'Sections and milestones', icon: 'grid' },
-      { to: '/governance?tab=library', label: 'Activity Library', desc: 'Edit, duplicate, delete', icon: 'list' },
+      { to: '/projects', label: 'Projects', desc: 'All projects, read-only', icon: 'list' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Overview', icon: 'chart' }
     ]
   }
@@ -142,7 +143,8 @@ export function HomePage() {
   const [taskTab, setTaskTab] = useState<'today' | 'tomorrow'>('today')
   const [ask, setAsk] = useState('')
   const [askNote, setAskNote] = useState(false)
-  const { activities, entries, templateRows, models, parts, resetDemoData } = useQAStore()
+  const { activities, entries, templateRows, models, resetDemoData } = useQAStore()
+  const parts = useWorkParts()
   const { attention } = useExceptionData()
   const today = DEMO_TODAY
   const tomorrow = addDays(today, 1)

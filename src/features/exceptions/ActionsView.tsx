@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button, Card, Modal, RygDot } from '../../components'
 import type { Action, ActionStatus } from '../../domain'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import type { PersonaId } from '../../store/personaStore'
 import { actionRyg, getPicOn } from '../../engine'
@@ -33,7 +34,8 @@ export interface ActionRow {
 
 /** Every action raised on an entry the current role may see, flattened with its part and activity. */
 export function useActionRows(): ActionRow[] {
-  const { entries, parts, templateRows, activities } = useQAStore()
+  const { entries, templateRows, activities } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const match = useExcMatcher()
   return useMemo(() => {
@@ -62,7 +64,8 @@ type StatusFilter = 'Active' | 'Overdue' | ActionStatus | 'All'
 
 /** Central action management: every action across parts and activities, with status updates and raising new ones. */
 export function ActionsView() {
-  const { parts, picAssignments, templateRows, activities, addAction, updateAction } = useQAStore()
+  const { picAssignments, templateRows, activities, addAction, updateAction } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const rows = useActionRows()
   const canManage = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin'

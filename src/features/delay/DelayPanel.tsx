@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import { getPicOn } from '../../engine'
 import { DEMO_TODAY, fmtDate } from '../scope'
@@ -41,7 +42,8 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
  * PIC / SIC / DPM: reasons waiting for review (accept or send back, one or many) and reasons the vendor still owes.
  */
 export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
-  const { parts, picAssignments, submitDelayReasons, decideDelayReasons } = useQAStore()
+  const { picAssignments, submitDelayReasons, decideDelayReasons } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
   const canDecide = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'

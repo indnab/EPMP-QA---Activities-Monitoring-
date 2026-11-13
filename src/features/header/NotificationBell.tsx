@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { getReleaseState } from '../../engine'
 import { fmtDate, partInScope } from '../scope'
@@ -26,7 +27,8 @@ const TAG_STYLE: Record<string, string> = {
  * release handshake). It is a live in-app list, not a push or email notification.
  */
 export function NotificationBell() {
-  const { parts, partReleases, partAcks } = useQAStore()
+  const { partReleases, partAcks } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const { attention } = useExceptionData()
   const [open, setOpen] = useState(false)

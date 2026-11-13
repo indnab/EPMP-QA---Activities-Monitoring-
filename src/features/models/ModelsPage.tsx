@@ -3,8 +3,10 @@ import { PageHeader } from '../../components/PageHeader'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
+import { Link } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
 import type { ModelRecord, MilestoneDef } from '../../domain'
+import { projectOfModel } from '../../domain/projects'
 import { TIMELINE_MILESTONES, SUBTYPE_LABEL, subTypesFor, subTypeMrdKey } from '../../domain/timelineCatalog'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -176,9 +178,6 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
   const isEdit = initial !== null
   const [name, setName] = useState(initial?.name ?? '')
   const [mrds, setMrds] = useState<Record<string, string>>({ ...(initial?.mrds ?? {}) })
-  // Governance: the project archetype this model (project) follows.
-  const archetypes = useQAStore((s) => s.archetypes)
-  const [archetypeId, setArchetypeId] = useState<string>(initial?.archetypeId ?? archetypes.find((a) => a.active)?.id ?? '')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const outOfOrder = useMemo(() => findOutOfOrderMilestones(milestones, mrds), [milestones, mrds])
@@ -201,7 +200,7 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
       }
       setErrors(next)
       if (Object.keys(next).length > 0) return
-      onSave({ name: name.trim(), mrds, archetypeId: archetypeId || undefined })
+      onSave({ name: name.trim(), mrds })
     }
   }
 
@@ -238,21 +237,6 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
         {errors['_name'] && (
           <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors['_name']}</p>
         )}
-      </div>
-
-      {/* Project archetype (Governance) */}
-      <div className="mb-5">
-        <label className="mb-1 block text-xs font-medium text-[var(--color-text)]" htmlFor="model-archetype">Project archetype</label>
-        <select id="model-archetype" value={archetypeId} onChange={(e) => setArchetypeId(e.target.value)}
-          className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]">
-          <option value="">None</option>
-          {archetypes.map((a) => (
-            <option key={a.id} value={a.id} disabled={!a.active && a.id !== initial?.archetypeId}>
-              {a.name} ({a.id}){a.active ? '' : ' · inactive'}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-[11px] text-[var(--color-muted)]">The model is counted as a project of this archetype.</p>
       </div>
 
       {/* Non-blocking ordering warning */}
@@ -338,8 +322,8 @@ function ModelForm({ initial, milestones, existingNames, onSave, formRef }: Mode
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export function ModelsPage() {
-  const { models, milestones, addModel, updateModel, deleteModel, archetypes } = useQAStore()
-  const archetypeName = (id: string) => archetypes.find((a) => a.id === id)?.name ?? id
+  const { models, milestones, addModel, updateModel, deleteModel, projects } = useQAStore()
+  const [deleteBlocked, setDeleteBlocked] = useState<string | null>(null)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ModelRecord | null>(null)
@@ -368,7 +352,7 @@ export function ModelsPage() {
 
   function handleSave(model: ModelRecord) {
     if (editing) {
-      updateModel(editing.name, { mrds: model.mrds, archetypeId: model.archetypeId })
+      updateModel(editing.name, { mrds: model.mrds })
     } else {
       addModel(model)
     }
@@ -376,7 +360,9 @@ export function ModelsPage() {
   }
 
   function handleDelete(name: string) {
-    deleteModel(name)
+    const r = deleteModel(name)
+    if (!r.ok) { setDeleteBlocked(r.reason); return }
+    setDeleteBlocked(null)
     setConfirmDelete(null)
   }
 
@@ -430,7 +416,7 @@ export function ModelsPage() {
               {/* Group row: PP / MPP / Pilot span their sub-type columns */}
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
                 <th rowSpan={2} className="px-4 py-2 text-left font-semibold text-[var(--color-text)] min-w-[110px] align-bottom">Model</th>
-                <th rowSpan={2} className="px-3 py-2 text-left font-medium text-[var(--color-muted)] align-bottom whitespace-nowrap">Archetype</th>
+                <th rowSpan={2} className="px-3 py-2 text-left font-medium text-[var(--color-muted)] align-bottom whitespace-nowrap">Project</th>
                 {groupSpans.map((g, i) => (
                   <th key={i} colSpan={g.span} className={`px-3 py-1.5 text-center font-semibold whitespace-nowrap ${g.grouped ? 'text-primary border-l border-[var(--color-border)]' : 'text-transparent'}`}>
                     {g.grouped ? g.label : '·'}
@@ -466,9 +452,12 @@ export function ModelsPage() {
                 >
                   <td className="px-4 py-3 font-medium text-[var(--color-text)]">{model.name}</td>
                   <td className="px-3 py-3 whitespace-nowrap">
-                    {model.archetypeId
-                      ? <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-medium text-primary" title={archetypeName(model.archetypeId)}>{model.archetypeId}</span>
-                      : <span className="italic text-[var(--color-muted)]">—</span>}
+                    {(() => {
+                      const prj = projectOfModel(model.name, projects)
+                      return prj
+                        ? <Link to={`/projects/${prj.no}`} className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-medium text-primary hover:underline" title={prj.name}>{prj.no}</Link>
+                        : <span className="italic text-[var(--color-muted)]">—</span>
+                    })()}
                   </td>
                   {tableCols.map((c, i) => {
                     const date = model.mrds[c.key]
@@ -540,7 +529,7 @@ export function ModelsPage() {
       {/* Delete confirmation */}
       <Modal
         open={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
+        onClose={() => { setConfirmDelete(null); setDeleteBlocked(null) }}
         title="Delete model"
         size="sm"
         footer={
@@ -560,6 +549,7 @@ export function ModelsPage() {
         <p className="text-sm">
           Delete <strong>{confirmDelete}</strong>? This removes the model record. Existing activity entries are unaffected.
         </p>
+        {deleteBlocked && <p className="mt-2 text-sm text-[var(--color-destructive)]">{deleteBlocked}</p>}
       </Modal>
 
       {/* Sync parts panel */}

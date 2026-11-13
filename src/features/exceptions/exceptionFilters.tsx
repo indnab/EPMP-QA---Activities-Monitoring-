@@ -4,6 +4,7 @@ import { getPicOn } from '../../engine'
 import { INTAKE_FIELDS } from '../../mock/partIntakeFields'
 import type { IntakeField } from '../../mock/partIntakeFields'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
 import { MultiSelect } from '../intake/MultiSelect'
@@ -72,7 +73,8 @@ export function useExcMatcher(filters?: PartFilters): (part: PartRecord, templat
 
 /** The shared primary filter bar shown above a list. Standard multi-select controls (nothing ticked = All). */
 export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; onChange: (f: PartFilters) => void }) {
-  const { parts, picAssignments } = useQAStore()
+  const { picAssignments } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
 
   const scoped = useMemo(() => parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), [parts, currentPersona])

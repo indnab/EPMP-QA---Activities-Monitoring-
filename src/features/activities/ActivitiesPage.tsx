@@ -2,6 +2,7 @@ import { Icon as FbIcon } from '../../components/Icon'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore, getPersonaScope } from '../../store/personaStore'
 import { Button, Card, RygDot, PageHeader } from '../../components'
 import type { ActivityDefinition, TemplateRow } from '../../domain'
@@ -36,7 +37,8 @@ function worstRyg(instances: FilteredInstance[]): RygStatus {
 
 export function ActivitiesPage() {
   const navigate = useNavigate()
-  const { activities, templateRows, models, entries, parts, sections, milestones } = useQAStore()
+  const { activities, templateRows, models, entries, sections, milestones } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const scope = getPersonaScope(currentPersona)
   const upcomingOnly = useUpcomingOnly()

@@ -50,7 +50,11 @@ import {
   SEED_VENDOR_VISITS,
   MOCK_PART_LIST,
   SEED_ARCHETYPES,
+  SEED_PROJECTS,
 } from '../mock'
+import type { Project, InitiateProjectInput, InitiateResult, CloseResult } from '../domain/projects'
+import { PROJECT_INITIATOR, nextProjectNo, projectOfModel, pruneProjects, validateInitiation } from '../domain/projects'
+import { cleanMrds } from '../domain/mrds'
 import { deriveTechnicalCategory } from '../domain/timelineCatalog'
 import { buildDemoData } from '../mock/demoParts'
 import {
@@ -225,7 +229,18 @@ interface QAStoreState {
   // Models (keyed by unique name); `mrds` omits blank milestones
   addModel: (model: ModelRecord) => void
   updateModel: (name: string, model: Partial<ModelRecord>) => void
-  deleteModel: (name: string) => void
+  /** Refuses while an In Execution project holds the model (close the project first). */
+  deleteModel: (name: string) => { ok: true } | { ok: false; reason: string }
+
+  /** Projects (Project Initiation). Work screens only include parts of In Execution projects. */
+  projects: Project[]
+  /**
+   * Model Coordinator only. Validates, upserts the project's models (MRDs) and appends the project In Execution —
+   * all in one update. Nothing is saved when validation fails.
+   */
+  initiateProject: (input: InitiateProjectInput, by: PersonaId) => InitiateResult
+  /** In Execution → Closed (Model Coordinator only). Frees its models; its parts leave the work screens. */
+  closeProject: (no: string, by: PersonaId) => CloseResult
 
   // Sections (Admin-maintained list)
   addSection: (section: Section) => void
@@ -407,6 +422,7 @@ export const useQAStore = create<QAStoreState>()(
       crossDashboards: [],
       activityDependencies: [],
       archetypes: SEED_ARCHETYPES,
+      projects: SEED_PROJECTS,
       vendorInfo: SEED_VENDOR_INFO,
       vendorVisits: SEED_VENDOR_VISITS,
       drafts: [],
@@ -835,8 +851,53 @@ export const useQAStore = create<QAStoreState>()(
           models: state.models.map((m) => (m.name === name ? { ...m, ...updated, name: m.name } : m))
         })),
 
-      deleteModel: (name) =>
-        set((state) => ({ models: state.models.filter((m) => m.name !== name) })),
+      deleteModel: (name) => {
+        const holder = projectOfModel(name, get().projects)
+        if (holder) return { ok: false, reason: `${name} is part of ${holder.no} (${holder.name}). Close the project first.` }
+        set((state) => ({ models: state.models.filter((m) => m.name !== name) }))
+        return { ok: true }
+      },
+
+      initiateProject: (input, by) => {
+        const state = get()
+        const errors = validateInitiation(input, {
+          archetypes: state.archetypes, models: state.models, milestones: state.milestones, projects: state.projects, by,
+        })
+        if (Object.keys(errors).length > 0) return { ok: false, errors }
+        const drafts = input.master === 'Vehicle' ? input.models ?? [] : []
+        let models = state.models
+        const modelNames: string[] = []
+        for (const d of drafts) {
+          const nm = d.name.trim()
+          const existing = models.find((m) => m.name.toLowerCase() === nm.toLowerCase())
+          const mrds = cleanMrds(d.mrds)
+          models = existing ? models.map((m) => (m === existing ? { ...m, mrds } : m)) : [...models, { name: nm, mrds }]
+          modelNames.push(existing ? existing.name : nm)
+        }
+        const project: Project = {
+          no: nextProjectNo(state.projects),
+          name: input.name.trim(),
+          archetypeId: input.archetypeId,
+          master: input.master as Project['master'],
+          modelNames,
+          status: 'InExecution',
+          initiatedBy: by,
+          initiatedAt: new Date().toISOString(),
+        }
+        // One update: the models and the project land together.
+        set({ models, projects: [...state.projects, project] })
+        return { ok: true, project }
+      },
+
+      closeProject: (no, by) => {
+        if (by !== PROJECT_INITIATOR) return { ok: false, reason: 'NOT_ALLOWED' }
+        const p = get().projects.find((x) => x.no === no)
+        if (!p) return { ok: false, reason: 'NOT_FOUND' }
+        if (p.status === 'Closed') return { ok: false, reason: 'ALREADY_CLOSED' }
+        const closed: Project = { ...p, status: 'Closed', closedBy: by, closedAt: new Date().toISOString() }
+        set((s) => ({ projects: s.projects.map((x) => (x.no === no ? closed : x)) }))
+        return { ok: true, project: closed }
+      },
 
       // Sections
       addSection: (section) =>
@@ -1616,6 +1677,8 @@ export const useQAStore = create<QAStoreState>()(
             picAssignments: [],
             delayReasons: d.delayReasons,
             models: d.models,
+            // Keep every In Execution project's models in the (rebuilt) model master.
+            projects: pruneProjects(state.projects, d.models),
             documents: [],
             historyTransferRequests: sampleHtx
           }
@@ -1646,6 +1709,7 @@ export const useQAStore = create<QAStoreState>()(
           crossDashboards: [],
           activityDependencies: [],
           archetypes: SEED_ARCHETYPES,
+          projects: SEED_PROJECTS,
           vendorInfo: SEED_VENDOR_INFO,
           vendorVisits: SEED_VENDOR_VISITS,
           drafts: [],
@@ -1654,8 +1718,8 @@ export const useQAStore = create<QAStoreState>()(
     }),
     {
       name: 'qa-tracker-store',
-      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). Stale data is dropped.
-      version: 44,
+      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). v45: projects (Project Initiation) gate the work screens; models no longer carry archetypeId. Stale data is dropped.
+      version: 45,
       migrate: () => ({})
     }
   )

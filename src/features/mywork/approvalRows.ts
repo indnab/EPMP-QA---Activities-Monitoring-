@@ -3,6 +3,7 @@ import { makeEntryId } from '../../domain'
 import type { PartRecord } from '../../domain'
 import { getFilteredData, getPicOn } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import type { PersonaId } from '../../store/personaStore'
 import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
@@ -58,7 +59,8 @@ function latestSubmit(history: { timestamp: string; persona: string; actorName?:
  * not started) and the things they approve (vendor submissions, deviations, their actions, delay reasons to review).
  */
 export function useApprovalRows(): ApprovalRow[] {
-  const { entries, activities, parts, templateRows, models, partReleases, partAcks, picAssignments } = useQAStore()
+  const { entries, activities, templateRows, models, partReleases, partAcks, picAssignments } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const delays = useDelayRows()
   const { devRows, actions } = useExceptionData()

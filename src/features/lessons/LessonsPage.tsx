@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader, Card } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { buildVendorScores, buildInsights, pct, buildActivityHeatMap, buildVendorActivityHeatMap, predictRisk } from './insights'
 import type { InsightTone, VendorScore, HeatMap, HeatLevel, RiskLevel } from './insights'
 import { TECHNICAL_CATEGORIES } from '../../domain/timelineCatalog'
@@ -105,7 +106,8 @@ function VendorCard({ s }: { s: VendorScore }) {
 }
 
 export function LessonsPage() {
-  const { entries, parts, activities, templateRows, models } = useQAStore()
+  const { entries, activities, templateRows, models } = useQAStore()
+  const parts = useWorkParts()
 
   // One common filter for the whole page: Vendor + Technical category. Everything below respects it.
   const [vendorFilter, setVendorFilter] = useState('All')

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { partInScope } from '../scope'
 import { useDelayRows } from '../delay/delay'
@@ -48,7 +49,8 @@ export interface DeviationLite {
 
 /** Everything that went off plan (deviations, actions, delay reasons) for the current role, plus what needs them. */
 export function useExceptionData() {
-  const { entries, parts, activities } = useQAStore()
+  const { entries, activities } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
   const actions = useActionRows()

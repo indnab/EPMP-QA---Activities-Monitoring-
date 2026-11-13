@@ -4,6 +4,7 @@ import { makeEntryId } from '../../domain'
 import { getFilteredData, isWorkableByVendor } from '../../engine'
 import type { FilteredInstance } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { DEMO_TODAY, partInScope } from '../scope'
 import { useExcMatcher } from '../exceptions/exceptionFilters'
@@ -93,7 +94,8 @@ export interface DelayRow {
  * awaiting the PIC, and accepted reasons. Only parts the vendor has acknowledged are included.
  */
 export function useDelayRows() {
-  const { entries, activities, parts, templateRows, models, partReleases, partAcks, delayReasons } = useQAStore()
+  const { entries, activities, templateRows, models, partReleases, partAcks, delayReasons } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const match = useExcMatcher()
   const rows = useMemo<DelayRow[]>(() => {

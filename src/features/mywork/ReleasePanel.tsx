@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { FIXED_VENDOR_NAME, usePersonaStore } from '../../store/personaStore'
 import { getPicOn, getReleaseState, latestReturn } from '../../engine'
 import type { PartRecord, ReleaseState } from '../../domain'
@@ -48,7 +49,8 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
  * release several parts together. Vendor: the parts released to it, to acknowledge or return together.
  */
 export function ReleasePanel() {
-  const { parts, partReleases, partAcks, picAssignments, releasePart, acknowledgeParts, returnParts } = useQAStore()
+  const { partReleases, partAcks, picAssignments, releasePart, acknowledgeParts, returnParts } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
   const canReleaseParts = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'

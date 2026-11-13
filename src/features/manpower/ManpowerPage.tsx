@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader, Card, Button, Modal, Tabs } from '../../components'
 import { useQAStore } from '../../store/qaStore'
+import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import { buildPicLoads, visitCoverage, vendorLocation, getPicOn } from '../../engine'
 import { DEMO_TODAY, fmtDate } from '../scope'
@@ -11,9 +12,10 @@ const thCls = 'text-left px-4 py-3 font-medium text-[var(--color-muted)]'
 
 export function ManpowerPage() {
   const {
-    activities, entries, parts, templateRows, models, picAssignments,
+    activities, entries, templateRows, models, picAssignments,
     vendorInfo, vendorVisits, addVendorVisit, updateVendorVisit, deleteVendorVisit
   } = useQAStore()
+  const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const canPlan = currentPersona === 'SIC' || currentPersona === 'DPM' || currentPersona === 'Admin' || currentPersona === 'PIC'
 
@@ -198,7 +200,8 @@ export function ManpowerPage() {
 
 /** Small inline preview of coverage inside the plan modal. */
 function CoveragePreview({ pic, vendor }: { pic: string; vendor: string }) {
-  const { parts, picAssignments, vendorInfo } = useQAStore()
+  const { picAssignments, vendorInfo } = useQAStore()
+  const parts = useWorkParts()
   const cov = visitCoverage(pic, vendor, parts, picAssignments, vendorInfo, DEMO_TODAY)
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[11px] text-[#344054]">
