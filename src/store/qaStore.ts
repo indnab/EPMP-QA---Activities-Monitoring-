@@ -1718,8 +1718,8 @@ export const useQAStore = create<QAStoreState>()(
     }),
     {
       name: 'qa-tracker-store',
-      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). v45: projects (Project Initiation) gate the work screens; models no longer carry archetypeId. Stale data is dropped.
-      version: 45,
+      // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). v45: projects (Project Initiation) gate the work screens; models no longer carry archetypeId. v46: one model per project (seed: one project per model). Stale data is dropped.
+      version: 46,
       migrate: () => ({})
     }
   )

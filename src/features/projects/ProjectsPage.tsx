@@ -66,7 +66,7 @@ export function ProjectsPage() {
                 <th className="px-4 py-3">Project Name</th>
                 <th className="px-4 py-3">Archetype</th>
                 <th className="px-4 py-3">Project Master</th>
-                <th className="px-4 py-3">Models</th>
+                <th className="px-4 py-3">Model</th>
                 <th className="px-4 py-3 text-center">Parts</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Initiated</th>

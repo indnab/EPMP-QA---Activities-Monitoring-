@@ -196,7 +196,7 @@ export function ProjectDetailsPage() {
           <Button variant="danger" size="md" onClick={() => { closeProject(project.no, currentPersona); setConfirmClose(false) }}>Close project</Button>
         </>}>
         <p className="text-sm text-[#344054]">
-          The project becomes read-only and its parts leave the work screens. Its models are freed for a new project.
+          The project becomes read-only and its parts leave the work screens. Its model is freed for a new project.
           {notApproved > 0 && <> About <strong>{notApproved}</strong> activity item{notApproved === 1 ? ' is' : 's are'} not yet approved.</>}
         </p>
       </Modal>

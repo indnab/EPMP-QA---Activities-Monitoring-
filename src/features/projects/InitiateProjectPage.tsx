@@ -1,12 +1,11 @@
 /**
  * Initiate Project (Division Model Coordinator). Project No. is automatic; name, archetype and Project Master are
- * chosen; a Vehicle project adds its models with their MRD dates. On Initiate the project goes straight into
- * execution and the parts tagged to its models are worked under the archetype's activities.
+ * chosen; a Vehicle project has exactly one model with its MRD dates. On Initiate the project goes straight into
+ * execution and the parts tagged to its model are worked under the archetype's activities.
  */
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, PageHeader } from '../../components'
-import { Icon } from '../../components/Icon'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { InitiateProjectInput, ModelDraft, ProjectMaster } from '../../domain/projects'
@@ -36,7 +35,7 @@ export function InitiateProjectPage() {
     setName(v)
     if (master === 'Vehicle' && !touchedModels) {
       const m = matchModelFromName(v, models)
-      setBlocks(m ? [existingBlock(m)] : [])
+      setBlocks([m ? existingBlock(m) : { name: '', isNew: false, mrds: {} }])
     }
   }
   const onMaster = (v: ProjectMaster | '') => {
@@ -47,8 +46,6 @@ export function InitiateProjectPage() {
     }
   }
   const setBlock = (i: number, b: ModelDraft) => { setTouchedModels(true); setBlocks((bs) => bs.map((x, j) => (j === i ? b : x))) }
-  const addBlock = () => { setTouchedModels(true); setBlocks((bs) => [...bs, { name: '', isNew: false, mrds: {} }]) }
-  const removeBlock = (i: number) => { setTouchedModels(true); setBlocks((bs) => bs.filter((_, j) => j !== i)) }
 
   const input: InitiateProjectInput = { name, archetypeId, master, models: master === 'Vehicle' ? blocks : [] }
   const liveErrors = validateInitiation(input, { archetypes, models, milestones, projects, by: currentPersona })
@@ -118,8 +115,8 @@ export function InitiateProjectPage() {
       {master === 'Vehicle' && (
         <Card className="mb-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="m-0 text-[14px] font-semibold text-[#101828]">Models &amp; MRD dates</h2>
-            <span className="text-[11px] text-[var(--color-muted)]">The parts tagged to these models are pulled into the project.</span>
+            <h2 className="m-0 text-[14px] font-semibold text-[#101828]">Model &amp; MRD dates</h2>
+            <span className="text-[11px] text-[var(--color-muted)]">A project has one model; the parts tagged to it are pulled into the project.</span>
           </div>
           {show('models') && <p className="mb-2 text-[11px] text-red-600">{show('models')}</p>}
           <div className="space-y-4">
@@ -129,7 +126,7 @@ export function InitiateProjectPage() {
                 <div key={i} className="rounded-lg border border-[var(--color-border)] p-4">
                   <div className="mb-3 flex flex-wrap items-end gap-3">
                     <label className="block min-w-[220px] flex-1">
-                      <span className="mb-1 block text-[11px] font-medium text-[#344054]">Model {i + 1} <span className="text-red-500">*</span></span>
+                      <span className="mb-1 block text-[11px] font-medium text-[#344054]">Model <span className="text-red-500">*</span></span>
                       <select
                         value={b.isNew ? NEW : b.name}
                         onChange={(e) => setBlock(i, e.target.value === NEW ? { name: '', isNew: true, mrds: {} } : existingBlock(e.target.value))}
@@ -149,10 +146,6 @@ export function InitiateProjectPage() {
                         <input value={b.name} onChange={(e) => setBlock(i, { ...b, name: e.target.value })} className={inputCls} placeholder="e.g. eVX" />
                       </label>
                     )}
-                    <button type="button" onClick={() => removeBlock(i)} aria-label={`Remove model ${i + 1}`}
-                      className="mb-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[#fef2f2] hover:text-[var(--color-destructive)]">
-                      <Icon name="close" size={14} />
-                    </button>
                   </div>
                   {show(`model.${i}.name`) && <p className="mb-2 text-[11px] text-red-600">{show(`model.${i}.name`)}</p>}
                   {!b.isNew && b.name && <p className="mb-2 text-[11px] text-[var(--color-muted)]">MRDs prefilled from the model master — changes here update the master.</p>}
@@ -169,9 +162,6 @@ export function InitiateProjectPage() {
               )
             })}
           </div>
-          <button type="button" onClick={addBlock} className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-secondary)]">
-            <Icon name="circle-plus" size={16} /> Add model
-          </button>
         </Card>
       )}
 

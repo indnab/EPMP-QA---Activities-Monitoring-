@@ -145,18 +145,17 @@ export const SEED_ARCHETYPES: ProjectArchetype[] = [
  * Seed project: the seed archetype initiated for every seed model, In Execution — so the work screens (which only
  * show parts of In Execution projects) have their data from the start.
  */
-export const SEED_PROJECTS: Project[] = [
-  {
-    no: 'PRJ-0001',
-    name: 'Vehicle Development – QA',
-    archetypeId: SEED_ARCHETYPE_ID,
-    master: 'Vehicle',
-    modelNames: BASE_MODELS.map((m) => m.name),
-    status: 'InExecution',
-    initiatedBy: 'ModelCoordinator',
-    initiatedAt: '2026-10-01T09:00:00.000Z',
-  },
-]
+export const SEED_PROJECTS: Project[] = BASE_MODELS.map((m, i) => ({
+  // One project per model (a project has exactly one model).
+  no: `PRJ-${String(i + 1).padStart(4, '0')}`,
+  name: m.name,
+  archetypeId: SEED_ARCHETYPE_ID,
+  master: 'Vehicle' as const,
+  modelNames: [m.name],
+  status: 'InExecution' as const,
+  initiatedBy: 'ModelCoordinator' as const,
+  initiatedAt: '2026-10-01T09:00:00.000Z',
+}))
 
 /** Seed activity definitions: the PP activity list only (see ./ppActivities), linked to the seed archetype. */
 export const SEED_ACTIVITIES: ActivityDefinition[] = ALL_BLUEPRINTS.map((a) => ({

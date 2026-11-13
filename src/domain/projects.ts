@@ -18,7 +18,7 @@ export interface Project {
   name: string
   archetypeId: string
   master: ProjectMaster
-  /** ModelRecord.name values (canonical casing). Empty for NonVehicle. */
+  /** The project's model (ModelRecord.name, canonical casing): exactly one for Vehicle, empty for NonVehicle. */
   modelNames: string[]
   status: ProjectStatus
   initiatedBy: PersonaId
@@ -153,7 +153,8 @@ export function validateInitiation(input: InitiateProjectInput, ctx: InitiationC
   const drafts = input.models ?? []
   if (input.master === 'NonVehicle' && drafts.length > 0) errors.models = 'A non-vehicle project has no models.'
   if (input.master === 'Vehicle') {
-    if (drafts.length === 0) errors.models = 'Add at least one model.'
+    if (drafts.length === 0) errors.models = 'Select the model for this project.'
+    else if (drafts.length > 1) errors.models = 'A project has exactly one model.'
     const seen = new Set<string>()
     drafts.forEach((d, i) => {
       const nm = d.name.trim()
