@@ -6,6 +6,7 @@
  */
 import type { PersonaId } from '../store/personaStore'
 import type { MilestoneDef, ModelRecord, PartRecord, ProjectArchetype } from './index'
+import { isBuildable } from './index'
 import { validateMrds } from './mrds'
 
 export type ProjectMaster = 'Vehicle' | 'NonVehicle'
@@ -181,7 +182,7 @@ export function previewProject(draft: InitiateProjectInput, parts: PartRecord[],
   return {
     modelNames: names,
     partsCount: parts.filter((p) => !p.supersededBy && keys.has(lower(p.model))).length,
-    activityCount: archetype ? archetype.wbs.filter((o) => o.type === 'QA').length : 0,
+    activityCount: archetype ? archetype.wbs.filter((o) => isBuildable(o)).length : 0,
     wbsObjectCount: archetype ? archetype.wbs.length : 0,
   }
 }

@@ -250,8 +250,14 @@ export interface ActivityDependency {
 
 // ── Governance: project archetypes and their WBS templates ────────────────────
 
-/** Kind of WBS object. Only QA objects become activities in the Activity Builder; the rest stay WBS-only. */
-export type WbsObjectType = 'General' | 'QA' | 'VCF' | 'RiskSphere' | 'ImportJira' | 'EAReview'
+/**
+ * Kind of WBS object. Only 'ActivityBuilder' objects become activities in the Activity Builder (built in detail:
+ * fields, flow, timeline). The rest, QA included, stay WBS-only.
+ */
+export type WbsObjectType = 'General' | 'ActivityBuilder' | 'QA' | 'VCF' | 'RiskSphere' | 'ImportJira' | 'EAReview'
+
+/** Whether a WBS object is built as an activity in the Activity Builder. */
+export const isBuildable = (o: { type: WbsObjectType }) => o.type === 'ActivityBuilder'
 
 /** One QA checklist item on a QA WBS object. Each becomes a Yes/No field on the object's activity. */
 export interface WbsChecklistItem {

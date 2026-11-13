@@ -3,6 +3,7 @@
  * QA rows are rolled up from the same part × activity instances the work screens use.
  */
 import type { ActivityDefinition, ActivityEntry, ModelRecord, PartRecord, PicAssignment, ProjectArchetype, TemplateRow, WbsObject } from '../domain'
+import { isBuildable } from '../domain'
 import type { Project } from '../domain/projects'
 import { projectParts } from '../domain/projects'
 import { DEP_LABEL, WBS_TYPE_LABEL } from '../domain/governance'
@@ -63,7 +64,7 @@ export function buildExecutionRows(args: {
       obj, typeLabel: WBS_TYPE_LABEL[obj.type], dependencyLabel: describeDependency(obj, archetype),
       partsInScope: 0, completionPct: 0, ryg: 'NA' as ExecutionRyg, delayed: 0, ng: 0, links: [] as ExecutionRowLink[],
     }
-    if (obj.type !== 'QA' || !obj.activityId) return { ...base, kind: 'other' as const }
+    if (!isBuildable(obj) || !obj.activityId) return { ...base, kind: 'other' as const }
     const activity = activities.find((a) => a.id === obj.activityId)
     // Unpublished (not yet built) activities produce no instances.
     const insts = projParts.length ? getFilteredData(entries, activities, projParts, templateRows, models, { ...ALL }, obj.activityId, today) : []

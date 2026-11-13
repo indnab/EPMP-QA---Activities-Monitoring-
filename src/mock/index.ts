@@ -134,7 +134,7 @@ export const SEED_ARCHETYPES: ProjectArchetype[] = [
     wbs: ALL_BLUEPRINTS.map((a, i) => ({
       id: `wbs-${i + 1}`,
       name: a.name,
-      type: 'QA' as const,
+      type: 'ActivityBuilder' as const,
       trial: ACTIVITY_MILESTONE[a.id] ?? 'PP',
       activityId: a.id,
     })),

@@ -1,8 +1,8 @@
 /**
  * Governance → Activity Builder link.
  *
- * An Admin defines project archetypes; each archetype has a WBS template of objects. QA-type objects become
- * activities in the Activity Builder: saving an archetype creates (or updates) one ActivityDefinition per QA object,
+ * An Admin defines project archetypes; each archetype has a WBS template of objects. 'Activity Builder' objects become
+ * activities in the Activity Builder: saving an archetype creates (or updates) one ActivityDefinition per such object,
  * named after it, with its trial as the default milestone and its QA checklist items as Yes/No fields. The Admin then
  * configures the rest (fields, flow, timeline) in the Builder and publishes. Objects that are removed or changed away
  * from QA retire their activity.
@@ -10,9 +10,11 @@
 import type {
   ActivityDefinition, ApprovalFlow, BuilderDraft, DependencyType, FieldDefinition, ProjectArchetype, WbsObject, WbsObjectType
 } from './index'
+import { isBuildable } from './index'
 
 export const WBS_TYPES: { id: WbsObjectType; label: string }[] = [
   { id: 'General', label: 'General' },
+  { id: 'ActivityBuilder', label: 'Activity Builder' },
   { id: 'QA', label: 'QA' },
   { id: 'VCF', label: 'VCF' },
   { id: 'RiskSphere', label: 'RiskSphere' },
@@ -76,8 +78,8 @@ export function syncArchetype(
   const link = (a: { archetypeId?: string; wbsObjectId?: string }) => ({ archetypeId: arc.id, ...a })
 
   const wbs = arc.wbs.map((obj) => {
-    if (obj.type !== 'QA') {
-      // Changed away from QA: its activity is retired and the link dropped.
+    if (!isBuildable(obj)) {
+      // Changed away from Activity Builder: its activity is retired and the link dropped.
       if (obj.activityId) acts = acts.map((a) => (a.id === obj.activityId ? { ...a, retired: true } : a))
       return { ...obj, activityId: undefined, trial: undefined, checklist: undefined, qaOwnershipReleaseManager: undefined }
     }

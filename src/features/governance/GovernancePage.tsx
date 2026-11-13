@@ -10,6 +10,7 @@ import { Card, PageHeader, Tabs } from '../../components'
 import { Icon } from '../../components/Icon'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
+import { isBuildable } from '../../domain'
 import { ArchetypesPage } from './ArchetypesPage'
 import { BuilderPage } from '../builder/BuilderPage'
 import { ActivityLibrary } from './ActivityLibrary'
@@ -42,7 +43,7 @@ export function GovernancePage() {
   // Activities still waiting to be built (QA objects whose activity is unpublished and has no draft yet).
   const toBuild = archetypes
     .flatMap((a) => a.wbs)
-    .filter((o) => o.type === 'QA' && o.activityId)
+    .filter((o) => isBuildable(o) && o.activityId)
     .filter((o) => {
       const act = activities.find((x) => x.id === o.activityId)
       return act && !act.retired && act.published === false && !drafts.some((d) => d.sourceId === act.id)

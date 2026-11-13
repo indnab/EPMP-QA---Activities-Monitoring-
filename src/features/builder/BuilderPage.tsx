@@ -12,6 +12,7 @@ import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { Button, Card, PageHeader } from '../../components'
 import type { ActivityDefinition } from '../../domain'
+import { isBuildable } from '../../domain'
 
 type Status = 'Not configured' | 'Draft in progress' | 'Published'
 const STATUS_CLS: Record<Status, string> = {
@@ -40,7 +41,7 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
       title: arc.name,
       sub: `${arc.id}${arc.active ? '' : ' · inactive'}`,
       rows: arc.wbs
-        .filter((o) => o.type === 'QA' && o.activityId)
+        .filter((o) => isBuildable(o) && o.activityId)
         .map((o) => live.find((a) => a.id === o.activityId))
         .filter((a): a is ActivityDefinition => !!a),
     }))
@@ -119,7 +120,7 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
       )}
 
       <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[12px] text-primary">
-        Activities come from the QA objects in each archetype’s WBS template. Add or rename them in{' '}
+        Activities come from the Activity Builder objects in each archetype’s WBS template. Add or rename them in{' '}
         <Link to="/governance?tab=archetypes" className="font-semibold underline">Governance → Archetypes</Link>, then configure fields, flow and timeline here.
         {counts.todo > 0 && <strong> {counts.todo} of {counts.total} still need configuring.</strong>}
       </div>
@@ -137,7 +138,7 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
             </div>
             {g.rows.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-[var(--color-muted)]">
-                {statusFilter === 'all' ? 'No QA objects in this archetype yet.' : `No activities with status “${statusFilter}”.`}
+                {statusFilter === 'all' ? 'No Activity Builder objects in this archetype yet.' : `No activities with status “${statusFilter}”.`}
               </p>
             ) : (
               <div className="table-scroll cta-pin">

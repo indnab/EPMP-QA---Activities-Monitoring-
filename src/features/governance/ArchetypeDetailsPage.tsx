@@ -11,6 +11,7 @@ import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { DependencyType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsObject, WbsObjectType } from '../../domain'
 import { DEP_LABEL, DEP_TYPES, WBS_TYPES, activityIdFor, nextArchetypeId } from '../../domain/governance'
+import { isBuildable } from '../../domain'
 
 const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:opacity-70'
 const cellInput = 'h-8 w-full rounded-md border border-[var(--color-border)] bg-white px-2 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:bg-transparent disabled:border-transparent'
@@ -33,7 +34,7 @@ export function ArchetypeDetailsPage() {
 
   // A new WBS row is a QA activity by default (with the first trial), so it can be built straight away.
   const firstTrial = milestones.find((m) => m.mandatory)?.id
-  const newRow = (): WbsObject => ({ id: uid('wbs'), name: '', type: 'QA', trial: firstTrial })
+  const newRow = (): WbsObject => ({ id: uid('wbs'), name: '', type: 'ActivityBuilder', trial: firstTrial })
   const [arc, setArc] = useState<ProjectArchetype>(() =>
     existing
       ? structuredClone(existing)
@@ -54,14 +55,14 @@ export function ArchetypeDetailsPage() {
       wbs: a.wbs.filter((o) => o.id !== oid).map((o) => (o.dependency?.onObjectId === oid ? { ...o, dependency: undefined } : o)),
     }))
   const changeType = (o: WbsObject, type: WbsObjectType) =>
-    setObj(o.id, type === 'QA' ? { type, trial: o.trial ?? trials[0]?.id } : { type, trial: undefined })
+    setObj(o.id, type === 'ActivityBuilder' ? { type, trial: o.trial ?? trials[0]?.id } : { type, trial: undefined })
 
   const named = arc.wbs.filter((o) => o.name.trim())
   const errors = {
     name: !arc.name.trim(),
     description: !arc.description.trim(),
     objects: named.length === 0,
-    trial: arc.wbs.some((o) => o.type === 'QA' && o.name.trim() && !o.trial),
+    trial: arc.wbs.some((o) => isBuildable(o) && o.name.trim() && !o.trial),
   }
   const invalid = Object.values(errors).some(Boolean)
   const nameOf = (oid: string) => arc.wbs.find((o) => o.id === oid)?.name || 'Untitled'
@@ -167,7 +168,7 @@ export function ArchetypeDetailsPage() {
                       </select>
                     </td>
                     <td className="px-3 py-1.5">
-                      {o.type === 'QA' ? (
+                      {isBuildable(o) ? (
                         <select value={o.trial ?? ''} disabled={!isAdmin} aria-label={`WBS object ${i + 1} trial`}
                           onChange={(e) => setObj(o.id, { trial: e.target.value || undefined })} className={cellInput}>
                           <option value="">Select…</option>
@@ -192,7 +193,7 @@ export function ArchetypeDetailsPage() {
                       ) : <span className="text-[var(--color-muted)]">—</span>}
                     </td>
                     <td className="px-3 py-1.5">
-                      {o.type === 'QA' ? (
+                      {isBuildable(o) ? (
                         <span className="flex flex-wrap items-center justify-end gap-2">
                           <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{state}</span>
                           <button type="button" onClick={() => setChecklistFor(o.id)}
@@ -208,7 +209,7 @@ export function ArchetypeDetailsPage() {
                             </Button>
                           )}
                         </span>
-                      ) : <span className="block text-center text-[11px] text-[var(--color-muted)]" title="Only QA objects are built as activities">NA · set Type to QA to build</span>}
+                      ) : <span className="block text-center text-[11px] text-[var(--color-muted)]" title="Only Activity Builder objects are built as activities">NA · set Type to Activity Builder to build</span>}
                     </td>
                     {isAdmin && (
                       <td className="px-3 py-1.5 text-center">
@@ -233,7 +234,7 @@ export function ArchetypeDetailsPage() {
         )}
         {touched && (errors.objects || errors.trial) && (
           <p className="border-t border-[var(--color-border)] px-4 py-2 text-[11px] text-red-600">
-            {errors.objects ? 'Add at least one named WBS object.' : 'Choose a trial for every QA object.'}
+            {errors.objects ? 'Add at least one named WBS object.' : 'Choose a trial for every Activity Builder object.'}
           </p>
         )}
       </Card>
@@ -324,7 +325,7 @@ function ChecklistModal({ obj, readOnly, onClose, onSave }: {
   const setItem = (id: string, patch: Partial<WbsChecklistItem>) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)))
   const filled = items.filter((x) => x.label.trim())
   return (
-    <Modal open onClose={onClose} size="md" title={`QA Checklist · ${obj.name || 'QA object'}`}
+    <Modal open onClose={onClose} size="md" title={`Checklist · ${obj.name || 'Activity'}`}
       footer={readOnly ? <Button variant="secondary" size="md" onClick={onClose}>Close</Button> : (
         <>
           <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
