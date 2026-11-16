@@ -1,5 +1,6 @@
 /**
- * Project Execution roll-up (one row per WBS object of the project's archetype) and the derived project team.
+ * Project Execution roll-up (one row per WBS object of the project's archetype, in tree order; milestones roll up
+ * their activities) and the derived project team.
  * QA rows are rolled up from the same part × activity instances the work screens use.
  */
 import type { ActivityDefinition, ActivityEntry, ModelRecord, PartRecord, PicAssignment, ProjectArchetype, TemplateRow, WbsObject } from '../domain'
@@ -7,6 +8,7 @@ import { isBuildable } from '../domain'
 import type { Project } from '../domain/projects'
 import { projectParts } from '../domain/projects'
 import { DEP_LABEL, WBS_TYPE_LABEL } from '../domain/governance'
+import { WBS_LEVEL_LABEL, subtreeIds, wbsTree } from '../domain/wbsTree'
 import type { PersonaId } from '../store/personaStore'
 import { completionPct, getFilteredData, getPicOn, workBucket } from './index'
 import { partInScope } from '../features/scope'
@@ -17,7 +19,11 @@ export interface ExecutionRowLink { rowId: string; label: string; instances: num
 
 export interface ExecutionRow {
   obj: WbsObject
-  kind: 'qa' | 'other'
+  /** 'qa' = built activity (part instances), 'milestone' = roll-up of the activities under it. */
+  kind: 'qa' | 'milestone' | 'other'
+  /** WBS code, e.g. 'WBS-1.2', and tree depth (0 = milestone). */
+  code: string
+  depth: number
   activity?: ActivityDefinition
   partsInScope: number
   completionPct: number
@@ -59,9 +65,11 @@ export function buildExecutionRows(args: {
 }): ExecutionRow[] {
   const { project, archetype, entries, activities, parts, templateRows, models, persona, today } = args
   const projParts = projectParts(project, parts).filter((p) => partInScope(p, persona))
-  return archetype.wbs.map((obj) => {
+  const rows: ExecutionRow[] = wbsTree(archetype.wbs).map(({ obj, code, depth }) => {
     const base = {
-      obj, typeLabel: WBS_TYPE_LABEL[obj.type], dependencyLabel: describeDependency(obj, archetype),
+      obj, code, depth,
+      typeLabel: obj.level === 'Milestone' ? WBS_LEVEL_LABEL.Milestone : WBS_TYPE_LABEL[obj.type],
+      dependencyLabel: describeDependency(obj, archetype),
       partsInScope: 0, completionPct: 0, ryg: 'NA' as ExecutionRyg, delayed: 0, ng: 0, links: [] as ExecutionRowLink[],
     }
     if (!isBuildable(obj) || !obj.activityId) return { ...base, kind: 'other' as const }
@@ -83,6 +91,21 @@ export function buildExecutionRows(args: {
       delayed: insts.filter((i) => workBucket(i) === 'Delayed').length,
       ng: insts.filter((i) => workBucket(i) === 'NG').length,
       links: [...byRow.values()],
+    }
+  })
+  // Milestones roll up the built activities under them.
+  return rows.map((r) => {
+    if (r.obj.level !== 'Milestone') return r
+    const under = subtreeIds(archetype.wbs, r.obj.id)
+    const qa = rows.filter((x) => x.kind === 'qa' && under.has(x.obj.id))
+    const withParts = qa.filter((x) => x.partsInScope > 0)
+    return {
+      ...r, kind: 'milestone' as const,
+      partsInScope: Math.max(0, ...qa.map((x) => x.partsInScope)),
+      completionPct: withParts.length ? Math.round(withParts.reduce((s, x) => s + x.completionPct, 0) / withParts.length) : 0,
+      ryg: worstRyg(qa.map((x) => x.ryg)),
+      delayed: qa.reduce((s, x) => s + x.delayed, 0),
+      ng: qa.reduce((s, x) => s + x.ng, 0),
     }
   })
 }

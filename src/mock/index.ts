@@ -1,5 +1,6 @@
-import { makeTemplateRowId, makeTimelineRowId } from '../domain'
-import { MILESTONE_SUBTYPES, subTypeMrdKey } from '../domain/timelineCatalog'
+import { makeTemplateRowId } from '../domain'
+import { MILESTONE_SUBTYPES, SUBTYPE_LABEL, subTypeMrdKey } from '../domain/timelineCatalog'
+import { deriveMilestones } from '../domain/wbsTree'
 import type {
   PicAssignment,
   ActivityDefinition,
@@ -19,19 +20,6 @@ import type {
 } from '../domain'
 import { ACTIVITY_MILESTONE, ALL_BLUEPRINTS } from './ppActivities'
 import type { Project } from '../domain/projects'
-
-/** Configurable milestone list. PP, MPP, Pilot, SOP are mandatory. */
-export const SEED_MILESTONES: MilestoneDef[] = [
-  { id: 'PP', label: 'PP', mandatory: true },
-  { id: 'MPP', label: 'MPP', mandatory: true },
-  { id: 'Pilot', label: 'Pilot', mandatory: true },
-  { id: 'SOP', label: 'SOP', mandatory: true },
-  { id: 'Jig', label: 'Jig', mandatory: false },
-  { id: 'Kani', label: 'Kani', mandatory: false },
-  { id: 'Weld', label: 'Weld', mandatory: false },
-  { id: 'Engine', label: 'Engine', mandatory: false },
-  { id: 'Assembly', label: 'Assembly', mandatory: false }
-]
 
 /** Configurable section list. */
 export const SEED_SECTIONS: Section[] = ['NP1', 'NP2', 'NP3', 'NP4', 'NP5', 'NP6'].map((id) => ({ id, label: id }))
@@ -86,61 +74,49 @@ const PP_OFFSETS: Record<string, { startOffset: number; endOffset: number }> = {
   'pp-3': { startOffset: -23, endOffset: 2 },
   'pp-10': { startOffset: -23, endOffset: 7 }
 }
-export const SEED_TEMPLATE_ROWS: TemplateRow[] = ALL_BLUEPRINTS.flatMap((a) => {
-  // Activities with a timeline template get one row per (milestone × sub-type) the template targets (across all
-  // categories). Resolution uses each row's own sub-type MRD; getFilteredData only creates an instance for a part
-  // when its model has that sub-type's MRD. Other activities keep a single PP row.
-  if (a.timelineTemplate && a.timelineTemplate.length > 0) {
-    const seen = new Set<string>()
-    const rows: TemplateRow[] = []
-    for (const entry of a.timelineTemplate) {
-      for (const off of entry.offsets) {
-        const key = `${off.milestoneId}-${off.subType}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        rows.push({
-          id: makeTimelineRowId('NP1', a.id, off.milestoneId, off.subType),
-          section: 'NP1',
-          activityId: a.id,
-          milestoneId: off.milestoneId,
-          subType: off.subType,
-          // Offsets here are placeholders; the sub-type MRD − X comes from the activity's timeline template.
-          startOffset: -off.minusDays,
-          endOffset: -(off.endMinusDays ?? 0)
-        })
-      }
-    }
-    return rows
-  }
-  return [{
-    id: makeTemplateRowId('NP1', a.id, ACTIVITY_MILESTONE[a.id] ?? 'PP'),
+export const SEED_TEMPLATE_ROWS: TemplateRow[] = ALL_BLUEPRINTS.map((a) => {
+  // One row per activity under its milestone. For activities with a timeline template the part's technical category
+  // picks the planned date (e.g. Weld parts off Weld MRD); other parts fall back to the milestone date + offsets.
+  const ms = ACTIVITY_MILESTONE[a.id] ?? 'PP'
+  return {
+    id: makeTemplateRowId('NP1', a.id, ms),
     section: 'NP1',
     activityId: a.id,
-    milestoneId: ACTIVITY_MILESTONE[a.id] ?? 'PP',
+    milestoneId: ms,
     ...(PP_OFFSETS[a.id] ?? { startOffset: -23, endOffset: 3 })
-  }]
+  }
 })
 /**
  * Governance seed: one archetype whose WBS template holds every existing QA activity (one QA object each, in trial
  * order). New QA objects added to it (or to new archetypes) show up in the Activity Builder.
  */
 export const SEED_ARCHETYPE_ID = 'ARC-001'
+/** Seed milestones of the archetype, with their planned dates (own date + MRD types). SOP's own date is required. */
+const SEED_MS: { id: string; required: boolean }[] = [
+  { id: 'PP', required: false }, { id: 'MPP', required: false }, { id: 'Pilot', required: false }, { id: 'SOP', required: true },
+]
 export const SEED_ARCHETYPES: ProjectArchetype[] = [
   {
     id: SEED_ARCHETYPE_ID,
     name: 'Vehicle Development – QA',
     description: 'QA activities for a new vehicle model: Prototype (PP), Mass Pre-Production (MPP) and Pilot/SOP trials.',
     active: true,
-    wbs: ALL_BLUEPRINTS.map((a, i) => ({
-      id: `wbs-${i + 1}`,
-      name: a.name,
-      type: 'ActivityBuilder' as const,
-      trial: ACTIVITY_MILESTONE[a.id] ?? 'PP',
-      activityId: a.id,
-    })),
+    // Milestone rows (ids = milestone ids, so model MRD keys like 'PP:Weld' resolve), each followed by its activities.
+    wbs: SEED_MS.flatMap((ms) => [
+      {
+        id: ms.id, name: ms.id, level: 'Milestone' as const, type: 'General' as const, dateRequired: ms.required,
+        dateTypes: (MILESTONE_SUBTYPES[ms.id] ?? []).map((st) => ({ id: st, label: SUBTYPE_LABEL[st] ?? st })),
+      },
+      ...ALL_BLUEPRINTS.map((a, i) => ({ a, i }))
+        .filter(({ a }) => (ACTIVITY_MILESTONE[a.id] ?? 'PP') === ms.id)
+        .map(({ a, i }) => ({
+          id: `wbs-${i + 1}`, name: a.name, level: 'Activity' as const, parentId: ms.id, type: 'ActivityBuilder' as const, activityId: a.id,
+        })),
+    ]),
   },
 ]
-
+/** Shared milestone list (filters, dashboards, section templates) — derived from the archetypes. */
+export const SEED_MILESTONES: MilestoneDef[] = deriveMilestones(SEED_ARCHETYPES)
 /**
  * Seed project: the seed archetype initiated for every seed model, In Execution — so the work screens (which only
  * show parts of In Execution projects) have their data from the start.

@@ -207,14 +207,14 @@ export const PP_FIELD_CONFIG: Record<string, PpActivityConfig> = {
     fields: vendorSees(PP11, ['inspection_target_date', 'inspection_actual_date', 'inspection_completed', 'evidence_attachment', 'inspection_status', 'correction_beyond_mrd', 'remark']),
     trackNgRounds: true,
     canReferenceOtherActivities: true,
-    // Demo: part inspection is timed off the sub-type MRD — once under PP and again under MPP — so it splits into a
-    // PP instance and an MPP instance per part (Weld parts off the Weld MRD, Engine off Engine, others off Assembly).
+    // Demo: part inspection is timed off a PP planned date picked by the part's category (Weld parts off the Weld
+    // MRD, Engine off Engine, others off Assembly).
     timelineTemplate: [
-      { category: 'Weld', offsets: [{ milestoneId: 'PP', subType: 'Weld', minusDays: 10, endMinusDays: 0 }, { milestoneId: 'MPP', subType: 'Weld', minusDays: 8, endMinusDays: 0 }] },
-      { category: 'Engine', offsets: [{ milestoneId: 'PP', subType: 'Engine', minusDays: 10, endMinusDays: 0 }, { milestoneId: 'MPP', subType: 'Engine', minusDays: 8, endMinusDays: 0 }] },
-      { category: 'PlasticAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }, { milestoneId: 'MPP', subType: 'Assembly', minusDays: 8, endMinusDays: 0 }] },
-      { category: 'RubberAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }, { milestoneId: 'MPP', subType: 'Assembly', minusDays: 8, endMinusDays: 0 }] },
-      { category: 'OtherAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }, { milestoneId: 'MPP', subType: 'Assembly', minusDays: 8, endMinusDays: 0 }] }
+      { category: 'Weld', offsets: [{ milestoneId: 'PP', subType: 'Weld', minusDays: 10, endMinusDays: 0 }] },
+      { category: 'Engine', offsets: [{ milestoneId: 'PP', subType: 'Engine', minusDays: 10, endMinusDays: 0 }] },
+      { category: 'PlasticAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }] },
+      { category: 'RubberAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }] },
+      { category: 'OtherAssy', offsets: [{ milestoneId: 'PP', subType: 'Assembly', minusDays: 10, endMinusDays: 0 }] }
     ]
   }
 }

@@ -1,72 +1,102 @@
 /**
- * Governance → Archetype Details. Admin names the archetype and defines its WBS objects: name, type, trial (QA),
- * dependency (predecessor + FS/SS/FF/SF + lag) and, for QA objects, a checklist. On Submit, QA objects are synced into
- * the Activity Builder (see domain/governance.syncArchetype), where their fields/flow/timeline are configured.
+ * Governance → Archetype Details. Admin names the archetype and builds its WBS as a tree:
+ * Milestone → Activity → Task → Sub-task (WBS-1, WBS-1.1, …). Milestones are this archetype's own (any name) and each
+ * carries its planned dates: its own date plus any MRD types (e.g. Kani MRD, Jig MRD) the Model Coordinator fills per
+ * model at Project Initiation. Only Activity rows of type Activity Builder are built in detail; on Submit they are
+ * synced into the Activity Builder (see domain/governance.syncArchetype), where each part category is linked to one
+ * of its milestone's planned dates.
  */
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader, Card, Button, Modal } from '../../components'
 import { Icon } from '../../components/Icon'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
-import type { DependencyType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsObject, WbsObjectType } from '../../domain'
+import type { DependencyType, MilestoneDateType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsLevel, WbsObject, WbsObjectType } from '../../domain'
 import { DEP_LABEL, DEP_TYPES, WBS_TYPES, activityIdFor, nextArchetypeId } from '../../domain/governance'
 import { isBuildable } from '../../domain'
+import { WBS_LEVEL_LABEL, childLevel, dateOptions, insertChild, subtreeIds, wbsTree } from '../../domain/wbsTree'
 
 const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:opacity-70'
 const cellInput = 'h-8 w-full rounded-md border border-[var(--color-border)] bg-white px-2 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:bg-transparent disabled:border-transparent'
 const uid = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const LAG_MAX = 100
+
 const STATE_CLS = {
   'Not built': 'bg-amber-100 text-amber-800',
   'Draft in progress': 'bg-blue-100 text-blue-800',
   Published: 'bg-emerald-100 text-emerald-800',
 } as const
 
+const LEVEL_CLS: Record<WbsLevel, string> = {
+  Milestone: 'bg-[#eef4ff] text-primary',
+  Activity: 'bg-emerald-50 text-emerald-800',
+  Task: 'bg-amber-50 text-amber-800',
+  Subtask: 'bg-[#f2f4f7] text-[#475467]',
+}
+
+/** Types a row may take: Activity Builder only at Activity level; Milestones have no type. */
+const typesFor = (level: WbsLevel) => (level === 'Activity' ? WBS_TYPES : WBS_TYPES.filter((t) => t.id !== 'ActivityBuilder'))
+
+const newRow = (level: WbsLevel, parentId?: string): WbsObject => ({
+  id: uid(level === 'Milestone' ? 'ms' : 'wbs'),
+  name: '',
+  level,
+  parentId,
+  type: level === 'Activity' ? 'ActivityBuilder' : 'General',
+  ...(level === 'Milestone' ? { dateRequired: false, dateTypes: [] } : {}),
+})
+
 export function ArchetypeDetailsPage() {
   const { id: routeId } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { archetypes, milestones, activities, drafts, saveArchetype } = useQAStore()
+  const { archetypes, activities, drafts, saveArchetype } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const isAdmin = currentPersona === 'Admin'
   const isNew = routeId === 'new'
   const existing = isNew ? undefined : archetypes.find((a) => a.id === routeId)
 
-  // A new WBS row is a QA activity by default (with the first trial), so it can be built straight away.
-  const firstTrial = milestones.find((m) => m.mandatory)?.id
-  const newRow = (): WbsObject => ({ id: uid('wbs'), name: '', type: 'ActivityBuilder', trial: firstTrial })
-  const [arc, setArc] = useState<ProjectArchetype>(() =>
-    existing
-      ? structuredClone(existing)
-      : { id: nextArchetypeId(archetypes), name: '', description: '', active: true, wbs: [newRow()] }
-  )
+  const [arc, setArc] = useState<ProjectArchetype>(() => {
+    if (existing) return structuredClone(existing)
+    const ms = newRow('Milestone')
+    return { id: nextArchetypeId(archetypes), name: '', description: '', active: true, wbs: [ms, newRow('Activity', ms.id)] }
+  })
   const [depFor, setDepFor] = useState<string | null>(null)
   const [checklistFor, setChecklistFor] = useState<string | null>(null)
+  const [datesFor, setDatesFor] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
 
-  const trials = useMemo(() => milestones.filter((m) => m.mandatory), [milestones])
+  const tree = wbsTree(arc.wbs)
+  const codeOf = new Map(tree.map((n) => [n.obj.id, n.code]))
   const setObj = (oid: string, patch: Partial<WbsObject>) =>
     setArc((a) => ({ ...a, wbs: a.wbs.map((o) => (o.id === oid ? { ...o, ...patch } : o)) }))
-  const addObj = () => setArc((a) => ({ ...a, wbs: [...a.wbs, newRow()] }))
+  const addMilestone = () => setArc((a) => ({ ...a, wbs: [...a.wbs, newRow('Milestone')] }))
+  const addChild = (parent: WbsObject) => {
+    const lvl = childLevel(parent.level)
+    if (lvl) setArc((a) => ({ ...a, wbs: insertChild(a.wbs, parent.id, newRow(lvl, parent.id)) }))
+  }
+  // Removing a row removes everything under it; dependencies on removed rows go with them.
   const removeObj = (oid: string) =>
-    setArc((a) => ({
-      ...a,
-      // Dependencies on a removed object go with it.
-      wbs: a.wbs.filter((o) => o.id !== oid).map((o) => (o.dependency?.onObjectId === oid ? { ...o, dependency: undefined } : o)),
-    }))
-  const changeType = (o: WbsObject, type: WbsObjectType) =>
-    setObj(o.id, type === 'ActivityBuilder' ? { type, trial: o.trial ?? trials[0]?.id } : { type, trial: undefined })
+    setArc((a) => {
+      const gone = subtreeIds(a.wbs, oid)
+      return {
+        ...a,
+        wbs: a.wbs.filter((o) => !gone.has(o.id)).map((o) => (o.dependency && gone.has(o.dependency.onObjectId) ? { ...o, dependency: undefined } : o)),
+      }
+    })
 
   const named = arc.wbs.filter((o) => o.name.trim())
+  // A blank row is dropped on Submit, so it must not have named rows under it.
+  const blankParent = arc.wbs.some((o) => !o.name.trim() && arc.wbs.some((c) => c.parentId === o.id && c.name.trim()))
   const errors = {
     name: !arc.name.trim(),
     description: !arc.description.trim(),
-    objects: named.length === 0,
-    trial: arc.wbs.some((o) => isBuildable(o) && o.name.trim() && !o.trial),
+    objects: !named.some((o) => o.level === 'Milestone'),
+    blankParent,
   }
   const invalid = Object.values(errors).some(Boolean)
   const nameOf = (oid: string) => arc.wbs.find((o) => o.id === oid)?.name || 'Untitled'
-  // Where each QA row stands in the Activity Builder.
+  // Where each buildable row stands in the Activity Builder.
   const builderState = (o: WbsObject): 'Not built' | 'Draft in progress' | 'Published' => {
     const act = activities.find((a) => a.id === o.activityId)
     if (!act || act.retired) return 'Not built'
@@ -74,7 +104,7 @@ export function ArchetypeDetailsPage() {
     return act.published === false ? 'Not built' : 'Published'
   }
 
-  /** Validate and save the archetype (QA rows are synced into activities). Returns false if something is missing. */
+  /** Validate and save the archetype (buildable rows are synced into activities). Returns false if something is missing. */
   const persist = (): boolean => {
     setTouched(true)
     if (invalid) return false
@@ -84,14 +114,19 @@ export function ArchetypeDetailsPage() {
       ...arc,
       name: arc.name.trim(),
       description: arc.description.trim(),
-      wbs: named.map((o) => ({ ...o, name: o.name.trim(), dependency: o.dependency && keep.has(o.dependency.onObjectId) ? o.dependency : undefined })),
+      wbs: tree.map((n) => n.obj).filter((o) => keep.has(o.id)).map((o) => ({
+        ...o,
+        name: o.name.trim(),
+        dependency: o.dependency && keep.has(o.dependency.onObjectId) ? o.dependency : undefined,
+        ...(o.level === 'Milestone' ? { dateTypes: (o.dateTypes ?? []).filter((t) => t.label.trim()).map((t) => ({ ...t, label: t.label.trim() })) } : {}),
+      })),
     })
     return true
   }
   const submit = () => { if (persist()) navigate('/governance') }
   /** "Build activity": save the archetype, then open this row's activity in the Activity Builder (returns here). */
   const build = (o: WbsObject) => {
-    if (!o.name.trim() || !o.trial) { setTouched(true); return }
+    if (!o.name.trim()) { setTouched(true); return }
     if (!persist()) return
     navigate(`/builder/${activityIdFor(arc, o)}?from=${encodeURIComponent(arc.id)}`)
   }
@@ -107,6 +142,7 @@ export function ArchetypeDetailsPage() {
 
   const depObj = arc.wbs.find((o) => o.id === depFor)
   const chkObj = arc.wbs.find((o) => o.id === checklistFor)
+  const datesObj = arc.wbs.find((o) => o.id === datesFor)
 
   return (
     <div className="pb-24">
@@ -136,56 +172,69 @@ export function ArchetypeDetailsPage() {
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
           <h3 className="m-0 text-[13px] font-semibold text-[#101828]">Define WBS Objects</h3>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{named.length}</span>
-          <span className="ml-auto text-[11px] text-[var(--color-muted)]">Add an activity per row, then click <strong>Build activity</strong> to define its fields, flow and timeline.</span>
+          <span className="ml-auto text-[11px] text-[var(--color-muted)]">
+            Add milestones and their <strong>Planned dates</strong>, then activities under them (<Icon name="circle-plus" size={12} className="inline" /> adds the next level). Activity Builder activities are built in detail.
+          </span>
         </div>
         <div className="table-scroll" style={{ maxHeight: 'calc(100vh - 380px)' }}>
           <table className="w-full text-[12px]">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
-                <th className="w-12 px-3 py-2.5">No.</th>
+                <th className="w-32 px-3 py-2.5">No.</th>
+                <th className="w-24 px-3 py-2.5">Level</th>
                 <th className="min-w-[260px] px-3 py-2.5">WBS Objects</th>
                 <th className="w-40 px-3 py-2.5">Type</th>
-                <th className="w-32 px-3 py-2.5">Trial</th>
                 <th className="min-w-[200px] px-3 py-2.5">Dependency</th>
-                <th className="min-w-[330px] px-3 py-2.5 text-right">Activity (build in detail)</th>
+                <th className="min-w-[330px] px-3 py-2.5 text-right">Planned dates / Activity</th>
                 {isAdmin && <th className="w-10 px-3 py-2.5" />}
               </tr>
             </thead>
             <tbody>
-              {arc.wbs.map((o, i) => {
+              {tree.map(({ obj: o, code, depth }) => {
                 const state = builderState(o)
+                const next = childLevel(o.level)
+                const nDates = o.level === 'Milestone' ? dateOptions(o).length : 0
                 return (
-                  <tr key={o.id} className="border-b border-[var(--color-border)] last:border-0 align-middle">
-                    <td className="px-3 py-1.5 tabular-nums text-[var(--color-muted)]">{i + 1}</td>
+                  <tr key={o.id} className={`border-b border-[var(--color-border)] last:border-0 align-middle ${o.level === 'Milestone' ? 'bg-[#f8faff]' : ''}`}>
                     <td className="px-3 py-1.5">
-                      <input value={o.name} disabled={!isAdmin} aria-label={`WBS object ${i + 1} name`} placeholder="WBS object name"
-                        onChange={(e) => setObj(o.id, { name: e.target.value })} className={cellInput} />
+                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="font-mono text-[11px] text-[#344054]">{code}</span>
+                        {isAdmin && next && (
+                          <button type="button" onClick={() => addChild(o)} aria-label={`Add ${WBS_LEVEL_LABEL[next]} under ${code}`} title={`Add ${WBS_LEVEL_LABEL[next]}`}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-accent)]">
+                            <Icon name="circle-plus" size={15} />
+                          </button>
+                        )}
+                      </span>
                     </td>
                     <td className="px-3 py-1.5">
-                      <select value={o.type} disabled={!isAdmin} aria-label={`WBS object ${i + 1} type`}
-                        onChange={(e) => changeType(o, e.target.value as WbsObjectType)} className={cellInput}>
-                        {WBS_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                      </select>
+                      <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${LEVEL_CLS[o.level]}`}>{WBS_LEVEL_LABEL[o.level]}</span>
                     </td>
                     <td className="px-3 py-1.5">
-                      {isBuildable(o) ? (
-                        <select value={o.trial ?? ''} disabled={!isAdmin} aria-label={`WBS object ${i + 1} trial`}
-                          onChange={(e) => setObj(o.id, { trial: e.target.value || undefined })} className={cellInput}>
-                          <option value="">Select…</option>
-                          {trials.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                      <div style={{ paddingLeft: depth * 16 }}>
+                        <input value={o.name} disabled={!isAdmin} aria-label={`${code} name`} placeholder={o.level === 'Milestone' ? 'Milestone name, e.g. PP' : `${WBS_LEVEL_LABEL[o.level]} name`}
+                          maxLength={255}
+                          onChange={(e) => setObj(o.id, { name: e.target.value })} className={`${cellInput} ${o.level === 'Milestone' ? 'font-semibold' : ''}`} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      {o.level === 'Milestone' ? <span className="text-[var(--color-muted)]">—</span> : (
+                        <select value={o.type} disabled={!isAdmin} aria-label={`${code} type`}
+                          onChange={(e) => setObj(o.id, { type: e.target.value as WbsObjectType })} className={cellInput}>
+                          {typesFor(o.level).map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
                         </select>
-                      ) : <span className="text-[var(--color-muted)]">—</span>}
+                      )}
                     </td>
                     <td className="px-3 py-1.5">
                       {o.dependency ? (
-                        <button type="button" onClick={() => setDepFor(o.id)} disabled={!isAdmin && !o.dependency}
+                        <button type="button" onClick={() => setDepFor(o.id)}
                           className="inline-flex max-w-[260px] items-center gap-1.5 rounded-full bg-[#eef4ff] px-2.5 py-1 text-left text-[10px] font-medium text-primary hover:brightness-95"
                           title={`${DEP_LABEL[o.dependency.type]} on “${nameOf(o.dependency.onObjectId)}”, lag ${o.dependency.lagDays} day(s)`}>
                           <span className="whitespace-nowrap">{DEP_LABEL[o.dependency.type]}</span>
-                          <span className="truncate font-normal text-[#344054]">· {nameOf(o.dependency.onObjectId)}{o.dependency.lagDays ? ` +${o.dependency.lagDays}d` : ''}</span>
+                          <span className="truncate font-normal text-[#344054]">· {codeOf.get(o.dependency.onObjectId)} {nameOf(o.dependency.onObjectId)}{o.dependency.lagDays ? ` +${o.dependency.lagDays}d` : ''}</span>
                         </button>
                       ) : isAdmin ? (
-                        <button type="button" onClick={() => setDepFor(o.id)} aria-label={`Set dependency for WBS object ${i + 1}`}
+                        <button type="button" onClick={() => setDepFor(o.id)} aria-label={`Set dependency for ${code}`}
                           disabled={arc.wbs.length < 2}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-accent)] disabled:opacity-40">
                           <Icon name="circle-plus" size={16} />
@@ -193,7 +242,17 @@ export function ArchetypeDetailsPage() {
                       ) : <span className="text-[var(--color-muted)]">—</span>}
                     </td>
                     <td className="px-3 py-1.5">
-                      {isBuildable(o) ? (
+                      {o.level === 'Milestone' ? (
+                        <span className="flex flex-wrap items-center justify-end gap-2">
+                          <span className="max-w-[220px] truncate text-[11px] text-[var(--color-muted)]" title={dateOptions(o).map((d) => d.label).join(', ')}>
+                            {dateOptions(o).map((d) => d.label).join(', ')}
+                          </span>
+                          <button type="button" onClick={() => setDatesFor(o.id)}
+                            className="whitespace-nowrap rounded-full border border-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-secondary)]">
+                            Planned dates ({nDates})
+                          </button>
+                        </span>
+                      ) : isBuildable(o) ? (
                         <span className="flex flex-wrap items-center justify-end gap-2">
                           <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{state}</span>
                           <button type="button" onClick={() => setChecklistFor(o.id)}
@@ -202,18 +261,24 @@ export function ArchetypeDetailsPage() {
                           </button>
                           {isAdmin && (
                             <Button variant={state === 'Published' ? 'secondary' : 'primary'} size="sm" className="whitespace-nowrap"
-                              disabled={!o.name.trim() || !o.trial}
-                              title={!o.name.trim() ? 'Name the activity first' : !o.trial ? 'Choose a trial first' : 'Saves the archetype and opens this activity in the Activity Builder'}
+                              disabled={!o.name.trim()}
+                              title={!o.name.trim() ? 'Name the activity first' : 'Saves the archetype and opens this activity in the Activity Builder'}
                               onClick={() => build(o)}>
                               {state === 'Not built' ? 'Build activity' : state === 'Draft in progress' ? 'Continue building' : 'Edit activity'}
                             </Button>
                           )}
                         </span>
-                      ) : <span className="block text-center text-[11px] text-[var(--color-muted)]" title="Only Activity Builder objects are built as activities">NA · set Type to Activity Builder to build</span>}
+                      ) : (
+                        <span className="block text-right text-[11px] text-[var(--color-muted)]"
+                          title={o.level === 'Activity' ? 'Set Type to Activity Builder to build it in detail' : 'Only activities are built in the Activity Builder'}>
+                          {o.level === 'Activity' ? 'NA · set Type to Activity Builder to build' : '—'}
+                        </span>
+                      )}
                     </td>
                     {isAdmin && (
                       <td className="px-3 py-1.5 text-center">
-                        <button type="button" onClick={() => removeObj(o.id)} aria-label={`Remove WBS object ${i + 1}`} title={o.activityId ? 'Remove (its activity is retired on submit)' : 'Remove'}
+                        <button type="button" onClick={() => removeObj(o.id)} aria-label={`Remove ${code}`}
+                          title={arc.wbs.some((c) => c.parentId === o.id) ? 'Remove (with everything under it)' : 'Remove'}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[#fef2f2] hover:text-[var(--color-destructive)]">
                           <Icon name="close" size={14} />
                         </button>
@@ -227,14 +292,14 @@ export function ArchetypeDetailsPage() {
         </div>
         {isAdmin && (
           <div className="border-t border-[var(--color-border)] px-3 py-2">
-            <button type="button" onClick={addObj} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-secondary)]">
-              <Icon name="circle-plus" size={16} /> Add WBS object
+            <button type="button" onClick={addMilestone} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-secondary)]">
+              <Icon name="circle-plus" size={16} /> Add milestone
             </button>
           </div>
         )}
-        {touched && (errors.objects || errors.trial) && (
+        {touched && (errors.objects || errors.blankParent) && (
           <p className="border-t border-[var(--color-border)] px-4 py-2 text-[11px] text-red-600">
-            {errors.objects ? 'Add at least one named WBS object.' : 'Choose a trial for every Activity Builder object.'}
+            {errors.objects ? 'Add at least one named milestone.' : 'Name every row that has rows under it.'}
           </p>
         )}
       </Card>
@@ -248,7 +313,7 @@ export function ArchetypeDetailsPage() {
       {depObj && (
         <DependencyModal
           obj={depObj}
-          candidates={arc.wbs.filter((o) => o.id !== depObj.id && o.name.trim())}
+          candidates={tree.map((n) => n.obj).filter((o) => o.id !== depObj.id && o.name.trim()).map((o) => ({ ...o, name: `${codeOf.get(o.id)} · ${o.name}` }))}
           readOnly={!isAdmin}
           onClose={() => setDepFor(null)}
           onSave={(dep) => { setObj(depObj.id, { dependency: dep }); setDepFor(null) }}
@@ -262,7 +327,74 @@ export function ArchetypeDetailsPage() {
           onSave={(checklist, qaOwnershipReleaseManager) => { setObj(chkObj.id, { checklist, qaOwnershipReleaseManager }); setChecklistFor(null) }}
         />
       )}
+      {datesObj && (
+        <PlannedDatesModal
+          obj={datesObj}
+          readOnly={!isAdmin}
+          onClose={() => setDatesFor(null)}
+          onSave={(dateRequired, dateTypes) => { setObj(datesObj.id, { dateRequired, dateTypes }); setDatesFor(null) }}
+        />
+      )}
     </div>
+  )
+}
+
+/** A milestone's planned dates: its own date (always there) plus any MRD types. Filled per model at initiation. */
+function PlannedDatesModal({ obj, readOnly, onClose, onSave }: {
+  obj: WbsObject
+  readOnly: boolean
+  onClose: () => void
+  onSave: (dateRequired: boolean, dateTypes: MilestoneDateType[]) => void
+}) {
+  const [own, setOwn] = useState(!!obj.dateRequired)
+  const [types, setTypes] = useState<MilestoneDateType[]>(obj.dateTypes ?? [])
+  const setType = (id: string, patch: Partial<MilestoneDateType>) => setTypes((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+  const msName = obj.name.trim() || 'Milestone'
+  const labels = types.map((t) => t.label.trim().toLowerCase()).filter(Boolean)
+  const dup = labels.some((l, i) => labels.indexOf(l) !== i || l === `${msName.toLowerCase()} date`)
+  return (
+    <Modal open onClose={onClose} size="md" title={`Planned dates · ${msName}`}
+      footer={readOnly ? <Button variant="secondary" size="md" onClick={onClose}>Close</Button> : (
+        <>
+          <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="md" disabled={dup} onClick={() => onSave(own, types.filter((t) => t.label.trim()).map((t) => ({ ...t, label: t.label.trim() })))}>Save</Button>
+        </>
+      )}>
+      <p className="mb-3 text-[12px] text-[var(--color-muted)]">
+        The Model Coordinator enters these dates for the model when initiating a project. Each activity under this milestone is planned against one of them.
+      </p>
+      <div className="mb-3 flex items-center gap-3 rounded-lg bg-[#eef4ff] p-3">
+        <span className="min-w-0 flex-1 text-[12px] font-medium text-[#101828]">{msName} date <span className="font-normal text-[var(--color-muted)]">(milestone date)</span></span>
+        <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
+          <input type="checkbox" checked={own} disabled={readOnly} onChange={(e) => setOwn(e.target.checked)} /> Required
+        </label>
+      </div>
+      <div className="space-y-2">
+        {types.map((t, i) => (
+          <div key={t.id} className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] p-2.5">
+            <input value={t.label} disabled={readOnly} aria-label={`Planned date ${i + 1}`} onChange={(e) => setType(t.id, { label: e.target.value })}
+              className={inputCls + ' !bg-white flex-1'} placeholder="e.g. Kani MRD" maxLength={60} />
+            <label className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-[#344054]">
+              <input type="checkbox" checked={!!t.required} disabled={readOnly} onChange={(e) => setType(t.id, { required: e.target.checked })} /> Required
+            </label>
+            {!readOnly && (
+              <button type="button" onClick={() => setTypes((xs) => xs.filter((x) => x.id !== t.id))} aria-label={`Remove planned date ${i + 1}`}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[#fef2f2] hover:text-[var(--color-destructive)]">
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {dup && <p className="mt-2 text-[11px] text-red-600">Each planned date needs a different name.</p>}
+      {!readOnly && (
+        <button type="button" onClick={() => setTypes((xs) => [...xs, { id: uid('dt'), label: '', required: false }])}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-secondary)]">
+          <Icon name="circle-plus" size={16} /> Add planned date
+        </button>
+      )}
+      <p className="mt-3 text-[11px] text-[var(--color-muted)]">Removing a planned date leaves dates already entered on models in place, but activities can no longer be linked to it.</p>
+    </Modal>
   )
 }
 

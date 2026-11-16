@@ -1,12 +1,13 @@
 /**
- * MRD date rules shared by Models & MRDs and Project Initiation (pure, no React).
+ * MRD (planned date) rules shared by Models & MRDs and Project Initiation (pure, no React). Which dates exist comes
+ * from the archetype's milestones (see wbsTree.plannedDateFields).
  */
-import type { MilestoneDef } from './index'
-import { TIMELINE_MILESTONES } from './timelineCatalog'
+import type { MilestoneDef, ProjectArchetype } from './index'
+import { plannedDateFields, validatePlannedDates } from './wbsTree'
 
 /**
- * Given milestones in their configured order, return the set of milestone ids whose dates violate chronological
- * order (non-blocking warning only).
+ * Given milestones in their configured order, return the set of milestone ids whose own dates violate
+ * chronological order (non-blocking warning only).
  */
 export function findOutOfOrderMilestones(milestones: MilestoneDef[], mrds: Record<string, string>): Set<string> {
   const filled = milestones.map((m) => ({ id: m.id, date: mrds[m.id] })).filter((m) => m.date)
@@ -20,17 +21,9 @@ export function findOutOfOrderMilestones(milestones: MilestoneDef[], mrds: Recor
   return bad
 }
 
-/**
- * Required-MRD check. Mandatory milestones with their own date (e.g. SOP) must be filled; PP / MPP / Pilot have no
- * single date (their dates are sub-type MRDs), so they are not required here. Returns milestone id → message.
- */
-export function validateMrds(milestones: MilestoneDef[], mrds: Record<string, string>): Record<string, string> {
-  const errors: Record<string, string> = {}
-  for (const m of milestones) {
-    if (TIMELINE_MILESTONES.includes(m.id)) continue
-    if (m.mandatory && !mrds[m.id]) errors[m.id] = `${m.label} MRD is required.`
-  }
-  return errors
+/** Required planned dates of the archetype that are blank. Returns date key → message. */
+export function validateMrds(archetype: ProjectArchetype | undefined, mrds: Record<string, string>): Record<string, string> {
+  return validatePlannedDates(plannedDateFields(archetype), mrds)
 }
 
 /** Drop blank values (a missing key = "Awaiting MRD"). */

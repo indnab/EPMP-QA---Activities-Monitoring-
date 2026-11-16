@@ -55,6 +55,7 @@ import {
 import type { Project, InitiateProjectInput, InitiateResult, CloseResult } from '../domain/projects'
 import { PROJECT_INITIATOR, nextProjectNo, projectOfModel, pruneProjects, validateInitiation } from '../domain/projects'
 import { cleanMrds } from '../domain/mrds'
+import { deriveMilestones } from '../domain/wbsTree'
 import { deriveTechnicalCategory } from '../domain/timelineCatalog'
 import { buildDemoData } from '../mock/demoParts'
 import {
@@ -438,6 +439,10 @@ export const useQAStore = create<QAStoreState>()(
               : [...state.archetypes, r.archetype],
             activities: r.activities,
             drafts: r.drafts,
+            // Milestones are defined per archetype; the shared list (filters, dashboards) follows them.
+            milestones: deriveMilestones(previous
+              ? state.archetypes.map((a) => (a.id === archetype.id ? r.archetype : a))
+              : [...state.archetypes, r.archetype]),
           }
         }),
       setArchetypeActive: (id, active) =>
@@ -861,7 +866,7 @@ export const useQAStore = create<QAStoreState>()(
       initiateProject: (input, by) => {
         const state = get()
         const errors = validateInitiation(input, {
-          archetypes: state.archetypes, models: state.models, milestones: state.milestones, projects: state.projects, by,
+          archetypes: state.archetypes, models: state.models, projects: state.projects, by,
         })
         if (Object.keys(errors).length > 0) return { ok: false, errors }
         const drafts = input.master === 'Vehicle' ? input.models ?? [] : []
@@ -1719,7 +1724,7 @@ export const useQAStore = create<QAStoreState>()(
     {
       name: 'qa-tracker-store',
       // v2: planned dates removed from activities; entries keyed by template row. v3: PIC assignments. v4: part applicability. v6: default "Completion rate by Model / Department" charts. v7: part master lifted into store (manual/dummy parts + ECN transfer). v8: PIC release-to-vendor gate. v9: vendor-set planned timelines. v10: actions/recommendations on entries. v11: cross-activity dashboards. v12: table field type + SOR activity. v13: removed Temporary/Permanent from PIC assignments. v14: manpower planning (vendor info + visits). v15: seed activities replaced with ~45 PPT blueprints + deviations on entries. v20: delay reasons (vendor gives, PIC accepts or sends back). v19: vendor acknowledge/return of released parts, ddvm/dvm personas removed. v44: governance archetypes (WBS templates feed the Activity Builder). v45: projects (Project Initiation) gate the work screens; models no longer carry archetypeId. v46: one model per project (seed: one project per model). Stale data is dropped.
-      version: 47,
+      version: 48,
       migrate: () => ({})
     }
   )

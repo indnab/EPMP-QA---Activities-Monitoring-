@@ -206,8 +206,11 @@ export interface ActivityDefinition {
 /** Technical category a timeline template applies to (Admin picks these when designing an activity). */
 export type TechnicalCategory = 'Engine' | 'Weld' | 'RubberAssy' | 'PlasticAssy' | 'OtherAssy'
 
-/** An MRD sub-type under a milestone (PP/MPP/Pilot). Some only apply to the Weld category. */
-export type MrdSubType = 'Kani' | 'Jig' | 'Weld' | 'Engine' | 'Transmission' | 'Assembly' | 'ActualQVDate'
+/**
+ * A planned-date type under a milestone (e.g. 'Kani', 'Jig', 'Weld'). Defined per milestone in an archetype's WBS.
+ * Empty string = the milestone's own date.
+ */
+export type MrdSubType = string
 
 /** One "MRD − X" offset the Admin set for a (milestone, sub-type) pair within a technical category. */
 export interface TimelineOffset {
@@ -256,8 +259,19 @@ export interface ActivityDependency {
  */
 export type WbsObjectType = 'General' | 'ActivityBuilder' | 'QA' | 'VCF' | 'RiskSphere' | 'ImportJira' | 'EAReview'
 
-/** Whether a WBS object is built as an activity in the Activity Builder. */
-export const isBuildable = (o: { type: WbsObjectType }) => o.type === 'ActivityBuilder'
+/** WBS levels, top to bottom. A child is always exactly one level below its parent; only Milestones are top-level. */
+export type WbsLevel = 'Milestone' | 'Activity' | 'Task' | 'Subtask'
+
+/** Whether a WBS object is built as an activity in the Activity Builder (Activity level, type Activity Builder). */
+export const isBuildable = (o: { type: WbsObjectType; level?: WbsLevel }) =>
+  o.type === 'ActivityBuilder' && (o.level ?? 'Activity') === 'Activity'
+
+/** A planned date a milestone carries besides its own date (e.g. Kani MRD, Jig MRD). Entered per model. */
+export interface MilestoneDateType {
+  id: string
+  label: string
+  required?: boolean
+}
 
 /** One QA checklist item on a QA WBS object. Each becomes a Yes/No field on the object's activity. */
 export interface WbsChecklistItem {
@@ -278,9 +292,14 @@ export interface WbsDependency {
 export interface WbsObject {
   id: string
   name: string
+  level: WbsLevel
+  /** Parent row (absent for Milestones). The activity's milestone is its parent Milestone row. */
+  parentId?: string
   type: WbsObjectType
-  /** Trial (milestone id, e.g. 'PP') — set for QA objects; becomes the activity's default milestone. */
-  trial?: string
+  /** Milestones: whether the milestone's own date must be entered on every model. */
+  dateRequired?: boolean
+  /** Milestones: further planned dates (MRD types) under this milestone. */
+  dateTypes?: MilestoneDateType[]
   dependency?: WbsDependency
   /** QA objects: checklist items (Mandatory / Non-mandatory). */
   checklist?: WbsChecklistItem[]

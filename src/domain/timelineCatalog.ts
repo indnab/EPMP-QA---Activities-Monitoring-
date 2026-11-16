@@ -50,8 +50,9 @@ export function subTypesFor(milestoneId: string, category: TechnicalCategory | n
 }
 
 /** Composite key for a sub-type MRD date on ModelRecord.mrds, e.g. 'PP:Weld'. */
-export function subTypeMrdKey(milestoneId: string, subType: MrdSubType): string {
-  return `${milestoneId}:${subType}`
+export function subTypeMrdKey(milestoneId: string, subType: MrdSubType | undefined): string {
+  // An empty sub-type is the milestone's own date.
+  return subType ? `${milestoneId}:${subType}` : milestoneId
 }
 
 /**

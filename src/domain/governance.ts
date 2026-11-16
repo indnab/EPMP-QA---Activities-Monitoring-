@@ -11,6 +11,7 @@ import type {
   ActivityDefinition, ApprovalFlow, BuilderDraft, DependencyType, FieldDefinition, ProjectArchetype, WbsObject, WbsObjectType
 } from './index'
 import { isBuildable } from './index'
+import { milestoneOf } from './wbsTree'
 
 export const WBS_TYPES: { id: WbsObjectType; label: string }[] = [
   { id: 'General', label: 'General' },
@@ -81,27 +82,29 @@ export function syncArchetype(
     if (!isBuildable(obj)) {
       // Changed away from Activity Builder: its activity is retired and the link dropped.
       if (obj.activityId) acts = acts.map((a) => (a.id === obj.activityId ? { ...a, retired: true } : a))
-      return { ...obj, activityId: undefined, trial: undefined, checklist: undefined, qaOwnershipReleaseManager: undefined }
+      return { ...obj, activityId: undefined, checklist: undefined, qaOwnershipReleaseManager: undefined }
     }
     const id = activityIdFor(arc, obj)
     const name = obj.name.trim() || 'Untitled activity'
+    // The activity's milestone is the Milestone row it sits under.
+    const trial = milestoneOf(arc.wbs, obj)?.id
     const existing = acts.find((a) => a.id === id)
     if (existing) {
       acts = acts.map((a) =>
         a.id === id
-          ? { ...a, ...link({ wbsObjectId: obj.id }), name, defaultMilestoneId: obj.trial, fields: withChecklist(a.fields, obj), retired: false }
+          ? { ...a, ...link({ wbsObjectId: obj.id }), name, defaultMilestoneId: trial, fields: withChecklist(a.fields, obj), retired: false }
           : a
       )
     } else {
       acts.push({
         id, name, scope: 'Both', fields: checklistFields(obj), flow: DEFAULT_ACTIVITY_FLOW, ownerPersona: 'PIC',
         description: '', published: false, allowNotApplicable: true, deviationFlow: ['PIC', 'SIC', 'DPM'],
-        ...link({ wbsObjectId: obj.id }), defaultMilestoneId: obj.trial,
+        ...link({ wbsObjectId: obj.id }), defaultMilestoneId: trial,
       })
     }
     // Keep an open builder draft of this activity in step, so publishing it doesn't undo the archetype change.
     drs = drs.map((d) =>
-      d.sourceId === id ? { ...d, name, defaultMilestoneId: obj.trial, fields: withChecklist(d.fields, obj) } : d
+      d.sourceId === id ? { ...d, name, defaultMilestoneId: trial, fields: withChecklist(d.fields, obj) } : d
     )
     return { ...obj, activityId: id }
   })

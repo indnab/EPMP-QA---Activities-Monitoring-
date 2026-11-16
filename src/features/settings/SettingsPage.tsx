@@ -4,7 +4,9 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { useQAStore } from '../../store/qaStore'
-import type { Section, MilestoneDef } from '../../domain'
+import type { Section } from '../../domain'
+import { Link } from 'react-router-dom'
+import { dateOptions, milestoneRows } from '../../domain/wbsTree'
 
 // ─── Inline field ─────────────────────────────────────────────────────────────
 
@@ -228,207 +230,34 @@ function SectionsPanel() {
 // ─── Milestones panel ─────────────────────────────────────────────────────────
 
 function MilestonesPanel() {
-  const { milestones, addMilestone, updateMilestone, deleteMilestone } = useQAStore()
-
-  const [addOpen, setAddOpen] = useState(false)
-  const [editMilestone, setEditMilestone] = useState<MilestoneDef | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-
-  // Add form
-  const [addId, setAddId] = useState('')
-  const [addLabel, setAddLabel] = useState('')
-  const [addErrors, setAddErrors] = useState<{ id?: string; label?: string }>({})
-
-  // Edit form
-  const [editLabel, setEditLabel] = useState('')
-  const [editError, setEditError] = useState('')
-
-  function openAdd() {
-    setAddId('')
-    setAddLabel('')
-    setAddErrors({})
-    setAddOpen(true)
-  }
-
-  function handleAdd() {
-    const errs: { id?: string; label?: string } = {}
-    const trimId = addId.trim()
-    const trimLabel = addLabel.trim()
-    if (!trimId) errs.id = 'Milestone ID is required.'
-    else if (milestones.some((m) => m.id === trimId)) errs.id = 'A milestone with this ID already exists.'
-    if (!trimLabel) errs.label = 'Label is required.'
-    setAddErrors(errs)
-    if (Object.keys(errs).length > 0) return
-    // New milestones are always optional
-    addMilestone({ id: trimId, label: trimLabel, mandatory: false })
-    setAddOpen(false)
-  }
-
-  function openEdit(m: MilestoneDef) {
-    setEditMilestone(m)
-    setEditLabel(m.label)
-    setEditError('')
-  }
-
-  function handleEditSave() {
-    const trimLabel = editLabel.trim()
-    if (!trimLabel) { setEditError('Label is required.'); return }
-    if (editMilestone) updateMilestone(editMilestone.id, { label: trimLabel })
-    setEditMilestone(null)
-  }
-
-  function handleDelete() {
-    if (deleteId) deleteMilestone(deleteId)
-    setDeleteId(null)
-  }
-
-  const deleteMilestone_ = milestones.find((m) => m.id === deleteId)
-
+  const archetypes = useQAStore((s) => s.archetypes)
   return (
-    <Card title="Milestones" actions={<Button variant="primary" size="sm" onClick={openAdd}>+ Add milestone</Button>}>
-      <p className="mb-3 text-[11px] text-[var(--color-muted)]">
-        PP, MPP, Pilot and SOP are mandatory — they cannot be deleted or have their mandatory flag changed.
-        New milestones are optional.
-      </p>
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-[var(--color-border)]">
-            <th className="pb-2 text-left font-medium text-[var(--color-muted)] w-24">ID</th>
-            <th className="pb-2 pl-3 text-left font-medium text-[var(--color-muted)]">Label</th>
-            <th className="pb-2 pl-3 text-center font-medium text-[var(--color-muted)] w-20">Mandatory</th>
-            <th className="pb-2 pl-3 text-right font-medium text-[var(--color-muted)] w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {milestones.length === 0 && (
-            <tr>
-              <td colSpan={4} className="py-6 text-center text-[var(--color-muted)]">No milestones configured.</td>
-            </tr>
-          )}
-          {milestones.map((m) => (
-            <tr key={m.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[#fafafa]">
-              <td className="py-2 font-mono text-[var(--color-text)]">{m.id}</td>
-              <td className="py-2 pl-3 text-[var(--color-text)]">{m.label}</td>
-              <td className="py-2 pl-3 text-center">
-                {m.mandatory ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#fee2e2] px-2 py-0.5 text-[10px] font-medium text-[#991b1b]">
-                    Required
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-muted)]">
-                    Optional
-                  </span>
-                )}
-              </td>
-              <td className="py-2 pl-3">
-                <div className="flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(m)}
-                    className="text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
-                  >
-                    Rename
-                  </button>
-                  {m.mandatory ? (
-                    <span
-                      className="text-[11px] text-[var(--color-muted)] cursor-not-allowed"
-                      title="Mandatory milestones cannot be deleted"
-                    >
-                      Delete
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setDeleteId(m.id)}
-                      className="text-[11px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Add milestone modal */}
-      <Modal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title="Add milestone"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleAdd}>Add milestone</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <InlineField
-            label="Milestone ID (e.g. Jig2)"
-            value={addId}
-            placeholder="Jig2"
-            error={addErrors.id}
-            onChange={setAddId}
-          />
-          <InlineField
-            label="Label"
-            value={addLabel}
-            placeholder="Jig 2"
-            error={addErrors.label}
-            onChange={setAddLabel}
-          />
-          <p className="text-[11px] text-[var(--color-muted)]">New milestones are optional by default.</p>
+    <Card>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-[15px] font-semibold text-[var(--color-text)]">Milestones</h2>
+          <p className="mt-0.5 text-xs text-[var(--color-muted)]">Milestones and their planned dates are defined per archetype in Governance.</p>
         </div>
-      </Modal>
-
-      {/* Rename modal */}
-      <Modal
-        open={editMilestone !== null}
-        onClose={() => setEditMilestone(null)}
-        title={`Rename milestone — ${editMilestone?.id}`}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setEditMilestone(null)}>Cancel</Button>
-            <Button variant="primary" onClick={handleEditSave}>Save</Button>
-          </>
-        }
-      >
-        <InlineField
-          label="Label"
-          value={editLabel}
-          error={editError}
-          onChange={(v) => { setEditLabel(v); setEditError('') }}
-        />
-      </Modal>
-
-      {/* Delete confirmation */}
-      <Modal
-        open={deleteId !== null}
-        onClose={() => setDeleteId(null)}
-        title="Delete milestone"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="danger" onClick={handleDelete}>Delete</Button>
-          </>
-        }
-      >
-        <p className="text-sm">
-          Delete milestone <strong>{deleteMilestone_?.label ?? deleteId}</strong>?
-        </p>
-        <p className="mt-2 text-xs text-[var(--color-muted)]">
-          All template rows and model MRD values using this milestone will be removed.
-        </p>
-      </Modal>
+        <Link to="/governance" className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">Open Governance →</Link>
+      </div>
+      <div className="space-y-3">
+        {archetypes.map((a) => (
+          <div key={a.id} className="rounded-lg border border-[var(--color-border)] p-3">
+            <div className="mb-2 text-[12px] font-semibold text-[#101828]">{a.name} <span className="font-mono text-[10px] font-normal text-[var(--color-muted)]">{a.id}</span></div>
+            <div className="flex flex-wrap gap-2">
+              {milestoneRows(a).map((m) => (
+                <span key={m.id} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] text-primary" title={dateOptions(m).map((d) => d.label).join(', ')}>
+                  <strong>{m.name}</strong> · {dateOptions(m).length} planned date{dateOptions(m).length === 1 ? '' : 's'}
+                </span>
+              ))}
+              {milestoneRows(a).length === 0 && <span className="text-[11px] text-[var(--color-muted)]">No milestones</span>}
+            </div>
+          </div>
+        ))}
+      </div>
     </Card>
   )
 }
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {

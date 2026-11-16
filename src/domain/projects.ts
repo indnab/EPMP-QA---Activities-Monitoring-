@@ -5,7 +5,7 @@
  * Pure helpers — no React, no store.
  */
 import type { PersonaId } from '../store/personaStore'
-import type { MilestoneDef, ModelRecord, PartRecord, ProjectArchetype } from './index'
+import type { ModelRecord, PartRecord, ProjectArchetype } from './index'
 import { isBuildable } from './index'
 import { validateMrds } from './mrds'
 
@@ -52,7 +52,6 @@ export type CloseResult = { ok: true; project: Project } | { ok: false; reason: 
 export interface InitiationContext {
   archetypes: ProjectArchetype[]
   models: ModelRecord[]
-  milestones: MilestoneDef[]
   projects: Project[]
   by: PersonaId
 }
@@ -167,7 +166,7 @@ export function validateInitiation(input: InitiateProjectInput, ctx: InitiationC
       const existing = ctx.models.find((m) => lower(m.name) === key)
       if (d.isNew && existing) errors[at] = 'A model with this name already exists. Pick it from the list.'
       else if (!d.isNew && !existing) errors[at] = 'Unknown model.'
-      for (const [k, msg] of Object.entries(validateMrds(ctx.milestones, d.mrds))) errors[`model.${i}.mrd.${k}`] = msg
+      for (const [k, msg] of Object.entries(validateMrds(arc, d.mrds))) errors[`model.${i}.mrd.${k}`] = msg
       const other = projectOfModel(nm, ctx.projects)
       if (other) errors[at] = `${existing?.name ?? nm} is already in ${other.no} (${other.name}).`
     })

@@ -5,30 +5,13 @@ import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { Link } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
-import type { ModelRecord, MilestoneDef } from '../../domain'
+import type { ModelRecord, ProjectArchetype } from '../../domain'
 import { projectOfModel } from '../../domain/projects'
-import { TIMELINE_MILESTONES, SUBTYPE_LABEL, subTypesFor, subTypeMrdKey } from '../../domain/timelineCatalog'
+import { cleanMrds, validateMrds } from '../../domain/mrds'
+import { deriveMilestones, plannedDateFields } from '../../domain/wbsTree'
+import { MrdEditor } from './MrdEditor'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Given milestones in their configured order, return the set of milestone ids
- * whose dates violate chronological order (non-blocking warning only).
- */
-function findOutOfOrderMilestones(
-  milestones: MilestoneDef[],
-  mrds: Record<string, string>
-): Set<string> {
-  const filled = milestones.map((m) => ({ id: m.id, date: mrds[m.id] })).filter((m) => m.date)
-  const bad = new Set<string>()
-  for (let i = 1; i < filled.length; i++) {
-    if (filled[i].date < filled[i - 1].date) {
-      bad.add(filled[i].id)
-      bad.add(filled[i - 1].id)
-    }
-  }
-  return bad
-}
 
 /** Format a YYYY-MM-DD date as "24 Oct 2026". */
 function fmtDate(d: string | undefined): string {
@@ -161,168 +144,77 @@ function SyncPanel({ modelName, onClose }: SyncPanelProps) {
 }
 
 // ─── Model form (add / edit) ─────────────────────────────────────────────────
-
 interface ModelFormHandle {
   submit: () => void
 }
-
 interface ModelFormProps {
   initial: ModelRecord | null
-  milestones: MilestoneDef[]
+  archetypes: ProjectArchetype[]
+  /** The archetype whose planned dates the model is shown with (its project's, else the first active one). */
+  defaultArchetypeId: string
+  /** Locked when the model is in a project (its dates follow that project's archetype). */
+  lockArchetype: boolean
   existingNames: string[]
   onSave: (model: ModelRecord) => void
   formRef: React.RefObject<ModelFormHandle | null>
 }
-
-function ModelForm({ initial, milestones, existingNames, onSave, formRef }: ModelFormProps) {
+function ModelForm({ initial, archetypes, defaultArchetypeId, lockArchetype, existingNames, onSave, formRef }: ModelFormProps) {
   const isEdit = initial !== null
   const [name, setName] = useState(initial?.name ?? '')
   const [mrds, setMrds] = useState<Record<string, string>>({ ...(initial?.mrds ?? {}) })
+  const [arcId, setArcId] = useState(defaultArchetypeId)
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const outOfOrder = useMemo(() => findOutOfOrderMilestones(milestones, mrds), [milestones, mrds])
-
+  const arc = archetypes.find((a) => a.id === arcId)
   // Expose submit() for the footer button
   formRef.current = {
     submit() {
-      const next: Record<string, string> = {}
-      if (!name.trim()) {
-        next['_name'] = 'Model name is required.'
-      } else if (!isEdit && existingNames.includes(name.trim())) {
-        next['_name'] = 'A model with this name already exists.'
-      }
-      for (const m of milestones) {
-        // PP/MPP/Pilot have no own date — they are captured via sub-types below, so don't require a top-level date.
-        if (TIMELINE_MILESTONES.includes(m.id)) continue
-        if (m.mandatory && !mrds[m.id]) {
-          next[m.id] = `${m.label} MRD is required.`
-        }
-      }
+      const next: Record<string, string> = { ...validateMrds(arc, mrds) }
+      if (!name.trim()) next['_name'] = 'Model name is required.'
+      else if (!isEdit && existingNames.includes(name.trim())) next['_name'] = 'A model with this name already exists.'
       setErrors(next)
       if (Object.keys(next).length > 0) return
-      onSave({ name: name.trim(), mrds })
+      onSave({ name: name.trim(), mrds: cleanMrds(mrds) })
     }
   }
-
-  function setMrd(id: string, val: string) {
-    setMrds((prev) => {
-      const next = { ...prev }
-      if (val) next[id] = val
-      else delete next[id]
-      return next
-    })
-    if (errors[id]) setErrors((e) => { const n = { ...e }; delete n[id]; return n })
-  }
-
   return (
     <div>
-      {/* Model name */}
-      <div className="mb-5">
-        <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
-          Model name <span className="text-[var(--color-destructive)]">*</span>
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value)
-            if (errors['_name']) setErrors((er) => { const n = { ...er }; delete n['_name']; return n })
-          }}
-          disabled={isEdit}
-          placeholder="e.g. Swift"
-          className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]
-            ${errors['_name'] ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}
-            ${isEdit ? 'bg-[var(--color-surface)] text-[var(--color-muted)]' : 'bg-white'}`}
-        />
-        {errors['_name'] && (
-          <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors['_name']}</p>
-        )}
-      </div>
-
-      {/* Non-blocking ordering warning */}
-      {outOfOrder.size > 0 && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3.5 py-2.5 text-xs text-[#92400e]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 flex-none">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <span>
-            Dates appear out of chronological order for milestone(s):{' '}
-            <strong>{[...outOfOrder].join(', ')}</strong>. Save is still allowed — verify before proceeding.
-          </span>
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
+            Model name <span className="text-[var(--color-destructive)]">*</span>
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              if (errors['_name']) setErrors((er) => { const n = { ...er }; delete n['_name']; return n })
+            }}
+            disabled={isEdit}
+            placeholder="e.g. Swift"
+            className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]
+              ${errors['_name'] ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}
+              ${isEdit ? 'bg-[var(--color-surface)] text-[var(--color-muted)]' : 'bg-white'}`}
+          />
+          {errors['_name'] && <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors['_name']}</p>}
         </div>
-      )}
-
-      {/* Milestone MRD inputs. PP/MPP/Pilot have no own date — only the sub-types below carry dates. */}
-      <p className="mb-3 text-[11px] text-[var(--color-muted)]">
-        SOP is required (<span className="text-[var(--color-destructive)]">*</span>). PP, MPP and Pilot have no single
-        date — set their dates under the sub-types below. Other milestones may be left blank — activities for those
-        show "Awaiting MRD".
-      </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {milestones.filter((m) => !TIMELINE_MILESTONES.includes(m.id)).map((m) => (
-          <div key={m.id}>
-            <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">
-              {m.label}
-              {m.mandatory && <span className="ml-1 text-[var(--color-destructive)]">*</span>}
-            </label>
-            <input
-              type="date"
-              value={mrds[m.id] ?? ''}
-              onChange={(e) => setMrd(m.id, e.target.value)}
-              className={`w-full rounded-lg border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] bg-white
-                ${errors[m.id]
-                  ? 'border-[var(--color-destructive)]'
-                  : outOfOrder.has(m.id)
-                  ? 'border-[#f59e0b]'
-                  : 'border-[var(--color-border)]'}`}
-            />
-            {errors[m.id] && (
-              <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors[m.id]}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Sub-type MRD dates (PP / MPP / Pilot) — aligns with the activity timeline templates ── */}
-      <div className="mt-6 border-t border-[var(--color-border)] pt-4">
-        <p className="mb-3 text-[11px] text-[var(--color-muted)]">
-          Sub-type MRD dates per milestone. All sub-types are shown (Kani / Jig apply to Weld parts). Leave blank where
-          not applicable — blanks show as “Awaiting MRD”.
-        </p>
-        <div className="space-y-4">
-          {TIMELINE_MILESTONES.map((ms) => (
-            <div key={ms}>
-              <div className="mb-1.5 text-[11px] font-semibold text-primary">{ms} sub-types</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {subTypesFor(ms, null).map((st) => {
-                  const key = subTypeMrdKey(ms, st)
-                  return (
-                    <div key={key}>
-                      <label className="mb-1 block text-[11px] font-medium text-[var(--color-text)]">{SUBTYPE_LABEL[st]}</label>
-                      <input
-                        type="date"
-                        value={mrds[key] ?? ''}
-                        onChange={(e) => setMrd(key, e.target.value)}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">Planned dates of archetype</label>
+          <select value={arcId} disabled={lockArchetype} onChange={(e) => setArcId(e.target.value)}
+            className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs disabled:bg-[var(--color-surface)] disabled:text-[var(--color-muted)]">
+            {archetypes.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.id})</option>)}
+          </select>
+          <p className="mt-1 text-[10px] text-[var(--color-muted)]">{lockArchetype ? 'Set by the model’s project.' : 'The project’s archetype decides this at initiation.'}</p>
         </div>
       </div>
+      <MrdEditor archetype={arc} mrds={mrds} onChange={setMrds} errors={errors} idPrefix="model" />
     </div>
   )
 }
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export function ModelsPage() {
-  const { models, milestones, addModel, updateModel, deleteModel, projects } = useQAStore()
+  const { models, archetypes, addModel, updateModel, deleteModel, projects } = useQAStore()
   const [deleteBlocked, setDeleteBlocked] = useState<string | null>(null)
 
   const [formOpen, setFormOpen] = useState(false)
@@ -366,20 +258,20 @@ export function ModelsPage() {
     setConfirmDelete(null)
   }
 
-  // Table columns: PP/MPP/Pilot are shown by their sub-type MRDs (no single date); the rest keep one column each.
+  // Table columns: every planned date of every archetype, grouped by milestone (own date first, then MRD types).
   const tableCols = useMemo(() => {
+    const ms = new Map(deriveMilestones(archetypes).map((m) => [m.id, m.label]))
+    const seen = new Set<string>()
     const cols: { key: string; label: string; group?: string; mandatory?: boolean }[] = []
-    for (const m of milestones) {
-      if (TIMELINE_MILESTONES.includes(m.id)) {
-        for (const st of subTypesFor(m.id, null)) {
-          cols.push({ key: subTypeMrdKey(m.id, st), label: SUBTYPE_LABEL[st].replace(' MRD', ''), group: m.label })
-        }
-      } else {
-        cols.push({ key: m.id, label: m.label, mandatory: m.mandatory })
+    for (const a of archetypes) {
+      for (const f of plannedDateFields(a)) {
+        if (seen.has(f.key)) continue
+        seen.add(f.key)
+        cols.push({ key: f.key, label: f.typeId ? f.label.replace(/ MRD$/, '') : 'Date', group: ms.get(f.milestoneId) ?? f.milestoneName, mandatory: f.required })
       }
     }
     return cols
-  }, [milestones])
+  }, [archetypes])
   // Count columns per group so the grouped header spans correctly.
   const groupSpans = useMemo(() => {
     const out: { label: string; span: number; grouped: boolean }[] = []
@@ -399,7 +291,7 @@ export function ModelsPage() {
     <div>
       <PageHeader
         title="Models & MRDs"
-        description={`Manage vehicle models and their milestone MRD dates. PP, MPP and Pilot are captured by their sub-types (Weld, Engine, Assembly…); SOP is required. Blank dates show "Awaiting MRD" on activities.`}
+        description={`Manage vehicle models and their planned dates. Which dates exist comes from the milestones of the archetype (Governance). Blank dates show "Awaiting MRD" on activities.`}
         section="Division Model Coordinator"
         actions={
           <Button variant="primary" onClick={openAdd}>
@@ -519,7 +411,9 @@ export function ModelsPage() {
         <ModelForm
           key={editing?.name ?? '__new__'}
           initial={editing}
-          milestones={milestones}
+          archetypes={archetypes}
+          defaultArchetypeId={(editing && projectOfModel(editing.name, projects)?.archetypeId) || archetypes.find((a) => a.active)?.id || archetypes[0]?.id || ''}
+          lockArchetype={!!(editing && projectOfModel(editing.name, projects))}
           existingNames={existingNames}
           onSave={handleSave}
           formRef={formHandleRef}

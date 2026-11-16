@@ -17,7 +17,7 @@ const NEW = '__new__'
 
 export function InitiateProjectPage() {
   const navigate = useNavigate()
-  const { projects, archetypes, models, milestones, parts, initiateProject } = useQAStore()
+  const { projects, archetypes, models, parts, initiateProject } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [name, setName] = useState('')
   const [archetypeId, setArchetypeId] = useState('')
@@ -48,7 +48,7 @@ export function InitiateProjectPage() {
   const setBlock = (i: number, b: ModelDraft) => { setTouchedModels(true); setBlocks((bs) => bs.map((x, j) => (j === i ? b : x))) }
 
   const input: InitiateProjectInput = { name, archetypeId, master, models: master === 'Vehicle' ? blocks : [] }
-  const liveErrors = validateInitiation(input, { archetypes, models, milestones, projects, by: currentPersona })
+  const liveErrors = validateInitiation(input, { archetypes, models, projects, by: currentPersona })
   const errors = { ...liveErrors, ...storeErrors }
   const show = (k: string) => (submitted ? errors[k] : undefined)
   const arc = archetypes.find((a) => a.id === archetypeId)
@@ -115,7 +115,7 @@ export function InitiateProjectPage() {
       {master === 'Vehicle' && (
         <Card className="mb-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="m-0 text-[14px] font-semibold text-[#101828]">Model &amp; MRD dates</h2>
+            <h2 className="m-0 text-[14px] font-semibold text-[#101828]">Model &amp; planned dates</h2>
             <span className="text-[11px] text-[var(--color-muted)]">A project has one model; the parts tagged to it are pulled into the project.</span>
           </div>
           {show('models') && <p className="mb-2 text-[11px] text-red-600">{show('models')}</p>}
@@ -152,7 +152,7 @@ export function InitiateProjectPage() {
                   {(b.isNew || b.name) && (
                     <MrdEditor
                       idPrefix={`prj-m${i}`}
-                      milestones={milestones}
+                      archetype={arc}
                       mrds={b.mrds}
                       onChange={(mrds) => setBlock(i, { ...b, mrds })}
                       errors={submitted ? Object.fromEntries(Object.entries(errors).filter(([k]) => k.startsWith(`model.${i}.mrd.`)).map(([k, v]) => [k.slice(`model.${i}.mrd.`.length), v])) : {}}

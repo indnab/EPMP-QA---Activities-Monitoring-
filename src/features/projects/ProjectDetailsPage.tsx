@@ -2,6 +2,7 @@
  * Project detail: header, Execution (the archetype's WBS for this project; QA activities roll up from the project's
  * parts and open their forms) and Team (derived — no tagging). The Model Coordinator can close the project.
  */
+import { milestoneRows } from '../../domain/wbsTree'
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Card, Modal, PageHeader, Tabs } from '../../components'
@@ -77,10 +78,12 @@ export function ProjectDetailsPage() {
             <div className="flex flex-wrap gap-2">
               {project.modelNames.map((m) => {
                 const mr = models.find((x) => x.name === m)
+                // The last milestone's own date (e.g. SOP) as the headline date.
+                const last = milestoneRows(archetype).at(-1)
                 return (
                   <div key={m} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-[11px]">
                     <div className="font-semibold text-[#101828]">{m}</div>
-                    <div className="text-[var(--color-muted)]">SOP {mr?.mrds.SOP ? fmtDate(mr.mrds.SOP) : '—'}</div>
+                    {last && <div className="text-[var(--color-muted)]">{last.name} {mr?.mrds[last.id] ? fmtDate(mr.mrds[last.id]) : '—'}</div>}
                   </div>
                 )
               })}
@@ -108,7 +111,7 @@ export function ProjectDetailsPage() {
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
-                      <th className="w-12 px-3 py-2.5">No.</th>
+                      <th className="w-28 px-3 py-2.5">No.</th>
                       <th className="min-w-[260px] px-3 py-2.5">WBS Object</th>
                       <th className="px-3 py-2.5">Type</th>
                       <th className="px-3 py-2.5">Dependency</th>
@@ -123,14 +126,16 @@ export function ProjectDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={r.obj.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
-                        <td className="px-3 py-2.5 tabular-nums text-[var(--color-muted)]">{i + 1}</td>
-                        <td className="px-3 py-2.5 font-medium text-[#101828]">{r.obj.name}</td>
+                    {rows.map((r) => (
+                      <tr key={r.obj.id} className={`border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40 ${r.kind === 'milestone' ? 'bg-[#f8faff]' : ''}`}>
+                        <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-[var(--color-muted)]">{r.code}</td>
+                        <td className={`px-3 py-2.5 text-[#101828] ${r.kind === 'milestone' ? 'font-semibold' : 'font-medium'}`}>
+                          <span style={{ paddingLeft: r.depth * 16 }} className="inline-block">{r.obj.name}</span>
+                        </td>
                         <td className="px-3 py-2.5 text-[#344054]">{r.typeLabel}</td>
                         <td className="max-w-[240px] truncate px-3 py-2.5 text-[11px] text-[var(--color-muted)]" title={r.dependencyLabel}>{r.dependencyLabel || '—'}</td>
-                        {isVehicle && (r.kind === 'qa' ? <>
-                          <td className="px-3 py-2.5 text-center tabular-nums">{r.partsInScope}</td>
+                        {isVehicle && (r.kind !== 'other' ? <>
+                          <td className="px-3 py-2.5 text-center tabular-nums">{r.kind === 'milestone' ? '' : r.partsInScope}</td>
                           <td className="px-3 py-2.5">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-16 rounded-full bg-[var(--color-surface)]"><div className="h-1.5 rounded-full bg-[#10b981]" style={{ width: `${r.completionPct}%` }} /></div>
