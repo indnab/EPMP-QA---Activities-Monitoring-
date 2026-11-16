@@ -15,7 +15,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import type { DependencyType, MilestoneDateType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsLevel, WbsObject, WbsObjectType } from '../../domain'
 import { DEP_LABEL, DEP_TYPES, WBS_TYPES, activityIdFor, nextArchetypeId } from '../../domain/governance'
 import { isBuildable } from '../../domain'
-import { WBS_LEVEL_LABEL, childLevel, dateOptions, insertChild, subtreeIds, wbsTree } from '../../domain/wbsTree'
+import { WBS_LEVELS, WBS_LEVEL_LABEL, allowedLevels, dateOptions, reparent, subtreeIds, wbsTree } from '../../domain/wbsTree'
 
 const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:opacity-70'
 const cellInput = 'h-8 w-full rounded-md border border-[var(--color-border)] bg-white px-2 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe] disabled:bg-transparent disabled:border-transparent'
@@ -71,17 +71,29 @@ export function ArchetypeDetailsPage() {
   const setObj = (oid: string, patch: Partial<WbsObject>) =>
     setArc((a) => ({ ...a, wbs: a.wbs.map((o) => (o.id === oid ? { ...o, ...patch } : o)) }))
   const addMilestone = () => setArc((a) => ({ ...a, wbs: [...a.wbs, newRow('Milestone')] }))
-  const addChild = (parent: WbsObject) => {
-    const lvl = childLevel(parent.level)
-    if (lvl) setArc((a) => ({ ...a, wbs: insertChild(a.wbs, parent.id, newRow(lvl, parent.id)) }))
-  }
+  // "+" adds a row of the same level right after this row and everything under it; its Level can then be changed.
+  const addBelow = (row: WbsObject) =>
+    setArc((a) => {
+      const sub = subtreeIds(a.wbs, row.id)
+      let at = a.wbs.findIndex((o) => o.id === row.id)
+      a.wbs.forEach((o, i) => { if (sub.has(o.id)) at = Math.max(at, i) })
+      return { ...a, wbs: reparent([...a.wbs.slice(0, at + 1), newRow(row.level, row.parentId), ...a.wbs.slice(at + 1)]) }
+    })
+  // Changing a row's level re-derives parents from the row order (the nearest row above with a higher level).
+  const setLevel = (row: WbsObject, level: WbsLevel) =>
+    setArc((a) => ({
+      ...a,
+      wbs: reparent(a.wbs.map((o) => (o.id === row.id
+        ? { ...o, level, type: level === 'Activity' && o.level !== 'Activity' ? 'ActivityBuilder' as const : o.type }
+        : o))),
+    }))
   // Removing a row removes everything under it; dependencies on removed rows go with them.
   const removeObj = (oid: string) =>
     setArc((a) => {
       const gone = subtreeIds(a.wbs, oid)
       return {
         ...a,
-        wbs: a.wbs.filter((o) => !gone.has(o.id)).map((o) => (o.dependency && gone.has(o.dependency.onObjectId) ? { ...o, dependency: undefined } : o)),
+        wbs: reparent(a.wbs.filter((o) => !gone.has(o.id)).map((o) => (o.dependency && gone.has(o.dependency.onObjectId) ? { ...o, dependency: undefined } : o))),
       }
     })
 
@@ -173,7 +185,7 @@ export function ArchetypeDetailsPage() {
           <h3 className="m-0 text-[13px] font-semibold text-[#101828]">Define WBS Objects</h3>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{named.length}</span>
           <span className="ml-auto text-[11px] text-[var(--color-muted)]">
-            Add milestones and their <strong>Planned dates</strong>, then activities under them (<Icon name="circle-plus" size={12} className="inline" /> adds the next level). Activity Builder activities are built in detail.
+            Add milestones and their <strong>Planned dates</strong>, then rows below them (<Icon name="circle-plus" size={12} className="inline" /> adds a row below; pick its Level). Activity Builder activities are built in detail.
           </span>
         </div>
         <div className="table-scroll" style={{ maxHeight: 'calc(100vh - 380px)' }}>
@@ -181,7 +193,7 @@ export function ArchetypeDetailsPage() {
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
                 <th className="w-32 px-3 py-2.5">No.</th>
-                <th className="w-24 px-3 py-2.5">Level</th>
+                <th className="w-32 px-3 py-2.5">Level</th>
                 <th className="min-w-[260px] px-3 py-2.5">WBS Objects</th>
                 <th className="w-40 px-3 py-2.5">Type</th>
                 <th className="min-w-[200px] px-3 py-2.5">Dependency</th>
@@ -190,17 +202,19 @@ export function ArchetypeDetailsPage() {
               </tr>
             </thead>
             <tbody>
-              {tree.map(({ obj: o, code, depth }) => {
+              {tree.map(({ obj: o, code, depth }, idx) => {
                 const state = builderState(o)
-                const next = childLevel(o.level)
+                const allowed = allowedLevels(tree[idx - 1]?.obj.level)
+                // The current level stays listed even if a change above made it skip a level.
+                const levels = WBS_LEVELS.filter((l) => allowed.includes(l) || l === o.level)
                 const nDates = o.level === 'Milestone' ? dateOptions(o).length : 0
                 return (
                   <tr key={o.id} className={`border-b border-[var(--color-border)] last:border-0 align-middle ${o.level === 'Milestone' ? 'bg-[#f8faff]' : ''}`}>
                     <td className="px-3 py-1.5">
                       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                         <span className="font-mono text-[11px] text-[#344054]">{code}</span>
-                        {isAdmin && next && (
-                          <button type="button" onClick={() => addChild(o)} aria-label={`Add ${WBS_LEVEL_LABEL[next]} under ${code}`} title={`Add ${WBS_LEVEL_LABEL[next]}`}
+                        {isAdmin && (
+                          <button type="button" onClick={() => addBelow(o)} aria-label={`Add row below ${code}`} title={`Add a ${WBS_LEVEL_LABEL[o.level]} below (change its Level as needed)`}
                             className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-accent)]">
                             <Icon name="circle-plus" size={15} />
                           </button>
@@ -208,7 +222,14 @@ export function ArchetypeDetailsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-1.5">
-                      <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${LEVEL_CLS[o.level]}`}>{WBS_LEVEL_LABEL[o.level]}</span>
+                      {isAdmin ? (
+                        <select value={o.level} aria-label={`${code} level`} onChange={(e) => setLevel(o, e.target.value as WbsLevel)}
+                          className={`${cellInput} font-semibold ${LEVEL_CLS[o.level]}`}>
+                          {levels.map((l) => <option key={l} value={l}>{WBS_LEVEL_LABEL[l]}</option>)}
+                        </select>
+                      ) : (
+                        <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${LEVEL_CLS[o.level]}`}>{WBS_LEVEL_LABEL[o.level]}</span>
+                      )}
                     </td>
                     <td className="px-3 py-1.5">
                       <div style={{ paddingLeft: depth * 16 }}>

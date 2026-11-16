@@ -38,6 +38,35 @@ export function wbsTree(wbs: WbsObject[]): WbsNode[] {
   return out
 }
 
+const levelIdx = (l: WbsLevel) => WBS_LEVELS.indexOf(l)
+
+/** Levels a row may take given the row above it: Milestone up to one level below the row above. */
+export function allowedLevels(above: WbsLevel | undefined): WbsLevel[] {
+  return above ? WBS_LEVELS.slice(0, levelIdx(above) + 2) : ['Milestone']
+}
+
+/**
+ * Re-derive parents from row order and levels (like an outline): a row's parent is the nearest row above it with a
+ * higher level. The first row is always a Milestone; only Activities keep the Activity Builder type.
+ */
+export function reparent(wbs: WbsObject[]): WbsObject[] {
+  const stack: WbsObject[] = []
+  return wbs.map((o) => {
+    while (stack.length && levelIdx(stack[stack.length - 1].level) >= levelIdx(o.level)) stack.pop()
+    const parent = stack[stack.length - 1]
+    const level: WbsLevel = parent ? o.level : 'Milestone'
+    const fixed: WbsObject = {
+      ...o,
+      level,
+      parentId: parent?.id,
+      type: level === 'Milestone' || (level !== 'Activity' && o.type === 'ActivityBuilder') ? 'General' : o.type,
+      ...(level === 'Milestone' ? { dateTypes: o.dateTypes ?? [] } : {}),
+    }
+    stack.push(fixed)
+    return fixed
+  })
+}
+
 /** Ids of a row and everything under it. */
 export function subtreeIds(wbs: WbsObject[], id: string): Set<string> {
   const out = new Set([id])
