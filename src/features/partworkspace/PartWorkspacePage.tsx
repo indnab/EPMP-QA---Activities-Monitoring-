@@ -1,7 +1,7 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { PageHeader, Card, Button, getFieldRenderer, SourceBadge, StatusPill } from '../../components'
+import { PageHeader, Card, Button, getFieldRenderer, ReadOnlyFieldBox, SourceBadge, StatusPill } from '../../components'
 import type { StatusValue } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -590,7 +590,7 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
                     ? renderer.editor({ field, value, onChange: (v) => onFieldChange(field.key, v), disabled: !isEditable, currentPersona })
                     : isEditable
                     ? renderer.editor({ field, value, onChange: (v) => onFieldChange(field.key, v), currentPersona })
-                    : renderer.preview({ field, value, currentPersona })}
+                    : <ReadOnlyFieldBox>{renderer.preview({ field, value, currentPersona })}</ReadOnlyFieldBox>}
                 </div>
               )
             })}

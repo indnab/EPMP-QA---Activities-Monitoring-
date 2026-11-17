@@ -801,7 +801,7 @@ export function MyWorkGridPage() {
                   })}
 
                   {calcCols.map((f) => (
-                    <td key={f.key} className={`${tdCls} whitespace-nowrap bg-[#f9fafb] text-[var(--color-muted)]`}>
+                    <td key={f.key} className={`${tdCls} field-system whitespace-nowrap text-[var(--color-muted)]`}>
                       {formatValue(f, m.values[f.key])}
                     </td>
                   ))}

@@ -122,7 +122,18 @@ table thead th {
 table tbody td { border-color: #f1f2f6; }
 table tbody tr:hover td { background: var(--color-surface); }
 
-/* ── Form controls: EPMP's light-grey inputs ──────────────────── */
+/* ── Manual vs system fields ──────────────────────────────────────
+   White = a value you type or pick. Grey = filled by the system (calculated, SAP / ENOVIA, generated ids) or
+   read-only. Unlayered on purpose so it wins over Tailwind background utilities on inputs. */
+:root { --field-system-bg: #eceef2; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not(.bg-transparent),
+select:not(.bg-transparent), textarea:not(.bg-transparent) {
+  background-color: #fff;
+}
+input[readonly], textarea[readonly], input:disabled, select:disabled, textarea:disabled, .field-system {
+  background-color: var(--field-system-bg) !important;
+}
+/* ── Form controls ──────────────────── */
 select, input[type="text"], input[type="search"], input[type="date"],
 input[type="number"], textarea {
   border-radius: 8px;

@@ -23,7 +23,7 @@ import {
   rowsFromCount,
 } from '../../engine'
 import { fmtDate, fieldVisibleToPersona, DEMO_TODAY, canMarkNotApplicable, canReverseNotApplicable, canPersonaEdit, toRygStatus } from '../scope'
-import { getFieldRenderer } from '../../components/FieldRenderer'
+import { getFieldRenderer, ReadOnlyFieldBox } from '../../components/FieldRenderer'
 import { Button, SourceBadge, StatusPill, Modal, Tabs, ApplicabilityDialog, RygDot } from '../../components'
 import type { TabItem } from '../../components/Tabs'
 import { DeviationPopup } from './DeviationPopup'
@@ -1248,7 +1248,7 @@ function FormTab({
                     onChange: (v) => onFieldChange(field.key, v),
                     currentPersona
                   })
-                : renderer.preview({ field, value })}
+                : <ReadOnlyFieldBox>{renderer.preview({ field, value })}</ReadOnlyFieldBox>}
             </div>
 
             {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}

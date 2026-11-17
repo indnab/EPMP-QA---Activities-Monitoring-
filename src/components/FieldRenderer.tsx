@@ -16,7 +16,7 @@ import { Icon as FbIcon } from './Icon'
  *   fieldRendererRegistry[fieldType].editor({ field, value, onChange, disabled })
  */
 
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { FieldDefinition } from '../domain'
 
 export interface FieldRendererProps {
@@ -54,8 +54,18 @@ function FieldWrapper({ label, children, className = '' }: { label: string; chil
   )
 }
 
-function inputClass(disabled?: boolean) {
-  return `w-full border border-[var(--color-border)] rounded px-2.5 py-1.5 text-sm max-md:text-base bg-white text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${disabled ? 'opacity-60 cursor-not-allowed bg-[var(--color-surface)]' : ''}`
+/** Filled by the system (calculated, SAP / ENOVIA / e-Doc / Reg App fetch, or entered by 'System'): shown on grey. */
+export function isSystemField(field: { source?: string; enteredBy?: string }): boolean {
+  return field.source === 'calculated' || field.enteredBy === 'System' || ['enovia', 'sap', 'edoc', 'regapp'].includes(field.source ?? '')
+}
+
+function inputClass(disabled?: boolean, field?: { source?: string; enteredBy?: string }) {
+  return `w-full border border-[var(--color-border)] rounded px-2.5 py-1.5 text-sm max-md:text-base bg-white text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${field && isSystemField(field) ? 'field-system' : ''}`
+}
+
+/** A read-only field value on a form, boxed on grey so it reads as "not for you to type". */
+export function ReadOnlyFieldBox({ children }: { children: ReactNode }) {
+  return <div className="field-system min-h-[34px] rounded border border-[var(--color-border)] px-2.5 py-1.5 text-sm text-[var(--color-text)]">{children}</div>
 }
 
 // ── Registry ─────────────────────────────────────────────────────────────────
@@ -74,7 +84,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
-          className={inputClass(disabled)}
+          className={inputClass(disabled, field)}
         />
       </FieldWrapper>
     ),
@@ -93,7 +103,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           rows={3}
-          className={`${inputClass(disabled)} resize-y`}
+          className={`${inputClass(disabled, field)} resize-y`}
         />
       </FieldWrapper>
     ),
@@ -112,7 +122,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.valueAsNumber)}
           disabled={disabled}
-          className={inputClass(disabled)}
+          className={inputClass(disabled, field)}
         />
       </FieldWrapper>
     ),
@@ -134,7 +144,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
             value={value ?? ''}
             onChange={(e) => onChange?.(e.target.valueAsNumber)}
             disabled={disabled}
-            className={`${inputClass(disabled)} w-24`}
+            className={`${inputClass(disabled, field)} w-24`}
           />
           <span className="text-sm text-[var(--color-muted)]">%</span>
         </div>
@@ -155,7 +165,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
-          className={inputClass(disabled)}
+          className={inputClass(disabled, field)}
         />
       </FieldWrapper>
     ),
@@ -177,7 +187,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
-          className={inputClass(disabled)}
+          className={inputClass(disabled, field)}
         >
           <option value="">— Select —</option>
           <option value="Y">Yes</option>
@@ -199,7 +209,7 @@ export const fieldRendererRegistry: Record<string, FieldRendererEntry> = {
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
-          className={inputClass(disabled)}
+          className={inputClass(disabled, field)}
         >
           <option value="">— Select —</option>
           {field.options?.map((opt) => (
