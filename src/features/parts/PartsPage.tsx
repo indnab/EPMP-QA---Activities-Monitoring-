@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { useSearchParams } from 'react-router-dom'
 import { PartIntakePage } from '../intake/PartIntakePage'
 import { PageHeader, Card, Button, Modal, Tabs } from '../../components'
@@ -103,7 +105,8 @@ export function PartsPage() {
   const [personFilter, setPersonFilter] = useState('All')
   const [vendorFilter, setVendorFilter] = useState('All')
   const [partFilter, setPartFilter] = useState('')
-
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({}) // Part Category / Fuel Type
+  const partByNo = useMemo(() => new Map(allParts.map((p) => [p.partNo, p])), [allParts])
   const log = useMemo(() => {
     const inScope = new Set(scopeParts.map((p) => p.partNo))
     return buildActivityLog(entries, allParts, templateRows, activities, picAssignments).filter((l) =>
@@ -120,9 +123,10 @@ export function PartsPage() {
           (!completedOnly || l.action === 'Approved') &&
           (personFilter === 'All' || l.person === personFilter) &&
           (vendorFilter === 'All' || l.vendorName === vendorFilter) &&
+          matchAttrValues(partByNo.get(l.partNo), attrFilter) &&
           (!partFilter || `${l.partNo} ${l.partName}`.toLowerCase().includes(partFilter.toLowerCase()))
       ),
-    [log, completedOnly, personFilter, vendorFilter, partFilter]
+    [log, completedOnly, personFilter, vendorFilter, partFilter, attrFilter, partByNo]
   )
 
   const logVendors = useMemo(() => Array.from(new Set(log.map((l) => l.vendorName).filter(Boolean))).sort(), [log])
@@ -246,6 +250,7 @@ export function PartsPage() {
                 </option>
               ))}
             </select>
+            <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className={inputCls} />
             <input
               type="text"
               placeholder="Filter by part…"

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { PageHeader, Card } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -112,11 +114,12 @@ export function LessonsPage() {
   // One common filter for the whole page: Vendor + Technical category. Everything below respects it.
   const [vendorFilter, setVendorFilter] = useState('All')
   const [catFilter, setCatFilter] = useState('All')
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({}) // Part Category / Fuel Type
 
   // Parts narrowed by the category filter — fed to every section so scorecards/insights/forecast/heat map agree.
   const catParts = useMemo(
-    () => (catFilter === 'All' ? parts : parts.filter((p) => (p.technicalCategory ?? 'OtherAssy') === catFilter)),
-    [parts, catFilter]
+    () => parts.filter((p) => (catFilter === 'All' || (p.technicalCategory ?? 'OtherAssy') === catFilter) && matchAttrValues(p, attrFilter)),
+    [parts, catFilter, attrFilter]
   )
   const ctx = useMemo(() => ({ entries, parts: catParts, activities, templateRows }), [entries, catParts, activities, templateRows])
 
@@ -176,9 +179,10 @@ export function LessonsPage() {
             {TECHNICAL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </label>
-        {(vendorFilter !== 'All' || catFilter !== 'All') && (
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]" />
+        {(vendorFilter !== 'All' || catFilter !== 'All' || hasAttrValues(attrFilter)) && (
           <button
-            onClick={() => { setVendorFilter('All'); setCatFilter('All') }}
+            onClick={() => { setVendorFilter('All'); setCatFilter('All'); setAttrFilter({}) }}
             className="text-[11px] font-medium text-[var(--color-accent)] hover:underline"
           >
             Clear

@@ -1,4 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
@@ -47,6 +49,7 @@ export function ActivitiesPage() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [milestoneFilter, setMilestoneFilter] = useState('All')
   const [sectionFilter, setSectionFilter] = useState('All')
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({}) // Part Category / Fuel Type: narrows the parts counted
 
   // One summary per template row, built from instances (part x row) the persona is allowed to see.
   const summaries = useMemo<RowSummary[]>(() => {
@@ -61,6 +64,7 @@ export function ActivitiesPage() {
       DEMO_TODAY
     )
       .filter((i) => partInScope(i.part, currentPersona))
+      .filter((i) => matchAttrValues(i.part, attrFilter))
       // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
       .filter((i) => !upcomingOnly || isUpcoming(i.dates))
 
@@ -100,7 +104,7 @@ export function ActivitiesPage() {
       })
     }
     return out
-  }, [entries, activities, parts, templateRows, models, currentPersona, scope.vendor, upcomingOnly])
+  }, [entries, activities, parts, templateRows, models, currentPersona, scope.vendor, upcomingOnly, attrFilter])
 
   const filtered = summaries.filter((s) => {
     if (search && !s.activity.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -109,7 +113,7 @@ export function ActivitiesPage() {
     return true
   })
 
-  const hasFilters = search !== '' || milestoneFilter !== 'All' || sectionFilter !== 'All'
+  const hasFilters = search !== '' || milestoneFilter !== 'All' || sectionFilter !== 'All' || hasAttrValues(attrFilter)
   const scopeNote = scope.section
     ? `Showing section ${scope.section} only.`
     : scope.vendor
@@ -173,9 +177,10 @@ export function ActivitiesPage() {
             ))}
           </select>
         )}
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]" />
         {hasFilters && (
           <button
-            onClick={() => { setSearch(''); setMilestoneFilter('All'); setSectionFilter('All') }}
+            onClick={() => { setSearch(''); setMilestoneFilter('All'); setSectionFilter('All'); setAttrFilter({}) }}
             className="rounded text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
           >
             Clear filters

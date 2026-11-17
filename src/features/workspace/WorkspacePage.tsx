@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { useState, useMemo } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
@@ -42,6 +43,16 @@ export function WorkspacePage() {
   const statusFilter = (searchParams.get('status') as StatusFilter) || 'All'
   const rygFilter = searchParams.get('ryg') || 'All'
   const applicabilityFilter = (searchParams.get('applicability') as ApplicabilityFilter) || 'All'
+  // Part Category / Fuel Type (Part Intake attributes), in the URL as ?part_category=…&fuel_type=…
+  const attrFilter = (k: string) => searchParams.get(k) || 'All'
+  const setAttrFilter = (k: string, val: string) =>
+    setSearchParams((prev) => {
+      if (val === 'All') prev.delete(k)
+      else prev.set(k, val)
+      return prev
+    })
+  const partCategoryFilter = attrFilter('part_category')
+  const fuelTypeFilter = attrFilter('fuel_type')
 
   const setModelFilter = (val: string) => {
     setSearchParams((prev) => {
@@ -174,6 +185,8 @@ export function WorkspacePage() {
       if (modelFilter !== 'All' && p.model !== modelFilter) return false
       if (vendorFilter !== 'All' && p.vendorName !== vendorFilter) return false
       if (typeFilter !== 'All' && p.type !== typeFilter) return false
+      if (partCategoryFilter !== 'All' && (p.attrs?.part_category ?? '') !== partCategoryFilter) return false
+      if (fuelTypeFilter !== 'All' && (p.attrs?.fuel_type ?? '') !== fuelTypeFilter) return false
       // PIC default: only parts whose activity is due or starting in the next 30 days.
       if (upcomingOnly) {
         const d = datesByPart.get(p.partNo)
@@ -202,7 +215,7 @@ export function WorkspacePage() {
       }
       return true
     })
-  }, [applicableParts, modelFilter, vendorFilter, typeFilter, applicabilityFilter, statusFilter, rygFilter, entryMap, datesByPart, today, upcomingOnly])
+  }, [applicableParts, modelFilter, vendorFilter, typeFilter, partCategoryFilter, fuelTypeFilter, applicabilityFilter, statusFilter, rygFilter, entryMap, datesByPart, today, upcomingOnly])
 
   // RYG summary
   const rygSummary = useMemo(() => {
@@ -318,7 +331,7 @@ export function WorkspacePage() {
     return dates ? toRygStatus(calculateRYG(dates, state, today)) : 'grey'
   }
 
-  const hasFilters = modelFilter !== 'All' || vendorFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All' || rygFilter !== 'All' || applicabilityFilter !== 'All'
+  const hasFilters = partCategoryFilter !== 'All' || fuelTypeFilter !== 'All' || modelFilter !== 'All' || vendorFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All' || rygFilter !== 'All' || applicabilityFilter !== 'All'
 
   return (
     <div className="max-w-[1600px]">
@@ -425,6 +438,18 @@ export function WorkspacePage() {
           <option value="NewPart">New Part</option>
           <option value="ECN">ECN</option>
         </select>
+        {PART_ATTR_FIELDS.map((f) => (
+          <select
+            key={f.key}
+            value={attrFilter(f.key)}
+            onChange={(e) => setAttrFilter(f.key, e.target.value)}
+            aria-label={`Filter by ${f.label.toLowerCase()}`}
+            className="border border-[var(--color-border)] rounded px-3 py-1.5 text-sm bg-white text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          >
+            <option value="All">All {f.label === 'Fuel Type' ? 'Fuel Types' : 'Part Categories'}</option>
+            {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ))}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}

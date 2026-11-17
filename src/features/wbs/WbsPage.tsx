@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { PageHeader, Card } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -58,10 +60,11 @@ export function WbsPage() {
   const modelNames = useMemo(() => models.map((m) => m.name), [models])
   const [model, setModel] = useState(modelNames[0] ?? '')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({})
 
   const instances = useMemo<FilteredInstance[]>(
-    () => getFilteredData(entries, activities, parts, templateRows, models, { ...EMPTY_FILTERS, model: model || 'All' }, 'overview', DEMO_TODAY),
-    [entries, activities, parts, templateRows, models, model]
+    () => getFilteredData(entries, activities, parts.filter((p) => matchAttrValues(p, attrFilter)), templateRows, models, { ...EMPTY_FILTERS, model: model || 'All' }, 'overview', DEMO_TODAY),
+    [entries, activities, parts, templateRows, models, model, attrFilter]
   )
 
   // Build the tree: Milestone → Part → Activity.
@@ -166,6 +169,10 @@ export function WbsPage() {
             {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]" />
+        {hasAttrValues(attrFilter) && (
+          <button onClick={() => setAttrFilter({})} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">Clear</button>
+        )}
         <div className="ml-auto flex items-center gap-2 text-[11px]">
           <button onClick={() => setCollapsed(new Set())} className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]">Expand all</button>
           <button

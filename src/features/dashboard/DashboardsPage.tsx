@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { overlayFeed } from '../../mock/feed'
 import { useState, useMemo } from 'react'
 import GridLayout, { WidthProvider } from 'react-grid-layout/legacy'
@@ -651,7 +652,7 @@ export function DashboardsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9 gap-2.5">
             {/* Milestone */}
             <div>
               <label className="block text-[10px] font-semibold text-[var(--color-muted)] mb-1">MILESTONE</label>
@@ -721,6 +722,25 @@ export function DashboardsPage() {
                 ))}
               </select>
             </div>
+
+            {/* Part Category / Fuel Type (Part Intake attributes) */}
+            {PART_ATTR_FIELDS.map((f) => {
+              const k = f.key === 'part_category' ? 'partCategory' : 'fuelType'
+              return (
+                <div key={f.key}>
+                  <label className="block text-[10px] font-semibold text-[var(--color-muted)] mb-1">{f.label.toUpperCase()}</label>
+                  <select
+                    value={filters[k] ?? 'All'}
+                    onChange={(e) => setFilters({ ...filters, [k]: e.target.value })}
+                    aria-label={f.label}
+                    className="w-full border border-[var(--color-border)] rounded px-2 py-1.5 text-xs bg-white text-[var(--color-text)] focus:outline-none"
+                  >
+                    <option value="All">All</option>
+                    {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              )
+            })}
 
             {/* Scope Type */}
             <div>

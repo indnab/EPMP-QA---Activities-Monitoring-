@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { PageHeader, Card, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
@@ -40,6 +42,7 @@ export function ApplicabilityMatrixPage() {
   const [modelFilter, setModelFilter] = useState('All')
   const [vendorFilter, setVendorFilter] = useState('All')
   const [milestoneFilter, setMilestoneFilter] = useState('All')
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({})
   const [staged, setStaged] = useState<Map<string, boolean>>(new Map())
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -79,10 +82,11 @@ export function ApplicabilityMatrixPage() {
       parts.filter((p) => {
         if (modelFilter !== 'All' && p.model !== modelFilter) return false
         if (vendorFilter !== 'All' && p.vendorName !== vendorFilter) return false
+        if (!matchAttrValues(p, attrFilter)) return false
         if (search && !`${p.partNo} ${p.partName}`.toLowerCase().includes(search.toLowerCase())) return false
         return true
       }),
-    [parts, modelFilter, vendorFilter, search]
+    [parts, modelFilter, vendorFilter, attrFilter, search]
   )
 
   // Saved state per cell
@@ -145,7 +149,7 @@ export function ApplicabilityMatrixPage() {
     setReviewOpen(false)
   }
 
-  const hasFilters = search !== '' || modelFilter !== 'All' || vendorFilter !== 'All' || milestoneFilter !== 'All'
+  const hasFilters = search !== '' || modelFilter !== 'All' || vendorFilter !== 'All' || milestoneFilter !== 'All' || hasAttrValues(attrFilter)
   const readOnly = !canMark && !canReverse
   const totalNa = savedNa.size
 
@@ -179,6 +183,7 @@ export function ApplicabilityMatrixPage() {
           <option value="All">All milestones</option>
           {milestones.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className={inputCls} />
         {hasFilters && (
           <button
             onClick={() => {
@@ -186,6 +191,7 @@ export function ApplicabilityMatrixPage() {
               setModelFilter('All')
               setVendorFilter('All')
               setMilestoneFilter('All')
+              setAttrFilter({})
             }}
             className="text-sm text-[var(--color-accent)] hover:underline"
           >

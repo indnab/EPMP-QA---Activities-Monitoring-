@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -72,6 +73,7 @@ export function MyWorkGridPage() {
   const [sectionFilter, setSectionFilter] = useState(searchParams.get('section') ?? 'All')
   const [modelFilter, setModelFilter] = useState('All')
   const [vendorFilter, setVendorFilter] = useState('All')
+  const [attrFilters, setAttrFilters] = useState<Record<string, string>>({}) // Part Category / Fuel Type
   const [hideLocked, setHideLocked] = useState(false)
   const [fillKey, setFillKey] = useState('')
   const [fillValue, setFillValue] = useState<any>('')
@@ -117,9 +119,10 @@ export function MyWorkGridPage() {
           (sectionFilter === 'All' || m.inst.row.section === sectionFilter) &&
           (modelFilter === 'All' || m.inst.part.model === modelFilter) &&
           (vendorFilter === 'All' || m.inst.part.vendorName === vendorFilter) &&
+          PART_ATTR_FIELDS.every((f) => !attrFilters[f.key] || attrFilters[f.key] === 'All' || (m.inst.part.attrs?.[f.key] ?? '') === attrFilters[f.key]) &&
           !(hideLocked && m.lock)
       ),
-    [rowModels, sectionFilter, modelFilter, vendorFilter, hideLocked]
+    [rowModels, sectionFilter, modelFilter, vendorFilter, attrFilters, hideLocked]
   )
   const openShown = shown.filter((m) => !m.lock)
 
@@ -491,6 +494,19 @@ export function MyWorkGridPage() {
               ))}
             </select>
           </label>
+          {PART_ATTR_FIELDS.map((f) => (
+            <label key={f.key} className="flex items-center gap-1.5">
+              {f.label}
+              <select
+                value={attrFilters[f.key] ?? 'All'}
+                onChange={(e) => setAttrFilters((a) => ({ ...a, [f.key]: e.target.value }))}
+                className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]"
+              >
+                <option value="All">All</option>
+                {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </label>
+          ))}
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={hideLocked} onChange={(e) => setHideLocked(e.target.checked)} />
             Hide locked rows

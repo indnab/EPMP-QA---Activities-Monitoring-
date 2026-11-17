@@ -32,6 +32,8 @@ export interface ApprovalRow {
   pic: string
   /** Activity name (what the item is about). */
   title: string
+  /** The part's intake attributes (Part Category, Fuel Type… for filters). */
+  attrs?: Record<string, string>
   /** For entry items: Draft / Sent back / Not started. */
   statusLabel?: string
   submittedByRole: PersonaId | 'System' | ''
@@ -74,7 +76,7 @@ export function useApprovalRows(): ApprovalRow[] {
     const base = (part: PartRecord, rowId: string) => ({
       partNo: part.partNo, partName: part.partName, vendorCode: part.vendorCode, vendorName: part.vendorName,
       model: part.model, department: part.department || 'Other', trial: trialOf(part),
-      pic: getPicOn(part, picAssignments, DEMO_TODAY).name, rowId
+      pic: getPicOn(part, picAssignments, DEMO_TODAY).name, attrs: part.attrs, rowId
     })
 
     const insts = getFilteredData(

@@ -122,6 +122,8 @@ export function drillChips(filters: GlobalFilters, ctx: ChipContext): DrillChip[
   if (isSet(filters.section) && !ctx.scope.section) add('section', `Section: ${filters.section}`, (f) => ({ ...f, section: 'All' }))
   if (isSet(filters.model)) add('model', `Model: ${filters.model}`, (f) => ({ ...f, model: 'All' }))
   if (isSet(filters.vendor) && !ctx.scope.vendor) add('vendor', `Vendor: ${filters.vendor}`, (f) => ({ ...f, vendor: 'All' }))
+  if (isSet(filters.partCategory)) add('partCategory', `Part Category: ${filters.partCategory}`, (f) => ({ ...f, partCategory: 'All' }))
+  if (isSet(filters.fuelType)) add('fuelType', `Fuel Type: ${filters.fuelType}`, (f) => ({ ...f, fuelType: 'All' }))
   if (isSet(filters.department)) add('department', `Department: ${filters.department}`, (f) => ({ ...f, department: 'All' }))
   if (filters.type !== 'All') add('type', `Type: ${filters.type === 'NewPart' ? 'New Part' : 'ECN'}`, (f) => ({ ...f, type: 'All' }))
   if (isSet(filters.status)) add('status', `Status: ${STATUS_LABELS[filters.status] ?? filters.status}`, (f) => ({ ...f, status: 'All' }))

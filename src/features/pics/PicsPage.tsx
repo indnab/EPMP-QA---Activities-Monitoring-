@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { PageHeader, Card, Button, Modal, Tabs } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
@@ -33,7 +35,7 @@ export function PicsPage() {
   const [personFilter, setPersonFilter] = useState('All')
   const [partFilter, setPartFilter] = useState('')
   const [applicabilityOnly, setApplicabilityOnly] = useState(false)
-
+  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({}) // Part Category / Fuel Type
   const parts = useMemo(
     () => allParts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)),
     [allParts, currentPersona]
@@ -73,6 +75,7 @@ export function PicsPage() {
     (l) =>
       (personFilter === 'All' || l.person === personFilter) &&
       (!applicabilityOnly || l.action.startsWith('Marked ')) &&
+      matchAttrValues(allParts.find((p) => p.partNo === l.partNo), attrFilter) &&
       (!partFilter || `${l.partNo} ${l.partName}`.toLowerCase().includes(partFilter.toLowerCase()))
   )
 
@@ -257,6 +260,7 @@ export function PicsPage() {
               onChange={(e) => setPartFilter(e.target.value)}
               className={`${inputCls} w-56 max-w-full`}
             />
+            <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className={inputCls} />
             <label className="flex items-center gap-2 text-[11px] text-[#344054]">
               <input type="checkbox" checked={applicabilityOnly} onChange={(e) => setApplicabilityOnly(e.target.checked)} />
               Applicability changes only

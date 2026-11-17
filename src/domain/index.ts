@@ -844,6 +844,9 @@ export interface GlobalFilters {
   status?: 'All' | string
   ryg?: 'All' | string
   department?: 'All' | string
+  /** Part Intake attributes (PartRecord.attrs.part_category / fuel_type). */
+  partCategory?: 'All' | string
+  fuelType?: 'All' | string
   activityId?: 'All' | string
   /**
    * Activity fields at one value each (all must match), as the engine's field dimension reads them: the option

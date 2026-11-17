@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { PartAttrSelects, matchAttrValues } from '../partAttrFilters'
+import type { PartAttrValues } from '../partAttrFilters'
 import { PageHeader, Card, Button } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -39,16 +41,18 @@ export function HistoryTransferPage() {
   // Source picker filters.
   const [srcModel, setSrcModel] = useState('All')
   const [srcVendorCode, setSrcVendorCode] = useState('All')
+  const [srcAttr, setSrcAttr] = useState<PartAttrValues>({})
   // Target picker filters.
   const [tgtModel, setTgtModel] = useState('All')
+  const [tgtAttr, setTgtAttr] = useState<PartAttrValues>({})
   const [filter, setFilter] = useState('')
   // Activities to transfer (template row ids excluded). Empty set = all.
   const [excludedRows, setExcludedRows] = useState<Set<string>>(new Set())
   const [done, setDone] = useState<string | null>(null)
 
   const sourceOptions = useMemo(
-    () => activeParts.filter((p) => (srcModel === 'All' || p.model === srcModel) && (srcVendorCode === 'All' || p.vendorCode === srcVendorCode)),
-    [activeParts, srcModel, srcVendorCode]
+    () => activeParts.filter((p) => (srcModel === 'All' || p.model === srcModel) && (srcVendorCode === 'All' || p.vendorCode === srcVendorCode) && matchAttrValues(p, srcAttr)),
+    [activeParts, srcModel, srcVendorCode, srcAttr]
   )
   const source = activeParts.find((p) => p.partNo === fromPartNo)
 
@@ -96,8 +100,9 @@ export function HistoryTransferPage() {
     const q = filter.trim().toLowerCase()
     return sameVendorParts
       .filter((p) => tgtModel === 'All' || p.model === tgtModel)
+      .filter((p) => matchAttrValues(p, tgtAttr))
       .filter((p) => !q || `${p.partNo} ${p.partName} ${p.model} ${p.vendorName}`.toLowerCase().includes(q))
-  }, [sameVendorParts, tgtModel, filter])
+  }, [sameVendorParts, tgtModel, tgtAttr, filter])
 
   const selected = candidates.filter((p) => targetIds.has(p.partNo))
   const selectedCount = sameVendorParts.filter((p) => targetIds.has(p.partNo)).length
@@ -197,6 +202,8 @@ export function HistoryTransferPage() {
                 <option value="All">All vendor codes</option>
                 {vendorCodes.map(([code, name]) => <option key={code} value={code}>{code} — {name}</option>)}
               </select>
+              <PartAttrSelects value={srcAttr} className={`${inputCls} w-44`}
+                onChange={(v) => { setSrcAttr(v); if (source && !matchAttrValues(source, v)) onPickSource('') }} />
               <select value={fromPartNo} onChange={(e) => onPickSource(e.target.value)} className={`${inputCls} min-w-[280px] flex-1`}>
                 <option value="">— select source part —</option>
                 {sourceOptions.map((p) => (
@@ -268,6 +275,7 @@ export function HistoryTransferPage() {
                   <option value="All">All models</option>
                   {Array.from(new Set(sameVendorParts.map((p) => p.model))).sort().map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
+                <PartAttrSelects value={tgtAttr} onChange={setTgtAttr} className={`${inputCls} w-44`} />
                 <input
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}

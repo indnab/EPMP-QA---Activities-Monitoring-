@@ -1068,6 +1068,8 @@ export function getFilteredData(
       if (filters.vendor !== 'All' && p.vendorName !== filters.vendor) continue
       if (filters.type !== 'All' && p.type !== filters.type) continue
       if (filters.department && filters.department !== 'All' && (p.department || 'Other') !== filters.department) continue
+      if (filters.partCategory && filters.partCategory !== 'All' && (p.attrs?.part_category ?? '') !== filters.partCategory) continue
+      if (filters.fuelType && filters.fuelType !== 'All' && (p.attrs?.fuel_type ?? '') !== filters.fuelType) continue
 
       const model = models.find((m) => m.name === p.model)
       if (row.subType) {
