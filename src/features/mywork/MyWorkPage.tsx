@@ -271,7 +271,11 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
   }, [filtered, sortKey, sortDir])
   const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>('all')
+  // ?seg= (from an Overview tile) opens a segment; 'sentback' = To enter, only items sent back for correction.
+  const [searchParams] = useSearchParams()
+  const segParam = searchParams.get('seg')
+  const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>(segParam === 'approve' ? 'approve' : segParam === 'enter' || segParam === 'sentback' ? 'enter' : 'all')
+  const [sentBackOnly, setSentBackOnly] = useState(segParam === 'sentback')
   const [viewMode, setViewMode] = useViewMode('worklist')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
@@ -284,7 +288,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
 
   const enterRows = rows.filter((r) => r.mode === 'enter')
   const approveRows = rows.filter((r) => r.mode === 'approve')
-  const shown = segment === 'enter' ? enterRows : segment === 'approve' ? approveRows : rows
+  const shown = segment === 'enter' ? enterRows.filter((r) => !sentBackOnly || r.statusLabel === 'Sent back') : segment === 'approve' ? approveRows : rows
 
   const keys = useMemo(() => new Set(approveRows.map((r) => r.key)), [approveRows])
   const selected = useMemo(() => new Set([...picked].filter((k) => keys.has(k))), [picked, keys])
@@ -329,7 +333,7 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         <div className="flex-none">
           <Tabs
             activeId={segment}
-            onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setPicked(new Set()) }}
+            onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setSentBackOnly(false); setPicked(new Set()) }}
             items={[
               { id: 'all', label: 'All', badge: rows.length || undefined },
               { id: 'enter', label: 'To enter', badge: enterRows.length || undefined },
@@ -337,6 +341,12 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
             ]}
           />
         </div>
+        {sentBackOnly && segment === 'enter' && (
+          <button type="button" onClick={() => setSentBackOnly(false)} title="Show all items to enter"
+            className="inline-flex flex-none items-center gap-1 rounded-full bg-[#fef2f2] px-2.5 py-1 text-[11px] font-semibold text-[#dc2626] hover:brightness-95">
+            Sent back only <FbIcon name="close" size={11} />
+          </button>
+        )}
         <div className="ml-auto flex flex-none items-center gap-2">
           {notice && <span className="whitespace-nowrap text-[11px] text-emerald-700" role="status">{notice}</span>}
           <SortMenu options={WORK_SORT_OPTIONS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
@@ -514,12 +524,14 @@ export function MyWorkPage() {
       : viewParam === 'calendar' ? 'calendar'
       : 'overview'
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
-  const setView = (t: MwTab, bucket?: WorkBucket) =>
+  const setView = (t: MwTab, bucket?: WorkBucket, seg?: string) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev)
       n.set('view', t)
       if (bucket) n.set('bucket', bucket)
       else n.delete('bucket')
+      if (seg) n.set('seg', seg)
+      else n.delete('seg')
       return n
     })
   // Worklist (merged): work to enter + things to approve, for this role.
@@ -742,10 +754,10 @@ export function MyWorkPage() {
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
-  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string }) => {
+  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback' }) => {
     if (payload?.group) { setGroupDim('model'); setSelectedGroup(payload.group) }
     else if (payload?.bucket) setSelectedGroup(null)
-    setView(tab, payload?.bucket)
+    setView(tab, payload?.bucket, payload?.seg)
     const anchor = payload?.bucket ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.

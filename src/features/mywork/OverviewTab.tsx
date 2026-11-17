@@ -1,7 +1,9 @@
 /**
- * My Workspace → Overview: Part Allocation and Part Activities KPIs, development status (models / parts / vendors up to
- * SOP + 3 months), the Parts × Activity snapshot, a tile per model and the "Workspace by Model" chart. Every number
- * opens the matching list.
+ * My Workspace → Overview in three segments — Parts, Activities, Models — then a card per model (priority models
+ * face up, the rest behind "More models") and the "Workspace by Model" chart. Every number opens the matching list.
+ *
+ * Development stage of a model, from its SOP date (its archetype's last milestone date): before SOP = under
+ * development; SOP to SOP + 3 months = developed; after SOP + 3 months it drops out of these counts.
  */
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +13,7 @@ import type { PartRecord } from '../../domain'
 import { projectOfModel } from '../../domain/projects'
 import { milestoneRows } from '../../domain/wbsTree'
 import { bucketTotals, workBucket, workspaceGroups, WORK_BUCKETS, WORK_BUCKET_COLORS } from '../../engine'
+import { useApprovalRows } from './approvalRows'
 import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY } from '../scope'
@@ -18,10 +21,8 @@ import { ExportSection } from '../export/ExportSection'
 
 export type OverviewGo = (
   t: 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar',
-  payload?: { bucket?: WorkBucket; focus?: string; group?: string }
+  payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback' }
 ) => void
-
-const MODEL_TILES = 7
 
 function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; value: number; color: string; icon: string; onClick?: () => void; hint?: string }) {
   const body = (
@@ -43,10 +44,10 @@ function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; 
   )
 }
 
-function GroupCard({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
+function Segment({ title, icon, children, className = '' }: { title: string; icon: string; children: React.ReactNode; className?: string }) {
   return (
     <section className={`rounded-xl border border-[var(--color-border)] bg-white/60 p-3 ${className}`}>
-      <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">{title}</h3>
+      <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-muted)]"><FbIcon name={icon} size={13} />{title}</h3>
       {children}
     </section>
   )
@@ -71,145 +72,144 @@ export function OverviewTab({ instances, parts, pendingRelease, awaitingAck, ret
 }) {
   const navigate = useNavigate()
   const { models, projects, archetypes } = useQAStore()
-  const [allModels, setAllModels] = useState(false)
-  const totals = useMemo(() => bucketTotals(instances), [instances])
+  const approvalRows = useApprovalRows()
+  const [moreModels, setMoreModels] = useState(false)
 
-  // Part Activities: who has to act next on each open activity.
-  const waiting = useMemo(() => {
-    let pic = 0, vendor = 0, review = 0
-    for (const i of instances) {
-      if (i.status === 'Approved') continue
-      if (i.status === 'Submitted') { review++; continue }
-      // Not started / draft / sent back: the flow's first step owns the entry.
-      if (i.activity.flow.steps[0]?.role === 'Vendor') vendor++
-      else pic++
-    }
-    return { pic, vendor, review }
-  }, [instances])
-
-  // Development status: a model is completed once SOP + 3 months has passed (SOP = its archetype's last milestone date).
-  const dev = useMemo(() => {
-    const sopOf = (name: string) => {
+  // Development stage per model (see the file comment).
+  const stageOf = useMemo(() => {
+    const out = new Map<string, 'under' | 'developed' | 'past'>()
+    for (const name of new Set(parts.map((p) => p.model))) {
       const m = models.find((x) => x.name === name)
-      if (!m) return undefined
       const prj = projectOfModel(name, projects)
       const last = milestoneRows(archetypes.find((a) => a.id === prj?.archetypeId)).at(-1)
-      return (last && m.mrds[last.id]) || m.mrds.SOP
+      const sop = (m && last && m.mrds[last.id]) || m?.mrds.SOP
+      out.set(name, !sop || DEMO_TODAY <= sop ? 'under' : DEMO_TODAY <= addMonths(sop, 3) ? 'developed' : 'past')
     }
-    const done = new Set<string>()
-    const modelNames = Array.from(new Set(parts.map((p) => p.model)))
-    for (const n of modelNames) {
-      const sop = sopOf(n)
-      if (sop && addMonths(sop, 3) < DEMO_TODAY) done.add(n)
-    }
-    const underParts = parts.filter((p) => !done.has(p.model))
-    return {
-      partsDone: parts.length - underParts.length,
-      partsUnder: underParts.length,
-      vendors: new Set(underParts.map((p) => p.vendorName)).size,
-      modelsDone: done.size,
-      modelsUnder: modelNames.length - done.size,
-    }
+    return out
   }, [parts, models, projects, archetypes])
+  // Parts and activities are counted up to SOP + 3 months.
+  const countedParts = useMemo(() => parts.filter((p) => stageOf.get(p.model) !== 'past'), [parts, stageOf])
+  const counted = useMemo(() => instances.filter((i) => stageOf.get(i.part.model) !== 'past'), [instances, stageOf])
+  const totals = useMemo(() => bucketTotals(counted), [counted])
 
-  // One tile per model: parts and activity counts.
-  const modelTiles = useMemo(() => {
-    const byModel = new Map<string, { parts: Set<string>; Completed: number; Delayed: number; NG: number }>()
-    for (const p of parts) if (!byModel.has(p.model)) byModel.set(p.model, { parts: new Set(), Completed: 0, Delayed: 0, NG: 0 })
-    for (const p of parts) byModel.get(p.model)!.parts.add(p.partNo)
-    for (const i of instances) {
+  const partStats = useMemo(() => ({
+    under: countedParts.filter((p) => stageOf.get(p.model) === 'under').length,
+    developed: countedParts.filter((p) => stageOf.get(p.model) === 'developed').length,
+  }), [countedParts, stageOf])
+
+  const act = useMemo(() => {
+    const enter = approvalRows.filter((r) => r.mode === 'enter')
+    // Activities waiting on the vendor: not submitted / approved, and the vendor does the flow's first step.
+    const vendor = counted.filter((i) => i.status !== 'Approved' && i.status !== 'Submitted' && i.activity.flow.steps[0]?.role === 'Vendor').length
+    return {
+      approve: approvalRows.filter((r) => r.mode === 'approve').length,
+      sentBack: enter.filter((r) => r.statusLabel === 'Sent back').length,
+      input: enter.length,
+      vendor,
+    }
+  }, [approvalRows, counted])
+
+  const modelStats = useMemo(() => {
+    const vals = [...stageOf.values()]
+    return { under: vals.filter((v) => v === 'under').length, developed: vals.filter((v) => v === 'developed').length }
+  }, [stageOf])
+
+  // A card per counted model. Priority = has delayed or NG activities (most first); the rest sit behind "More models".
+  const cards = useMemo(() => {
+    const byModel = new Map<string, { parts: Set<string>; Upcoming: number; Completed: number; Delayed: number; NG: number }>()
+    for (const p of countedParts) {
+      if (!byModel.has(p.model)) byModel.set(p.model, { parts: new Set(), Upcoming: 0, Completed: 0, Delayed: 0, NG: 0 })
+      byModel.get(p.model)!.parts.add(p.partNo)
+    }
+    for (const i of counted) {
       const t = byModel.get(i.part.model)
       const b = workBucket(i)
-      if (t && (b === 'Completed' || b === 'Delayed' || b === 'NG')) t[b] += 1
+      if (t && b) t[b] += 1
     }
-    return [...byModel.entries()]
-      .map(([model, t]) => ({ model, parts: t.parts.size, completed: t.Completed, delayed: t.Delayed, ng: t.NG }))
-      .sort((a, b) => b.parts - a.parts || a.model.localeCompare(b.model))
-  }, [parts, instances])
-  const shownTiles = allModels ? modelTiles : modelTiles.slice(0, MODEL_TILES)
-  const hiddenTiles = modelTiles.length - MODEL_TILES
+    const all = [...byModel.entries()].map(([model, t]) => ({
+      model, stage: stageOf.get(model)!, parts: t.parts.size, upcoming: t.Upcoming, completed: t.Completed, delayed: t.Delayed, ng: t.NG,
+    }))
+    const priority = all.filter((c) => c.delayed + c.ng > 0).sort((a, b) => b.delayed + b.ng - (a.delayed + a.ng) || a.model.localeCompare(b.model))
+    const rest = all.filter((c) => c.delayed + c.ng === 0).sort((a, b) => b.parts - a.parts || a.model.localeCompare(b.model))
+    return { priority, rest }
+  }, [countedParts, counted, stageOf])
+  const shownCards = moreModels ? [...cards.priority, ...cards.rest] : cards.priority
 
-  const groups = useMemo(() => workspaceGroups(instances, 'model'), [instances])
+  const groups = useMemo(() => workspaceGroups(counted, 'model'), [counted])
 
   return (
     <div>
-      {/* Part Allocation + Part Activities */}
-      <ExportSection id="mw-ov-kpis" label="Overview – key metrics" className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-[3fr_6fr]">
-        <GroupCard title="Part Allocation">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 grid grid-cols-1 gap-3 2xl:grid-cols-[5fr_9fr_2fr]">
+        <Segment title="Parts" icon="list">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-2">
+            <KpiCard title="Under development" value={partStats.under} color="#2153f5" icon="tools" hint="Parts of models before SOP" />
+            <KpiCard title="Developed (within SOP + 3 months)" value={partStats.developed} color="#10b981" icon="check" hint="Parts of models past SOP, up to SOP + 3 months" />
             <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
-            <KpiCard title="Awaiting acknowledgement" value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} />
+            <KpiCard title="Awaiting vendor acknowledgement" value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} />
             <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
           </div>
-        </GroupCard>
-        <GroupCard title="Part Activities">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6">
-            <KpiCard title="Awaiting PIC update" value={waiting.pic} color="#2153f5" icon="pen" onClick={() => onGo('worklist')} hint="Not started, draft or sent-back activities the PIC fills in" />
-            <KpiCard title="Awaiting Vendor update" value={waiting.vendor} color="#7c3aed" icon="clipboard-list" onClick={() => onGo('insights')} hint="Not started, draft or sent-back activities the vendor fills in" />
-            <KpiCard title="MSIL review / approval" value={waiting.review} color="#0891b2" icon="check-circle" onClick={() => onGo('worklist')} hint="Submitted, waiting for MSIL review or approval" />
+        </Segment>
+
+        <Segment title="Activities" icon="clipboard-list">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <KpiCard title="Upcoming" value={totals.Upcoming} color={WORK_BUCKET_COLORS.Upcoming} icon="calendar-month" onClick={() => onGo('insights', { bucket: 'Upcoming' })} />
+            <KpiCard title="Completed" value={totals.Completed} color={WORK_BUCKET_COLORS.Completed} icon="check-circle" onClick={() => onGo('insights', { bucket: 'Completed' })} />
+            <KpiCard title="Delayed" value={totals.Delayed} color={WORK_BUCKET_COLORS.Delayed} icon="exclamation-circle" onClick={() => onGo('insights', { bucket: 'Delayed' })} />
+            <KpiCard title="NG / Rework" value={totals.NG} color={WORK_BUCKET_COLORS.NG} icon="close-circle" onClick={() => onGo('insights', { bucket: 'NG' })} />
+            <KpiCard title="Awaiting my approval" value={act.approve} color="#0891b2" icon="check" onClick={() => onGo('worklist', { seg: 'approve' })} hint="Submitted items for you to approve or send back" />
+            <KpiCard title="Sent back" value={act.sentBack} color="#dc2626" icon="undo" onClick={() => onGo('worklist', { seg: 'sentback' })} hint="Your entries sent back for correction" />
             <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="calendar-month" onClick={() => onGo('actions', { focus: 'delay' })} />
-            <KpiCard title="Overdue activities" value={totals.Delayed} color="#d97706" icon="exclamation-circle" onClick={() => onGo('insights', { bucket: 'Delayed' })} />
-            <KpiCard title="NG concerns" value={totals.NG} color="#dc2626" icon="close-circle" onClick={() => onGo('insights', { bucket: 'NG' })} />
+            <KpiCard title="Awaiting my input" value={act.input} color="#2153f5" icon="pen" onClick={() => onGo('worklist', { seg: 'enter' })} hint="Activities open for you to fill (not started, draft or sent back)" />
+            <KpiCard title="Awaiting vendor input" value={act.vendor} color="#7c3aed" icon="clipboard" onClick={() => onGo('insights')} hint="Activities the vendor fills that are not yet submitted" />
           </div>
-        </GroupCard>
+        </Segment>
+
+        <Segment title="Models" icon="grid">
+          <div className="grid grid-cols-2 gap-2 2xl:grid-cols-1">
+            <KpiCard title="Under development" value={modelStats.under} color="#2153f5" icon="tools" hint="Models before SOP" />
+            <KpiCard title="Developed (within SOP + 3)" value={modelStats.developed} color="#10b981" icon="check" hint="Models past SOP, up to SOP + 3 months" />
+          </div>
+        </Segment>
       </ExportSection>
 
-      {/* Development status — parts are counted up to SOP + 3 months */}
-      <ExportSection id="mw-ov-dev" label="Overview – development status" className="mb-1 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-        <KpiCard title="Development completed (SOP + 3 months)" value={dev.partsDone} color="#10b981" icon="check" hint="Parts of models whose SOP + 3 months has passed" />
-        <KpiCard title="Under development (PP, MPP, Pilot)" value={dev.partsUnder} color="#2153f5" icon="tools" hint="Parts of models before SOP + 3 months" />
-        <KpiCard title="Total vendors" value={dev.vendors} color="#475467" icon="list" hint="Distinct vendors of parts under development" />
-        <KpiCard title="Models completed" value={dev.modelsDone} color="#10b981" icon="check-circle" />
-        <KpiCard title="Models under development" value={dev.modelsUnder} color="#2153f5" icon="grid" />
-      </ExportSection>
-      <p className="mb-3 text-[10px] text-[var(--color-muted)]">Parts are counted until SOP + 3 months; after that the model counts as development completed.</p>
-
-      {/* Activity snapshot: Parts × Activity */}
-      <ExportSection id="mw-ov-snapshot" label="Overview – activity snapshot"><section className="epmp-card mb-3 px-5 py-3">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Activity snapshot <span className="text-[11px] font-normal text-[var(--color-muted)]">Parts × Activity</span></h3>
-          <button onClick={() => onGo('worklist')} className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">View worklist →</button>
+      {/* Model-wise cards: priority models face up */}
+      <ExportSection id="mw-ov-models" label="Overview – models">
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority models</h3>
+          <span className="text-[11px] text-[var(--color-muted)]">Models with delayed or NG activities, most first. Click a model to choose its part, then the trial.</span>
         </div>
-        <div className="grid grid-cols-4 gap-2 text-center">
-          {WORK_BUCKETS.map((label) => {
-            const n = totals[label]
+        {shownCards.length === 0 && (
+          <p className="epmp-card mb-2 py-4 text-center text-[12px] text-[var(--color-muted)]">No model has delayed or NG activities.</p>
+        )}
+        <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {shownCards.map((t) => {
+            const prio = t.delayed + t.ng > 0
             return (
-              <button key={label} type="button" onClick={() => onGo('insights', { bucket: label })}
-                title={`Show the ${n} ${label.toLowerCase()} activit${n === 1 ? 'y' : 'ies'}`}
-                className="rounded-lg py-1 transition-colors hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
-                <div className="text-[24px] font-bold" style={{ color: WORK_BUCKET_COLORS[label] }}>{n}</div>
-                <div className="text-[11px] text-[var(--color-muted)] underline-offset-2 hover:underline">{label}</div>
+              <button key={t.model} type="button" onClick={() => navigate(`/part-workspace?model=${encodeURIComponent(t.model)}`)}
+                title={`Open ${t.model}'s parts`}
+                className={`epmp-card px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${prio ? 'border-l-4 border-l-[#dc2626]' : ''}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[13px] font-semibold text-[var(--color-text)]">{t.model}</span>
+                  <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${t.stage === 'developed' ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-primary'}`}>
+                    {t.stage === 'developed' ? 'Developed' : 'Under dev.'}
+                  </span>
+                </div>
+                <div className="mb-1.5 text-[11px] text-[var(--color-muted)]">{t.parts} part{t.parts === 1 ? '' : 's'}</div>
+                <div className="space-y-0.5 text-[11px]">
+                  <div className="flex justify-between"><span className="text-[var(--color-muted)]">Completed</span><strong style={{ color: WORK_BUCKET_COLORS.Completed }}>{t.completed}</strong></div>
+                  <div className="flex justify-between"><span className="text-[var(--color-muted)]">Delayed</span><strong style={{ color: WORK_BUCKET_COLORS.Delayed }}>{t.delayed}</strong></div>
+                  <div className="flex justify-between"><span className="text-[var(--color-muted)]">NG</span><strong style={{ color: WORK_BUCKET_COLORS.NG }}>{t.ng}</strong></div>
+                </div>
               </button>
             )
           })}
         </div>
-      </section></ExportSection>
-
-      {/* A tile per model — opens part selection for that model, then pick the trial */}
-      <ExportSection id="mw-ov-models" label="Overview – models">
-        <div className="mb-1 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-          {shownTiles.map((t) => (
-            <button key={t.model} type="button" onClick={() => navigate(`/part-workspace?model=${encodeURIComponent(t.model)}`)}
-              title={`Open ${t.model}'s parts`}
-              className="epmp-card px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
-              <div className="truncate text-[13px] font-semibold text-[var(--color-text)]">{t.model}</div>
-              <div className="mb-1.5 text-[11px] text-[var(--color-muted)]">{t.parts} part{t.parts === 1 ? '' : 's'}</div>
-              <div className="space-y-0.5 text-[11px]">
-                <div className="flex justify-between"><span className="text-[var(--color-muted)]">Completed</span><strong style={{ color: WORK_BUCKET_COLORS.Completed }}>{t.completed}</strong></div>
-                <div className="flex justify-between"><span className="text-[var(--color-muted)]">Delayed</span><strong style={{ color: WORK_BUCKET_COLORS.Delayed }}>{t.delayed}</strong></div>
-                <div className="flex justify-between"><span className="text-[var(--color-muted)]">NG</span><strong style={{ color: WORK_BUCKET_COLORS.NG }}>{t.ng}</strong></div>
-              </div>
-            </button>
-          ))}
-          {modelTiles.length === 0 && <p className="col-span-full py-4 text-center text-[12px] text-[var(--color-muted)]">No models in your scope.</p>}
-        </div>
-        {hiddenTiles > 0 && (
-          <button type="button" onClick={() => setAllModels((v) => !v)} className="mx-auto mb-3 flex items-center gap-1 text-[12px] font-semibold text-[var(--color-accent)] hover:underline">
-            <FbIcon name={allModels ? 'chevron-up' : 'chevron-down'} size={14} />
-            {allModels ? 'Show fewer models' : `Show all ${hiddenTiles} other model${hiddenTiles === 1 ? '' : 's'}`}
+        {cards.rest.length > 0 && (
+          <button type="button" onClick={() => setMoreModels((v) => !v)} className="mx-auto mb-4 flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+            <FbIcon name={moreModels ? 'chevron-up' : 'chevron-down'} size={14} />
+            {moreModels ? 'Fewer models' : `More models (${cards.rest.length})`}
           </button>
         )}
-        <p className="mb-3 text-[10px] text-[var(--color-muted)]">Click a model to choose its part, then the trial.</p>
       </ExportSection>
 
       {/* Workspace by Model */}
