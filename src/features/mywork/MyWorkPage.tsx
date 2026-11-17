@@ -548,10 +548,12 @@ function OverviewTab({
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           {([['Upcoming', totals.Upcoming, '#2153f5'], ['Completed', totals.Completed, '#10b981'], ['Delayed', totals.Delayed, '#d97706'], ['NG', totals.NG, '#dc2626']] as const).map(([label, n, c]) => (
-            <div key={label}>
+            <button key={label} type="button" onClick={() => onGo('insights', { bucket: label })}
+              title={`Show the ${n} ${label.toLowerCase()} activit${n === 1 ? 'y' : 'ies'}`}
+              className="rounded-lg py-1 transition-colors hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
               <div className="text-[24px] font-bold" style={{ color: c }}>{n}</div>
-              <div className="text-[11px] text-[var(--color-muted)]">{label}</div>
-            </div>
+              <div className="text-[11px] text-[var(--color-muted)] underline-offset-2 hover:underline">{label}</div>
+            </button>
           ))}
         </div>
       </section></ExportSection>
