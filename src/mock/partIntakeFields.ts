@@ -30,7 +30,7 @@ export const INTAKE_FIELDS: IntakeField[] = [
   { key: 'qa_dept', label: 'QA Dept', source: 'Enovia', display: true, core: 'department', filter: true, primary: true },
   { key: 'part_category', label: 'Part Category', source: 'SAP', display: true, options: ['A', 'AR', 'A/AR', 'G', 'F'], filter: true, primary: true },
   { key: 'model_variant', label: 'Model Variant', source: 'Enovia', display: true, options: ['Domestic', 'Export', 'Domestic + Export'], remarks: 'Domestic, Export, Domestic + Export', filter: true, primary: true },
-  { key: 'fuel_type', label: 'Fuel Type', source: 'Enovia', display: true, options: ['Petrol', 'CNG', 'Petrol+CNG'], remarks: 'Petrol, CNG, Petrol+CNG', filter: true, primary: true },
+  { key: 'fuel_type', label: 'Fuel Type', source: 'Enovia', display: true, options: ['Petrol', 'CNG', 'Petrol+CNG', 'EV'], remarks: 'Petrol, CNG, Petrol+CNG, EV', filter: true, primary: true },
   { key: 'qa_pic_name', label: 'QA PIC Name', source: 'SAP', display: true, core: 'pic', remarks: 'Filter shows Staff ID and Name together', filter: true, primary: true },
   { key: 'trial_status', label: 'Trial Status', source: 'System (EPMP)', display: true, system: true, remarks: 'As per the current trial status', filter: false, primary: true },
   { key: 'part_number', label: 'Part Number', source: 'Enovia', display: true, core: 'partNo', filter: true, primary: false, required: true },
