@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
 } from 'recharts'
-import { PageHeader, Card, Tabs, Button, Modal } from '../../components'
+import { PageHeader, Card, Tabs, Button, Modal, BackButton } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
@@ -596,14 +596,23 @@ export function MyWorkPage() {
   // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
   // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
   type MwTab = 'overview' | 'actions' | 'worklist' | 'insights'
-  const [searchParams] = useSearchParams()
+  // The tab and the Insights status live in the URL, so the browser / app Back button returns to where you were.
+  const [searchParams, setSearchParams] = useSearchParams()
   const viewParam = searchParams.get('view')
-  const [view, setView] = useState<MwTab>(
+  const view: MwTab =
     viewParam === 'worklist' || viewParam === 'approvals' ? 'worklist'
       : viewParam === 'actions' ? 'actions'
       : viewParam === 'insights' ? 'insights'
       : 'overview'
-  )
+  /** Switch tab (a new history entry); optionally pre-select an Insights status. */
+  const setView = (t: MwTab, bucket?: WorkBucket) =>
+    setSearchParams((prev) => {
+      const n = new URLSearchParams(prev)
+      n.set('view', t)
+      if (bucket) n.set('bucket', bucket)
+      else n.delete('bucket')
+      return n
+    })
   // Worklist (merged): work to enter + things to approve, for this role.
   const approvalRows = useApprovalRows()
   // Counts for the Overview KPIs and Activity snapshot.
@@ -632,7 +641,16 @@ export function MyWorkPage() {
   const [fAttrs, setFAttrs] = useState<PartAttrSel>(EMPTY_ATTR_SEL) // Part Category / Fuel Type
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
-  const [selectedBucket, setSelectedBucket] = useState<WorkBucket | null>(null)
+  const bucketParam = searchParams.get('bucket') as WorkBucket | null
+  const selectedBucket: WorkBucket | null = bucketParam && (WORK_BUCKETS as readonly string[]).includes(bucketParam) ? bucketParam : null
+  // Picking a status inside Insights replaces the URL (no extra Back step per chart click).
+  const setSelectedBucket = (b: WorkBucket | null) =>
+    setSearchParams((prev) => {
+      const n = new URLSearchParams(prev)
+      if (b) n.set('bucket', b)
+      else n.delete('bucket')
+      return n
+    }, { replace: true })
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
@@ -814,8 +832,8 @@ export function MyWorkPage() {
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
   const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string }) => {
-    if (payload?.bucket) { setSelectedBucket(payload.bucket); setSelectedGroup(null) }
-    setView(tab)
+    if (payload?.bucket) setSelectedGroup(null)
+    setView(tab, payload?.bucket)
     const anchor = payload?.bucket ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.
@@ -829,6 +847,8 @@ export function MyWorkPage() {
     <div>
       {/* No page header here — the four-tab bar is the page's own heading. The 30-day toggle sits beside it. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+        <BackButton />
         <Tabs
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
@@ -839,6 +859,7 @@ export function MyWorkPage() {
             { id: 'insights', label: 'Insights' }
           ]}
         />
+        </div>
         <div className="flex items-center gap-2">
           <UpcomingToggle />
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Worklist', insights: 'Insights' }[effectiveView]}`} />

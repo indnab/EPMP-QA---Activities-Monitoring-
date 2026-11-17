@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { BackButton } from './BackButton'
 
 interface PageHeaderProps {
   title: string
@@ -19,6 +20,7 @@ export function PageHeader({ title, section = 'Workspace', crumb, actions }: Pag
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <nav className="flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
+        <BackButton />
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>
         <span>{section}</span>

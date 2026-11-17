@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { BackButton } from '../../components/BackButton'
 import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { useState, useMemo } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
@@ -337,6 +338,7 @@ export function WorkspacePage() {
     <div className="max-w-[1600px]">
       {/* Breadcrumb */}
       <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
+        <BackButton />
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>
         <Link to={backTo} className="hover:underline">{backLabel}</Link>

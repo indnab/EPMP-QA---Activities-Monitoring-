@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { BackButton } from '../../components/BackButton'
 import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { overlayFeed } from '../../mock/feed'
 import { useState, useMemo } from 'react'
@@ -543,6 +544,7 @@ export function DashboardsPage() {
 
       {/* DASHBOARD BODY */}
       <div className="flex-1 min-w-0">
+        <div className="mb-2 empty:hidden"><BackButton /></div>
         {selectedCross ? (
           <CrossActivityView dashboard={selectedCross} />
         ) : clientDashboardHref ? (
