@@ -27,6 +27,10 @@ export function ManpowerPage() {
     [entries, activities, parts, templateRows, models, picAssignments]
   )
   const maxInstances = Math.max(1, ...loads.map((l) => l.instances))
+  // Parts / PIC: average parts per named PIC (parts with no PIC are left out of both counts).
+  const named = loads.filter((l) => l.pic !== 'Unassigned')
+  const namedParts = named.reduce((n, l) => n + l.parts, 0)
+  const partsPerPic = named.length ? namedParts / named.length : 0
 
   // Known PICs + vendors for the visit form.
   const livePartList = useMemo(() => parts.filter((p) => !p.supersededBy), [parts])
@@ -74,6 +78,17 @@ export function ManpowerPage() {
       />
 
       {tab === 'load' && (
+        <>
+        <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="epmp-card px-3 py-2.5" data-export-stat="Parts / PIC" data-export-stat-value={partsPerPic.toFixed(1)}
+            title={`${namedParts} parts across ${named.length} PIC${named.length === 1 ? '' : 's'}`}>
+            <div className="text-[11px] font-medium text-[var(--color-primary)]">Parts / PIC</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-[22px] font-bold leading-none text-[var(--color-primary)]">{partsPerPic.toFixed(1)}</span>
+              <span className="text-[10px] text-[var(--color-muted)]">{namedParts} parts · {named.length} PIC{named.length === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+        </div>
         <Card flush className="!overflow-visible">
           <div className="table-scroll">
             <table className="w-full text-sm">
@@ -83,6 +98,7 @@ export function ManpowerPage() {
                   <th className={thCls}>Load</th>
                   <th className={thCls}>Parts</th>
                   <th className={thCls}>Vendors</th>
+                  <th className={thCls}>Models</th>
                   <th className={thCls}>Activities</th>
                   <th className={thCls}>Open</th>
                   <th className={thCls}>Overdue</th>
@@ -106,6 +122,7 @@ export function ManpowerPage() {
                     </td>
                     <td className="px-4 py-3">{l.parts}</td>
                     <td className="px-4 py-3">{l.vendors}</td>
+                    <td className="px-4 py-3">{l.models}</td>
                     <td className="px-4 py-3">{l.instances}</td>
                     <td className="px-4 py-3">{l.open}</td>
                     <td className={`px-4 py-3 ${l.overdue > 0 ? 'font-medium text-[var(--color-ryg-red)]' : ''}`}>{l.overdue}</td>
@@ -113,12 +130,13 @@ export function ManpowerPage() {
                   </tr>
                 ))}
                 {loads.length === 0 && (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-[var(--color-muted)]">No load to show.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--color-muted)]">No load to show.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </Card>
+        </>
       )}
 
       {tab === 'visits' && (

@@ -1999,6 +1999,8 @@ export interface PicLoad {
   parts: number
   /** Distinct vendors across those parts. */
   vendors: number
+  /** Distinct models across those parts. */
+  models: number
   /** Total activity instances (part × template row) in scope for this PIC. */
   instances: number
   /** Instances not yet Approved and not Not-applicable. */
@@ -2032,23 +2034,24 @@ export function buildPicLoads(
     'overview',
     currentDate
   )
-  const map = new Map<string, { parts: Set<string>; vendors: Set<string>; instances: number; open: number; overdue: number; toValidate: number }>()
+  const map = new Map<string, { parts: Set<string>; vendors: Set<string>; models: Set<string>; instances: number; open: number; overdue: number; toValidate: number }>()
   for (const inst of all) {
     const pic = getPicOn(inst.part, assignments, currentDate).name || 'Unassigned'
     let e = map.get(pic)
     if (!e) {
-      e = { parts: new Set(), vendors: new Set(), instances: 0, open: 0, overdue: 0, toValidate: 0 }
+      e = { parts: new Set(), vendors: new Set(), models: new Set(), instances: 0, open: 0, overdue: 0, toValidate: 0 }
       map.set(pic, e)
     }
     e.parts.add(inst.part.partNo)
     e.vendors.add(inst.part.vendorName)
+    e.models.add(inst.part.model)
     e.instances += 1
     if (!inst.notApplicable && inst.status !== 'Approved') e.open += 1
     if (inst.ryg === 'Red') e.overdue += 1
     if (inst.status === 'Submitted') e.toValidate += 1
   }
   return Array.from(map.entries())
-    .map(([pic, v]) => ({ pic, parts: v.parts.size, vendors: v.vendors.size, instances: v.instances, open: v.open, overdue: v.overdue, toValidate: v.toValidate }))
+    .map(([pic, v]) => ({ pic, parts: v.parts.size, vendors: v.vendors.size, models: v.models.size, instances: v.instances, open: v.open, overdue: v.overdue, toValidate: v.toValidate }))
     .sort((a, b) => b.open - a.open || b.instances - a.instances)
 }
 
