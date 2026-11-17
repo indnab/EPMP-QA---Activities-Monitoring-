@@ -1,6 +1,7 @@
 /**
- * My Workspace → Calendar: the role's activities on a month grid by planned end date, coloured by status. Clicking a
- * day lists its activities with an Open form button. Activities still awaiting an MRD have no date and are left out.
+ * My Workspace → Calendar: the role's activities by planned end date, coloured by status, in a Week or Month view.
+ * Clicking a day lists its activities with an Open form button (the week view also lists them in each day's column).
+ * Activities still awaiting an MRD have no date and are left out.
  */
 import { useMemo, useState } from 'react'
 import { Button } from '../../components'
@@ -12,9 +13,18 @@ import { DEMO_TODAY } from '../scope'
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const pad = (n: number) => String(n).padStart(2, '0')
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`
+const addDays = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
+/** Monday of the week containing `d`. */
+const weekStart = (d: string) => addDays(d, -((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7))
+const fmtShort = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' })
+const WEEK_ITEMS = 6
+type CalMode = 'week' | 'month'
 
 export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance[]; onOpen: (i: FilteredInstance) => void }) {
-  const [ym, setYm] = useState(() => ({ y: Number(DEMO_TODAY.slice(0, 4)), m: Number(DEMO_TODAY.slice(5, 7)) - 1 }))
+  const [mode, setMode] = useState<CalMode>('month')
+  // The date the view is centred on: its month (Month view) or its week (Week view).
+  const [anchor, setAnchor] = useState(DEMO_TODAY)
+  const ym = { y: Number(anchor.slice(0, 4)), m: Number(anchor.slice(5, 7)) - 1 }
   const [day, setDay] = useState<string | null>(DEMO_TODAY)
 
   // Activities by planned end date.
@@ -34,8 +44,17 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
   const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, k) => k + 1)]
   while (cells.length % 7) cells.push(null)
   const monthLabel = first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-  const shift = (n: number) => setYm(({ y, m }) => { const d = new Date(Date.UTC(y, m + n, 1)); return { y: d.getUTCFullYear(), m: d.getUTCMonth() } })
-  const monthCount = [...byDay.entries()].filter(([d]) => d.startsWith(`${ym.y}-${pad(ym.m + 1)}`)).reduce((n, [, xs]) => n + xs.length, 0)
+  const wk = weekStart(anchor)
+  const weekDays = Array.from({ length: 7 }, (_, k) => addDays(wk, k))
+  const weekLabel = `${fmtShort(weekDays[0], { day: 'numeric', month: 'short' })} – ${fmtShort(weekDays[6], { day: 'numeric', month: 'short', year: 'numeric' })}`
+  const shift = (n: number) =>
+    setAnchor((a) => {
+      if (mode === 'week') return addDays(a, 7 * n)
+      const d = new Date(Date.UTC(Number(a.slice(0, 4)), Number(a.slice(5, 7)) - 1 + n, 1))
+      return d.toISOString().slice(0, 10)
+    })
+  const inView = mode === 'week' ? (d: string) => d >= weekDays[0] && d <= weekDays[6] : (d: string) => d.startsWith(`${ym.y}-${pad(ym.m + 1)}`)
+  const viewCount = [...byDay.entries()].filter(([d]) => inView(d)).reduce((n, [, xs]) => n + xs.length, 0)
 
   const dayItems = day ? byDay.get(day) ?? [] : []
 
@@ -43,13 +62,58 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
       <section className="epmp-card p-4">
         <div className="mb-3 flex items-center gap-2">
-          <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">‹</button>
-          <h3 className="m-0 min-w-[150px] text-center text-[14px] font-semibold text-[var(--color-text)]">{monthLabel}</h3>
-          <button type="button" onClick={() => shift(1)} aria-label="Next month" className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">›</button>
-          <button type="button" onClick={() => { setYm({ y: Number(DEMO_TODAY.slice(0, 4)), m: Number(DEMO_TODAY.slice(5, 7)) - 1 }); setDay(DEMO_TODAY) }}
+          <button type="button" onClick={() => shift(-1)} aria-label={mode === 'week' ? 'Previous week' : 'Previous month'} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">‹</button>
+          <h3 className="m-0 min-w-[170px] text-center text-[14px] font-semibold text-[var(--color-text)]">{mode === 'week' ? weekLabel : monthLabel}</h3>
+          <button type="button" onClick={() => shift(1)} aria-label={mode === 'week' ? 'Next week' : 'Next month'} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">›</button>
+          <button type="button" onClick={() => { setAnchor(DEMO_TODAY); setDay(DEMO_TODAY) }}
             className="ml-1 rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-[11px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">Today</button>
-          <span className="ml-auto text-[11px] text-[var(--color-muted)]">{monthCount} activit{monthCount === 1 ? 'y' : 'ies'} due this month</span>
+          <span className="ml-auto text-[11px] text-[var(--color-muted)]">{viewCount} activit{viewCount === 1 ? 'y' : 'ies'} due this {mode}</span>
+          <div className="inline-flex rounded-lg border border-[var(--color-border)] p-0.5" role="group" aria-label="Calendar view">
+            {(['week', 'month'] as const).map((m) => (
+              <button key={m} type="button" onClick={() => { setMode(m); if (day) setAnchor(day) }} aria-pressed={mode === m}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${mode === m ? 'bg-[var(--color-primary)] text-white' : 'text-[#344054] hover:bg-[var(--color-surface)]'}`}>
+                {m === 'week' ? 'Week' : 'Month'}
+              </button>
+            ))}
+          </div>
         </div>
+        {mode === 'week' ? (
+          <div className="grid grid-cols-7 gap-1">
+            {weekDays.map((date) => {
+              const items = byDay.get(date) ?? []
+              const isToday = date === DEMO_TODAY
+              const isSel = date === day
+              return (
+                <div key={date} className={`flex min-h-[340px] min-w-0 flex-col rounded-lg border ${isSel ? 'border-[var(--color-primary)] bg-secondary/40' : 'border-[var(--color-border)] bg-white'}`}>
+                  <button type="button" onClick={() => setDay(date)} aria-label={`${date}: ${items.length} activities`}
+                    className="flex items-center justify-between gap-1 border-b border-[var(--color-border)] px-2 py-1.5 text-left hover:bg-[var(--color-surface)]">
+                    <span className="text-[10px] font-semibold uppercase text-[var(--color-muted)]">{fmtShort(date, { weekday: 'short' })}</span>
+                    <span className={`text-[12px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{Number(date.slice(8))}</span>
+                  </button>
+                  <div className="flex flex-col gap-1 p-1">
+                    {items.slice(0, WEEK_ITEMS).map((i) => {
+                      const b = workBucket(i)!
+                      return (
+                        <button key={`${i.row.id}-${i.part.partNo}`} type="button" onClick={() => onOpen(i)}
+                          title={`${i.activity.name} · ${i.part.partNo} · ${i.part.model} · ${b}`}
+                          className="rounded border-l-[3px] bg-[var(--color-surface)] px-1.5 py-1 text-left hover:brightness-95"
+                          style={{ borderLeftColor: WORK_BUCKET_COLORS[b] }}>
+                          <div className="truncate text-[10.5px] font-medium text-[var(--color-text)]">{i.activity.name}</div>
+                          <div className="truncate text-[10px] text-[var(--color-muted)]"><span className="font-mono">{i.part.partNo}</span> · {i.part.model}</div>
+                        </button>
+                      )
+                    })}
+                    {items.length > WEEK_ITEMS && (
+                      <button type="button" onClick={() => setDay(date)} className="px-1.5 py-0.5 text-left text-[10px] font-semibold text-[var(--color-accent)] hover:underline">
+                        +{items.length - WEEK_ITEMS} more
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (<>
         <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
           {WEEKDAYS.map((w) => <div key={w} className="py-1">{w}</div>)}
         </div>
@@ -77,6 +141,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
             )
           })}
         </div>
+        </>)}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-[var(--color-muted)]">
           {WORK_BUCKETS.map((b) => (
             <span key={b} className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}</span>
