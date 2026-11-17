@@ -64,11 +64,15 @@ export function PartWorkspacePage() {
   )
 
   // ── Primary filters (shared bar) to narrow which part you pick ────────────
-  const [partFilters, setPartFilters] = useState<PartFilters>(EMPTY_PART_FILTERS)
+  const [searchParams] = useSearchParams()
+  // ?model= (from a My Workspace model tile) pre-selects that model; pick the part, then the trial.
+  const [partFilters, setPartFilters] = useState<PartFilters>(() => {
+    const m = searchParams.get('model')
+    return m ? { ...EMPTY_PART_FILTERS, model: [m] } : EMPTY_PART_FILTERS
+  })
   const matchPart = useExcMatcher(partFilters)
   // Trial (milestone) filter for the activity sections of the selected part.
   const [trialFilter, setTrialFilter] = useState('All')
-  const [searchParams] = useSearchParams()
   const [partNo, setPartNo] = useState<string>(searchParams.get('part') ?? '')
 
   const candidateParts = useMemo(

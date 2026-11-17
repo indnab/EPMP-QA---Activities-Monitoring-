@@ -1,4 +1,6 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { OverviewTab } from './OverviewTab'
+import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'
 import { Fragment, useMemo, useState } from 'react'
@@ -491,100 +493,6 @@ function CompactFilterBar(f: FilterBarProps) {
   )
 }
 
-// ── Overview tab ─────────────────────────────────────────────────────────────
-
-function KpiCard({ title, value, color, icon, onClick }: { title: string; value: number; color: string; icon: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-export-stat={title}
-      data-export-stat-value={value}
-      className="epmp-card flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
-    >
-      <span className="flex items-center gap-1.5 text-[11px] font-medium leading-tight" style={{ color }}>
-        <FbIcon name={icon} size={13} /> {title}
-      </span>
-      <span className="text-[22px] font-bold leading-none" style={{ color }}>{value}</span>
-    </button>
-  )
-}
-
-/** Overview: key KPIs, the priority actions that need the role now, and an activity snapshot. No full worklist/charts. */
-function OverviewTab({
-  totals, pendingRelease, awaitingAck, returned, delayReviews, onGo
-}: {
-  totals: Record<WorkBucket, number>
-  pendingRelease: number
-  awaitingAck: number
-  returned: number
-  delayReviews: number
-  onGo: (t: 'overview' | 'actions' | 'worklist' | 'insights', payload?: { bucket?: WorkBucket; focus?: string }) => void
-}) {
-  const priorities: { title: string; sub: string; n: number }[] = []
-  if (pendingRelease > 0) priorities.push({ title: `${pendingRelease} part${pendingRelease === 1 ? '' : 's'} pending vendor release`, sub: 'Review and release', n: pendingRelease })
-  if (delayReviews > 0) priorities.push({ title: `${delayReviews} vendor delay reason${delayReviews === 1 ? '' : 's'}`, sub: 'Awaiting your review', n: delayReviews })
-  if (returned > 0) priorities.push({ title: `${returned} returned part${returned === 1 ? '' : 's'}`, sub: 'Sent back by the vendor', n: returned })
-
-  return (
-    <div className="flex min-h-0 flex-col" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-      {/* Frozen top: KPIs + snapshot stay put; only Priority actions below scrolls. */}
-      <div className="flex-none">
-      {/* Key KPIs */}
-      <ExportSection id="mw-ov-kpis" label="Overview – key metrics" className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
-        <KpiCard title="Awaiting acknowledgement" value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} />
-        <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
-        <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="clipboard-list" onClick={() => onGo('actions', { focus: 'delay' })} />
-        <KpiCard title="Delayed activities" value={totals.Delayed} color="#d97706" icon="calendar-month" onClick={() => onGo('insights', { bucket: 'Delayed' })} />
-        <KpiCard title="NG / Rework" value={totals.NG} color="#dc2626" icon="exclamation-circle" onClick={() => onGo('insights', { bucket: 'NG' })} />
-      </ExportSection>
-
-      {/* Activity snapshot */}
-      <ExportSection id="mw-ov-snapshot" label="Overview – activity snapshot"><section className="epmp-card mb-4 px-5 py-3">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Activity snapshot</h3>
-          <button onClick={() => onGo('worklist')} className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">View worklist →</button>
-        </div>
-        <div className="grid grid-cols-4 gap-2 text-center">
-          {([['Upcoming', totals.Upcoming, '#2153f5'], ['Completed', totals.Completed, '#10b981'], ['Delayed', totals.Delayed, '#d97706'], ['NG', totals.NG, '#dc2626']] as const).map(([label, n, c]) => (
-            <button key={label} type="button" onClick={() => onGo('insights', { bucket: label })}
-              title={`Show the ${n} ${label.toLowerCase()} activit${n === 1 ? 'y' : 'ies'}`}
-              className="rounded-lg py-1 transition-colors hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
-              <div className="text-[24px] font-bold" style={{ color: c }}>{n}</div>
-              <div className="text-[11px] text-[var(--color-muted)] underline-offset-2 hover:underline">{label}</div>
-            </button>
-          ))}
-        </div>
-      </section></ExportSection>
-      </div>
-
-      {/* Priority actions — fills the remaining height; its list scrolls while the top stays frozen. */}
-      <ExportSection id="mw-ov-priority" label="Overview – priority actions"><section className="epmp-card flex min-h-0 flex-1 flex-col px-5 py-3">
-        <div className="mb-2 flex flex-none items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Priority actions</h3>
-          {priorities.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-primary">{priorities.length} to act on</span>}
-        </div>
-        {priorities.length === 0 ? (
-          <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">Nothing urgent right now.</p>
-        ) : (
-          <div className="min-h-0 flex-1 divide-y divide-[var(--color-border)] overflow-y-auto">
-            {priorities.map((p) => (
-              <div key={p.title} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-medium text-[var(--color-text)]">{p.title}</div>
-                  <div className="text-[11px] text-[var(--color-muted)]">{p.sub}</div>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => onGo('actions')}>Open</Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section></ExportSection>
-    </div>
-  )
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export function MyWorkPage() {
@@ -595,7 +503,7 @@ export function MyWorkPage() {
 
   // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
   // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
-  type MwTab = 'overview' | 'actions' | 'worklist' | 'insights'
+  type MwTab = 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar'
   // The tab and the Insights status live in the URL, so the browser / app Back button returns to where you were.
   const [searchParams, setSearchParams] = useSearchParams()
   const viewParam = searchParams.get('view')
@@ -603,6 +511,7 @@ export function MyWorkPage() {
     viewParam === 'worklist' || viewParam === 'approvals' ? 'worklist'
       : viewParam === 'actions' ? 'actions'
       : viewParam === 'insights' ? 'insights'
+      : viewParam === 'calendar' ? 'calendar'
       : 'overview'
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
   const setView = (t: MwTab, bucket?: WorkBucket) =>
@@ -735,6 +644,8 @@ export function MyWorkPage() {
     [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, picAssignments]
   )
 
+  // Overview: the role's parts (not superseded, in scope).
+  const overviewParts = useMemo(() => parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), [parts, currentPersona])
   // Workspace rollups.
   const totals = useMemo(() => bucketTotals(instances), [instances])
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
@@ -831,8 +742,9 @@ export function MyWorkPage() {
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
-  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string }) => {
-    if (payload?.bucket) setSelectedGroup(null)
+  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string }) => {
+    if (payload?.group) { setGroupDim('model'); setSelectedGroup(payload.group) }
+    else if (payload?.bucket) setSelectedGroup(null)
     setView(tab, payload?.bucket)
     const anchor = payload?.bucket ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
@@ -854,15 +766,16 @@ export function MyWorkPage() {
           onChange={(id) => setView(id as MwTab)}
           items={[
             { id: 'overview', label: 'Overview' },
+            { id: 'insights', label: 'Workspace' },
             { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
-            { id: 'worklist', label: 'Worklist / Approval', badge: worklistCount || undefined },
-            { id: 'insights', label: 'Insights' }
+            { id: 'worklist', label: 'Approvals', badge: worklistCount || undefined },
+            { id: 'calendar', label: 'Calendar' }
           ]}
         />
         </div>
         <div className="flex items-center gap-2">
           <UpcomingToggle />
-          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Worklist', insights: 'Insights' }[effectiveView]}`} />
+          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Workspace', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
       </div>
 
@@ -904,13 +817,16 @@ export function MyWorkPage() {
         /></ExportSection>
       ) : effectiveView === 'overview' ? (
         <OverviewTab
-          totals={totals}
+          instances={allInstances}
+          parts={overviewParts}
           pendingRelease={releaseCounts.pending}
           awaitingAck={releaseCounts.awaitingAck}
           returned={releaseCounts.returned}
           delayReviews={excDelays.review.length}
           onGo={goFromOverview}
         />
+      ) : effectiveView === 'calendar' ? (
+        <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake + delay reason approvals — the PIC's transactional approvals */}
