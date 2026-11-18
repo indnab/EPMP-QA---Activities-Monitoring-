@@ -1,5 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
-import { OverviewTab } from './OverviewTab'
+import { OverviewKpis, PriorityModels } from './OverviewTab'
 import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'
@@ -14,8 +14,8 @@ import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
 import {
   getFilteredData, isWorkableByVendor, getPicOn, getReleaseState,
-  workBucket, bucketTotals, workspaceGroups,
-  WORK_BUCKETS, WORK_BUCKET_COLORS, WORK_BUCKET_DESC
+  workBucket, workspaceGroups,
+  WORK_BUCKETS, WORK_BUCKET_COLORS
 } from '../../engine'
 import type { WorkBucket, FilteredInstance } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope, canPersonaEdit } from '../scope'
@@ -426,25 +426,6 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
 
 // ── Workspace tile ────────────────────────────────────────────────────────────
 
-function BucketTile({ bucket, count, active, onClick }: { bucket: WorkBucket; count: number; active: boolean; onClick: () => void }) {
-  const color = WORK_BUCKET_COLORS[bucket]
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      title={WORK_BUCKET_DESC[bucket]}
-      className={`epmp-card flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${active ? 'ring-2' : 'hover:shadow-sm'}`}
-      style={active ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}
-    >
-      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color }}>
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-        {bucket}
-        {bucket === 'NG' && count > 0 && <span className="ml-1 text-[9px] font-bold uppercase tracking-wide text-[var(--color-ryg-red)]">action</span>}
-      </span>
-      <span className="text-[22px] font-bold leading-none" style={{ color }}>{count}</span>
-    </button>
-  )
-}
 
 // ── Compact filter bar ─────────────────────────────────────────────────────
 
@@ -520,7 +501,6 @@ export function MyWorkPage() {
   const view: MwTab =
     viewParam === 'worklist' || viewParam === 'approvals' ? 'worklist'
       : viewParam === 'actions' ? 'actions'
-      : viewParam === 'insights' ? 'insights'
       : viewParam === 'calendar' ? 'calendar'
       : 'overview'
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
@@ -657,9 +637,15 @@ export function MyWorkPage() {
   )
 
   // Overview: the role's parts (not superseded, in scope).
-  const overviewParts = useMemo(() => parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), [parts, currentPersona])
+  const overviewParts = useMemo(
+    () => parts.filter((p) =>
+      !p.supersededBy && partInScope(p, currentPersona) &&
+      inSel(fModel, p.model) && inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
+      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments]
+  )
   // Workspace rollups.
-  const totals = useMemo(() => bucketTotals(instances), [instances])
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
 
   // Value shown/sorted/filtered for a given column of an instance.
@@ -757,8 +743,10 @@ export function MyWorkPage() {
   const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback' }) => {
     if (payload?.group) { setGroupDim('model'); setSelectedGroup(payload.group) }
     else if (payload?.bucket) setSelectedGroup(null)
-    setView(tab, payload?.bucket, payload?.seg)
-    const anchor = payload?.bucket ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
+    // Overview and the old Workspace are one page now: a status click filters the list below in place.
+    if (tab === 'overview' || tab === 'insights') setSelectedBucket(payload?.bucket ?? null)
+    else setView(tab, payload?.bucket, payload?.seg)
+    const anchor = payload?.bucket || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.
       setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
@@ -778,7 +766,6 @@ export function MyWorkPage() {
           onChange={(id) => setView(id as MwTab)}
           items={[
             { id: 'overview', label: 'Overview' },
-            { id: 'insights', label: 'Workspace' },
             { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
             { id: 'worklist', label: 'Approvals', badge: worklistCount || undefined },
             { id: 'calendar', label: 'Calendar' }
@@ -787,12 +774,12 @@ export function MyWorkPage() {
         </div>
         <div className="flex items-center gap-2">
           <UpcomingToggle />
-          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Workspace', calendar: 'Calendar' }[effectiveView]}`} />
+          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
       </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
-      {effectiveView === 'insights' && (
+      {effectiveView === 'overview' && (
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-7 lg:px-7">
         <CompactFilterBar
           model={fModel} setModel={setFModel} modelOptions={modelOptions}
@@ -827,16 +814,6 @@ export function MyWorkPage() {
             />
           }
         /></ExportSection>
-      ) : effectiveView === 'overview' ? (
-        <OverviewTab
-          instances={allInstances}
-          parts={overviewParts}
-          pendingRelease={releaseCounts.pending}
-          awaitingAck={releaseCounts.awaitingAck}
-          returned={releaseCounts.returned}
-          delayReviews={excDelays.review.length}
-          onGo={goFromOverview}
-        />
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (
@@ -847,19 +824,21 @@ export function MyWorkPage() {
         </>
       ) : (
         <>
-          {/* Insights: tiles + performance charts (no transactional tables) */}
-          <ExportSection id="mw-ins-tiles" label="Insights – bucket totals" className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {WORK_BUCKETS.map((b) => (
-              <BucketTile
-                key={b} bucket={b} count={totals[b]}
-                active={selectedBucket === b}
-                onClick={() => setSelectedBucket(selectedBucket === b ? null : b)}
-              />
-            ))}
-          </ExportSection>
-
+          {/* Overview: compact KPI segments beside the "Workspace by" chart, then priority models and the list */}
+          <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <Card>
+            <OverviewKpis
+              instances={instances}
+              parts={overviewParts}
+              pendingRelease={releaseCounts.pending}
+              awaitingAck={releaseCounts.awaitingAck}
+              returned={releaseCounts.returned}
+              delayReviews={excDelays.review.length}
+              onGo={goFromOverview}
+            />
+          </Card>
           {/* Graphical: stacked bars by the chosen dimension */}
-          <ExportSection id="mw-ins-chart" label="Insights – performance chart"><Card className="mb-4">
+          <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="h-full">
             <div className="mb-3 flex items-center gap-3">
               <h3 className="flex-none whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
               <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
@@ -896,6 +875,8 @@ export function MyWorkPage() {
             )}
             <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>
           </Card></ExportSection>
+          </div>
+          <PriorityModels instances={instances} parts={overviewParts} />
 
           {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
           <div id="mw-detail" />
