@@ -1,6 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
-import { UpcomingButtons, UpcomingPanelBody, upcomingCounts, useMrdRows } from './UpcomingPanels'
-import type { UpcomingPanel } from './UpcomingPanels'
+import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './quickRange'
 import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
@@ -28,8 +27,8 @@ import {
 import type { WorkBucket, FilteredInstance } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope, canPersonaEdit } from '../scope'
 import { makeEntryId } from '../../domain'
+import type { PartRecord } from '../../domain'
 import { BulkFillDialog } from '../bulk/BulkFillDialog'
-import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
 import { hasMyWork, isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
@@ -252,7 +251,7 @@ const workSortValue = (r: ApprovalRow, k: WorkSortKey): string =>
     : k === 'activity' ? r.title
     : r.type
 
-function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBar?: React.ReactNode }) {
+function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters; filterBar?: React.ReactNode; inRange?: (r: ApprovalRow) => boolean }) {
   const allRows = useApprovalRows()
   const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
   const filtered = useMemo(
@@ -266,9 +265,10 @@ function ApprovalsPanel({ filters, filterBar }: { filters: WorkFilters; filterBa
         if (!inSel(filters.partNo, r.partNo)) return false
         if (!inSel(filters.activity, r.title)) return false
         if (!matchPartAttrs(r, filters.attrs)) return false
+        if (inRange && !inRange(r)) return false
         return true
       }),
-    [allRows, filters]
+    [allRows, filters, inRange]
   )
   const [sortKey, setSortKey] = useState<WorkSortKey>('submittedOn')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -511,7 +511,6 @@ function MyWorkPageInner() {
   const parts = useWorkParts()
   const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
-  const upcomingOnly = useUpcomingOnly()
 
   // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
   // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
@@ -539,17 +538,6 @@ function MyWorkPageInner() {
   const approvalRows = useApprovalRows()
   // Counts for the Overview KPIs and Activity snapshot.
   const { delays: excDelays } = useExceptionData()
-  const releaseCounts = useMemo(() => {
-    let pending = 0, returned = 0, awaitingAck = 0
-    for (const p of parts) {
-      if (p.supersededBy || !partInScope(p, currentPersona) || !inView(p)) continue
-      const st = getReleaseState(p.partNo, partReleases, partAcks)
-      if (st === 'Pending') pending++
-      else if (st === 'Returned') returned++
-      else if (st === 'Released') awaitingAck++ // released to the vendor, not yet acknowledged
-    }
-    return { pending, returned, awaitingAck }
-  }, [parts, currentPersona, partReleases, partAcks, inView])
 
   // Filters (the client's set). Multi-select: empty array = All. Vendor/Part/PIC are "code: name" pickers.
   const [fModel, setFModel] = useState<string[]>([])
@@ -600,8 +588,9 @@ function MyWorkPageInner() {
     status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: ''
   })
 
-  // Every in-scope instance (before filters).
-  const allInstances = useMemo(
+  // Every in-scope instance (before filters and the quick date filter).
+  const range = useQuickRange((st) => st.range)
+  const baseInstances = useMemo(
     () =>
       getFilteredData(
         entries, activities, parts, templateRows, models,
@@ -610,11 +599,27 @@ function MyWorkPageInner() {
       )
         .filter((i) => partInScope(i.part, currentPersona) && inView(i.part))
         .filter((i) => currentPersona !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
-        .filter((i) => !i.notApplicable)
-        // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
-        .filter((i) => !upcomingOnly || isUpcoming(i.dates)),
-    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, upcomingOnly, inView]
+        .filter((i) => !i.notApplicable),
+    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, inView]
   )
+  // Quick date filter for the whole page (MRDs in next 30 days / Activities due in next 30 days / All).
+  const allInstances = useMemo(() => baseInstances.filter((i) => inQuickRange(i, range)), [baseInstances, range])
+  // Parts in range: models with an MRD in the window (MRDs), parts with an activity due (Activities), or all.
+  const rangePartNos = useMemo(() => (range === 'all' ? null : new Set(allInstances.map((i) => i.part.partNo))), [allInstances, range])
+  const partInRange = (p: PartRecord) =>
+    !rangePartNos || rangePartNos.has(p.partNo) || (range === 'mrd30' && mrdInWindow(models.find((m) => m.name === p.model)))
+  const releaseCounts = useMemo(() => {
+    let pending = 0, returned = 0, awaitingAck = 0
+    for (const p of parts) {
+      if (p.supersededBy || !partInScope(p, currentPersona) || !inView(p) || !partInRange(p)) continue
+      const st = getReleaseState(p.partNo, partReleases, partAcks)
+      if (st === 'Pending') pending++
+      else if (st === 'Returned') returned++
+      else if (st === 'Released') awaitingAck++ // released to the vendor, not yet acknowledged
+    }
+    return { pending, returned, awaitingAck }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parts, currentPersona, partReleases, partAcks, inView, rangePartNos, range, models])
 
   // Filter option lists (stable across selections).
   const opt = (vals: string[]) => Array.from(new Set(vals.filter(Boolean))).sort()
@@ -672,11 +677,11 @@ function MyWorkPageInner() {
   // Overview: the role's parts (not superseded, in scope).
   const overviewParts = useMemo(
     () => parts.filter((p) =>
-      !p.supersededBy && partInScope(p, currentPersona) && inView(p) &&
+      !p.supersededBy && partInScope(p, currentPersona) && inView(p) && partInRange(p) &&
       inSel(fModel, p.model) && inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
       inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments, inView]
+    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments, inView, rangePartNos, range, models]
   )
   // Workspace rollups.
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
@@ -770,10 +775,12 @@ function MyWorkPageInner() {
   }
   const anyColFilter = Object.values(colFilters).some(Boolean)
 
-  // Top-right "MRDs planned" / "Activities planned" panels (one open at a time).
-  const [upPanel, setUpPanel] = useState<UpcomingPanel>(null)
-  const mrdRows = useMrdRows(overviewParts)
-  const upCounts = upcomingCounts(mrdRows, instances)
+  // Approvals follow the quick filter: entry / validation items by their activity, other items by their part.
+  const inRangeKeys = useMemo(() => new Set(allInstances.map((i) => `${i.row.id}|${i.part.partNo}`)), [allInstances])
+  const approvalInRange = useMemo(
+    () => (range === 'all' ? undefined : (r: ApprovalRow) => inRangeKeys.has(`${r.rowId}|${r.partNo}`) || (r.type !== 'Data Entry' && r.type !== 'Data Validation' && !!rangePartNos?.has(r.partNo))),
+    [range, inRangeKeys, rangePartNos]
+  )
 
   if (!hasMyWork(currentPersona)) {
     return (
@@ -786,7 +793,7 @@ function MyWorkPageInner() {
 
 
   // ── Worklist (merged): everything for this role — work to enter + things to approve ──
-  const worklistCount = approvalRows.length
+  const worklistCount = approvalInRange ? approvalRows.filter(approvalInRange).length : approvalRows.length
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
@@ -834,11 +841,8 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {effectiveView === 'overview' && (
-            <UpcomingButtons open={upPanel} onToggle={(p) => setUpPanel((cur) => (cur === p ? null : p))} mrdCount={upCounts.mrds} activityCount={upCounts.activities} />
-          )}
+          <QuickRangeControl />
           <PicViewSelect />
-          <UpcomingToggle />
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
       </div>
@@ -865,6 +869,7 @@ function MyWorkPageInner() {
       {effectiveView === 'worklist' ? (
         <ExportSection id="mw-worklist" label="Worklist / Approval"><ApprovalsPanel
           filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode, activity: fActivity, attrs: fAttrs }}
+          inRange={approvalInRange}
           filterBar={
             <CompactFilterBar
               model={fModel} setModel={setFModel} modelOptions={modelOptions}
@@ -890,7 +895,6 @@ function MyWorkPageInner() {
         </>
       ) : (
         <>
-          {upPanel && <UpcomingPanelBody key={upPanel} panel={upPanel} mrds={mrdRows} instances={instances} onOpen={setOpenInstance} onClose={() => setUpPanel(null)} />}
           {/* Overview: Parts / Activities / Models in one row; the chart beside the priority models; then the list */}
             <OverviewKpis
               instances={instances}
