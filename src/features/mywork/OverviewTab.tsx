@@ -28,9 +28,19 @@ import { ExportSection } from '../export/ExportSection'
 export const PEND_ROLES = ['PIC', 'SIC', 'Vendor', 'DPM'] as const
 export type PendRole = (typeof PEND_ROLES)[number]
 
+/** "My Pending Activities" buckets: who has to act next on an open activity. */
+export const MINE_KEYS = ['picUpdate', 'vendorUpdate', 'review'] as const
+export type MineKey = (typeof MINE_KEYS)[number]
+/** Which "My Pending Activities" bucket an activity is in (overdue / NG are the Delayed / NG statuses). */
+export function mineBucket(p: { role: string } | null, status: string): MineKey | null {
+  if (!p) return null
+  if (status === 'Submitted') return 'review' // MSIL (PIC / SIC / DPM) to review or approve
+  return p.role === 'Vendor' ? 'vendorUpdate' : p.role === 'PIC' ? 'picUpdate' : null
+}
+
 export type OverviewGo = (
   t: 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar',
-  payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole }
+  payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole; mine?: MineKey }
 ) => void
 
 /** Compact KPI tile: label on top, number below. */
@@ -189,12 +199,16 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
     const pendingAt: Record<PendRole, number> = { PIC: 0, SIC: 0, Vendor: 0, DPM: 0 }
+    const mine: Record<MineKey, number> = { picUpdate: 0, vendorUpdate: 0, review: 0 }
     for (const i of counted) {
-      const r = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })?.role
-      if (r && r in pendingAt) pendingAt[r as PendRole] += 1
+      const pend = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })
+      if (pend && pend.role in pendingAt) pendingAt[pend.role as PendRole] += 1
+      const m = mineBucket(pend, i.status)
+      if (m) mine[m] += 1
     }
     return {
       pendingAt,
+      mine,
       returnedToVendor: toVendor.length,
       returnedToVendorBy: { PIC: toVendor.filter((i) => returnedTo(i)?.by === 'PIC').length, SIC: toVendor.filter((i) => returnedTo(i)?.by === 'SIC').length },
       returnedToPic: counted.filter(isReturnedToPicBySic).length,
@@ -211,6 +225,13 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
 
   return (
     <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 flex flex-wrap items-stretch gap-3">
+      <Segment id="ov-mine" title="My Pending Activities" icon="exclamation-circle" className="min-w-[280px] flex-[5_1_480px]" tiles={[
+        { id: 'mine.picUpdate', title: 'Activities awaiting PIC update', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },
+        { id: 'mine.vendorUpdate', title: 'Activities awaiting Vendor update', value: act.mine.vendorUpdate, color: '#f97316', icon: 'clipboard', onClick: () => onGo('overview', { mine: 'vendorUpdate' }), hint: 'Open activities the vendor has to fill, acknowledge or redo' },
+        { id: 'mine.review', title: 'Activities MSIL review / approval', value: act.mine.review, color: '#0891b2', icon: 'check-circle', onClick: () => onGo('overview', { mine: 'review' }), hint: 'Submitted, waiting for MSIL (PIC / SIC / DPM) to review or approve' },
+        { id: 'mine.overdue', title: 'Overdue activities', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }) },
+        { id: 'mine.ng', title: 'NG concerns', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }) },
+      ]} />
       <Segment id="ov-parts" title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]" tiles={[
         { id: 'parts.under', title: 'Under dev.', value: partStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: parts of models before SOP' },
         { id: 'parts.developed', title: 'Developed', value: partStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: parts of models past SOP, up to SOP + 3 months' },

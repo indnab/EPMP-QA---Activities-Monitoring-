@@ -1,8 +1,12 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { UpcomingButtons, UpcomingPanelBody, upcomingCounts, useMrdRows } from './UpcomingPanels'
+import type { UpcomingPanel } from './UpcomingPanels'
+import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
-import { OverviewKpis, PriorityModels, PEND_ROLES } from './OverviewTab'
-import type { PendRole } from './OverviewTab'
+import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket } from './OverviewTab'
+import type { PendRole, MineKey } from './OverviewTab'
+const MINE_LABEL: Record<MineKey, string> = { picUpdate: 'Awaiting PIC update', vendorUpdate: 'Awaiting Vendor update', review: 'MSIL review / approval' }
 import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'
@@ -565,13 +569,16 @@ function MyWorkPageInner() {
   // ?pend= PIC | SIC | Vendor | DPM: only activities pending at that role.
   const pendParam = searchParams.get('pend')
   const pendFilter: PendRole | null = (PEND_ROLES as readonly string[]).includes(pendParam ?? '') ? (pendParam as PendRole) : null
+  // ?mine= picUpdate | vendorUpdate | review: a "My Pending Activities" tile.
+  const mineParam = searchParams.get('mine')
+  const mineFilter: MineKey | null = (MINE_KEYS as readonly string[]).includes(mineParam ?? '') ? (mineParam as MineKey) : null
   const bucketParam = searchParams.get('bucket') as WorkBucket | null
   const selectedBucket: WorkBucket | null = bucketParam && (WORK_BUCKETS as readonly string[]).includes(bucketParam) ? bucketParam : null
   // Picking a status inside Insights replaces the URL (no extra Back step per chart click).
   const setSelectedBucket = (b: WorkBucket | null) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev)
-      if (b) { n.set('bucket', b); n.delete('ret'); n.delete('pend') }
+      if (b) { n.set('bucket', b); n.delete('ret'); n.delete('pend'); n.delete('mine') }
       else n.delete('bucket')
       return n
     }, { replace: true })
@@ -631,7 +638,7 @@ function MyWorkPageInner() {
   )
   const picOptions = useMemo<LabeledOption[]>(
     () => uniqBy(allInstances, (i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)
-      .map((i) => { const name = getPicOn(i.part, picAssignments, DEMO_TODAY).name; const sid = i.part.attrs?.qa_pic_staff_id; return { value: name, label: sid ? `${sid}: ${name}` : name } })
+      .map((i) => { const name = getPicOn(i.part, picAssignments, DEMO_TODAY).name; return { value: name, label: picLabel(name) } })
       .sort((a, b) => a.label.localeCompare(b.label)),
     [allInstances, picAssignments]
   )
@@ -710,6 +717,7 @@ function MyWorkPageInner() {
     if (selectedBucket) rows = rows.filter((i) => workBucket(i) === selectedBucket)
     if (returnedFilter) rows = rows.filter(returnedFilter === 'vendor' ? isReturnedToVendor : isReturnedToPicBySic)
     if (pendFilter) rows = rows.filter((i) => pendOf(i)?.role === pendFilter)
+    if (mineFilter) rows = rows.filter((i) => mineBucket(pendOf(i), i.status) === mineFilter)
     if (selectedGroup) {
       rows = rows.filter((i) => {
         const k = groupDim === 'model' ? i.part.model
@@ -736,7 +744,7 @@ function MyWorkPageInner() {
       return (cmp || a.part.partNo.localeCompare(b.part.partNo)) * dir
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instances, selectedBucket, returnedFilter, pendFilter, selectedGroup, groupDim, colFilters, sortKey, sortDir])
+  }, [instances, selectedBucket, returnedFilter, pendFilter, mineFilter, selectedGroup, groupDim, colFilters, sortKey, sortDir])
 
   // ── Insights bulk fill ──
   const insKey = (i: FilteredInstance) => `${i.row.id}|${i.part.partNo}`
@@ -762,6 +770,11 @@ function MyWorkPageInner() {
   }
   const anyColFilter = Object.values(colFilters).some(Boolean)
 
+  // Top-right "MRDs planned" / "Activities planned" panels (one open at a time).
+  const [upPanel, setUpPanel] = useState<UpcomingPanel>(null)
+  const mrdRows = useMrdRows(overviewParts)
+  const upCounts = upcomingCounts(mrdRows, instances)
+
   if (!hasMyWork(currentPersona)) {
     return (
       <div>
@@ -777,7 +790,7 @@ function MyWorkPageInner() {
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
-  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole }) => {
+  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole; mine?: MineKey }) => {
     if (payload?.group) { setGroupDim('model'); setSelectedGroup(payload.group) }
     else if (payload?.bucket) setSelectedGroup(null)
     // Overview and the old Workspace are one page now: a status click filters the list below in place.
@@ -785,7 +798,8 @@ function MyWorkPageInner() {
       // One URL update for both the status and the "returned" filter.
       setSearchParams((prev) => {
         const n = new URLSearchParams(prev)
-        n.delete('bucket'); n.delete('ret'); n.delete('pend')
+        n.delete('bucket'); n.delete('ret'); n.delete('pend'); n.delete('mine')
+        if (payload?.mine) n.set('mine', payload.mine)
         if (payload?.bucket) n.set('bucket', payload.bucket)
         if (payload?.ret) n.set('ret', payload.ret)
         if (payload?.pend) n.set('pend', payload.pend)
@@ -793,7 +807,7 @@ function MyWorkPageInner() {
       }, { replace: true })
     }
     else setView(tab, payload?.bucket, payload?.seg)
-    const anchor = payload?.bucket || payload?.ret || payload?.pend || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
+    const anchor = payload?.bucket || payload?.ret || payload?.pend || payload?.mine || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.
       setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
@@ -819,7 +833,10 @@ function MyWorkPageInner() {
           ]}
         />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {effectiveView === 'overview' && (
+            <UpcomingButtons open={upPanel} onToggle={(p) => setUpPanel((cur) => (cur === p ? null : p))} mrdCount={upCounts.mrds} activityCount={upCounts.activities} />
+          )}
           <PicViewSelect />
           <UpcomingToggle />
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
@@ -873,6 +890,7 @@ function MyWorkPageInner() {
         </>
       ) : (
         <>
+          {upPanel && <UpcomingPanelBody key={upPanel} panel={upPanel} mrds={mrdRows} instances={instances} onOpen={setOpenInstance} onClose={() => setUpPanel(null)} />}
           {/* Overview: Parts / Activities / Models in one row; the chart beside the priority models; then the list */}
             <OverviewKpis
               instances={instances}
@@ -938,7 +956,7 @@ function MyWorkPageInner() {
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[selectedBucket] }} />
                     {selectedBucket} parts
                   </span>
-                ) : returnedFilter ? (returnedFilter === 'vendor' ? 'Returned to vendor' : 'Returned to PIC') : pendFilter ? `Pending at ${PERSONA_LABEL[pendFilter] ?? pendFilter}` : 'All parts'}
+                ) : returnedFilter ? (returnedFilter === 'vendor' ? 'Returned to vendor' : 'Returned to PIC') : pendFilter ? `Pending at ${PERSONA_LABEL[pendFilter] ?? pendFilter}` : mineFilter ? MINE_LABEL[mineFilter] : 'All parts'}
                 {selectedGroup ? <span className="text-[var(--color-muted)]"> · {selectedGroup}</span> : ''}
                 <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[11px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
               </h3>
@@ -947,8 +965,8 @@ function MyWorkPageInner() {
                   <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: '' })}
                     className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
                 )}
-                {(selectedBucket || selectedGroup || returnedFilter || pendFilter) && (
-                  <button onClick={() => { setSelectedGroup(null); setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('bucket'); n.delete('ret'); n.delete('pend'); return n }, { replace: true }) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
+                {(selectedBucket || selectedGroup || returnedFilter || pendFilter || mineFilter) && (
+                  <button onClick={() => { setSelectedGroup(null); setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('bucket'); n.delete('ret'); n.delete('pend'); n.delete('mine'); return n }, { replace: true }) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
                 <SortMenu options={TABLE_COLS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
                 {!listClosed && <ViewModeToggle value={detailView} onChange={setDetailView} />}
@@ -1126,11 +1144,13 @@ function MyWorkPageInner() {
           note={insActivityCount > 1 ? `${insActivityCount} activities — only the fields they share are shown` : insSelected[0]?.activity.name}
           fields={insCommonFields}
           targetCount={insSelected.length}
+          targets={insSelected.map((i) => ({ id: insKey(i), label: `${i.part.partNo} · ${i.activity.name}`, values: i.entry?.values ?? {} }))}
           currentPersona={currentPersona}
           onClose={() => setInsBulkOpen(false)}
-          onApply={(values, submit) => {
+          onApply={(values, submit, _s, skip) => {
             for (const i of insSelected) {
-              updateEntryValues(i.row.id, i.part.partNo, values, currentPersona)
+              const own = Object.fromEntries(Object.entries(values).filter(([k]) => !skip.has(`${insKey(i)}|${k}`)))
+              if (Object.keys(own).length) updateEntryValues(i.row.id, i.part.partNo, own, currentPersona)
               if (submit) transitionEntryState(makeEntryId(i.row.id, i.part.partNo), 'Submit', undefined, currentPersona)
             }
             const n = insSelected.length

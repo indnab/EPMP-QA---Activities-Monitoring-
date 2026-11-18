@@ -701,11 +701,13 @@ export function WorkspacePage() {
           note={row.milestoneId}
           fields={bulkEditableFields}
           targetCount={bulkTargets.length}
+          targets={bulkTargets.map((pno) => ({ id: pno, label: `${pno} · ${parts.find((p) => p.partNo === pno)?.partName ?? ''}`, values: entryMap.get(pno)?.values ?? {} }))}
           currentPersona={currentPersona}
           onClose={() => setBulkFillOpen(false)}
-          onApply={(values, submit) => {
+          onApply={(values, submit, _s, skip) => {
             for (const pno of bulkTargets) {
-              updateEntryValues(row.id, pno, values, currentPersona)
+              const own = Object.fromEntries(Object.entries(values).filter(([k]) => !skip.has(`${pno}|${k}`)))
+              if (Object.keys(own).length) updateEntryValues(row.id, pno, own, currentPersona)
               if (submit) transitionEntryState(makeEntryId(row.id, pno), 'Submit', undefined, currentPersona)
             }
             setBulkFillOpen(false)

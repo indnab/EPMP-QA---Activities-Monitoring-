@@ -1,4 +1,5 @@
 import type { ModelRecord, PartRecord, PicAssignment } from '../../domain'
+import { picLabel } from '../../domain/people'
 import { getPicOn } from '../../engine'
 import { INTAKE_FIELDS, trialStatusFor } from '../../mock/partIntakeFields'
 import type { IntakeField } from '../../mock/partIntakeFields'
@@ -14,7 +15,7 @@ export function intakeValue(f: IntakeField, part: PartRecord, models: ModelRecor
       return trialStatusFor(models.find((m) => m.name === part.model)?.mrds, DEMO_TODAY)
     case 'qa_pic_name': {
       const name = getPicOn(part, picAssignments, DEMO_TODAY).name
-      return name && a.qa_pic_staff_id ? `${a.qa_pic_staff_id} - ${name}` : name
+      return picLabel(name)
     }
     case 'created_by':
       return a.created_by || part.createdBy || ''

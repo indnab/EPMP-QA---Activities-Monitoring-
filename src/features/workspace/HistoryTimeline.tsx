@@ -1,10 +1,13 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
-import type { HistoryLog } from '../../domain'
+import type { HistoryLog, PartRecord } from '../../domain'
+import { actorOf } from '../../domain/people'
 import { PERSONAS } from '../../store/personaStore'
 
 interface HistoryTimelineProps {
   history: HistoryLog[]
+  /** The part, to name who acted: vendor name + vendor code, PIC / SIC / DPM name + staff ID. */
+  part?: PartRecord
 }
 
 function personaColor(persona: string): string {
@@ -46,7 +49,7 @@ function formatTimestamp(ts: string): string {
   }
 }
 
-export function HistoryTimeline({ history }: HistoryTimelineProps) {
+export function HistoryTimeline({ history, part }: HistoryTimelineProps) {
   if (history.length === 0) {
     return (
       <div className="text-center py-12 text-[var(--color-muted)]">
@@ -95,9 +98,16 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
                 >
                   {log.persona}
                 </span>
-                {log.actorName && (
-                  <span className="text-xs font-medium text-[var(--color-text)]">{log.actorName}</span>
-                )}
+                {(() => {
+                  const who = actorOf(log, part)
+                  if (!who.name) return null
+                  return (
+                    <span className="text-xs font-medium text-[var(--color-text)]">
+                      {who.name}
+                      {who.id && <span className="ml-1 font-mono text-[10.5px] font-normal text-[var(--color-muted)]">({log.persona === 'Vendor' ? 'Vendor ID' : 'Staff ID'} {who.id})</span>}
+                    </span>
+                  )
+                })()}
               </div>
               <p className="text-xs text-[var(--color-muted)] mt-0.5">{formatTimestamp(log.timestamp)}</p>
               {log.comment && (

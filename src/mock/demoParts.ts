@@ -3,6 +3,7 @@
  * owner can keep editing activity fields and re-populate parts that show the updated fields.
  * Used by the "Load sample parts" button (AppLayout). Remove together with that button.
  */
+import { staffIdOf } from '../domain/people'
 import { makeEntryId } from '../domain'
 import { deriveTechnicalCategory } from '../domain/timelineCatalog'
 import type {
@@ -129,7 +130,7 @@ export function buildDemoData(
       type: p.type,
       // Part numbers come from ENOVIA; some arrive through the SAP feed, so the sample mixes both.
       origin: idx % 3 === 0 ? 'SAP' : 'ENOVIA',
-      attrs: sampleIntakeAttrs(p.partNo, idx)
+      attrs: { ...sampleIntakeAttrs(p.partNo, idx), qa_pic_staff_id: staffIdOf(p.pic) }
     }
     return { ...rec, technicalCategory: deriveTechnicalCategory(rec) }
   })

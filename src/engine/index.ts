@@ -1,4 +1,5 @@
 import type { PersonaId } from '../store/personaStore'
+import { picLabel, SIC_BY_SECTION, vendorLabel } from '../domain/people'
 import { makeEntryId } from '../domain'
 import { subTypeMrdKey, deriveTechnicalCategory } from '../domain/timelineCatalog'
 import type {
@@ -2218,10 +2219,12 @@ export function pendencyOf(
     const rs = getReleaseState(part.partNo, ctx.releases, ctx.acks)
     if (rs === 'Pending' || rs === 'Returned') role = 'PIC' // PIC still has to release it to the vendor
   }
+  const picName = getPicOn(part, ctx.picAssignments, ctx.today).name
   const name =
-    role === 'PIC' ? getPicOn(part, ctx.picAssignments, ctx.today).name || 'Unassigned'
-    : role === 'Vendor' ? part.vendorName
-    : role === 'DPM' ? part.attrs?.dpm_name || 'DPM'
+    role === 'PIC' ? (picName ? picLabel(picName) : 'Unassigned')
+    : role === 'Vendor' ? vendorLabel(part.vendorName, part.vendorCode)
+    : role === 'DPM' ? (part.attrs?.dpm_name ? picLabel(part.attrs.dpm_name) : 'DPM')
+    : role === 'SIC' ? (SIC_BY_SECTION[part.section] ? picLabel(SIC_BY_SECTION[part.section]) : 'SIC')
     : role
   return { role, name }
 }

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo } from 'react'
+import { picLabel } from '../../domain/people'
 import type { PartRecord } from '../../domain'
 import { getPicOn } from '../../engine'
 import { INTAKE_FIELDS } from '../../mock/partIntakeFields'
@@ -101,7 +102,7 @@ export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; on
           <MultiSelect
             key={field.key}
             label={field.label}
-            options={(optionsByKey[field.key] ?? []).map((o) => ({ value: o }))}
+            options={(optionsByKey[field.key] ?? []).map((o) => ({ value: o, label: field.key === 'qa_pic_name' ? picLabel(o) : undefined }))}
             selected={value[field.key] ?? []}
             onChange={(next) => set(field.key, next)}
           />

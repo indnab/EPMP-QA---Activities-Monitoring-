@@ -165,7 +165,7 @@ export function BulkEntryPage() {
   const fillPartCount = new Set(fillPlan.flatMap((p) => p.targets.filter((t) => t.editable.size > 0).map((t) => t.partNo))).size
   const fillLocked = fillPlan.reduce((n, p) => n + p.locked, 0)
 
-  function applyFill(bySection: Record<string, Record<string, unknown>>, submit: boolean) {
+  function applyFill(bySection: Record<string, Record<string, unknown>>, submit: boolean, skip: Set<string> = new Set()) {
     const parts = new Set<string>()
     let acts = 0
     for (const plan of fillPlan) {
@@ -174,7 +174,7 @@ export function BulkEntryPage() {
       let wroteAny = false
       for (const t of plan.targets) {
         // Write only what this part may still edit (a submitted/approved part is skipped for locked fields).
-        const own = Object.fromEntries(Object.entries(values).filter(([k]) => t.editable.has(k)))
+        const own = Object.fromEntries(Object.entries(values).filter(([k]) => t.editable.has(k) && !skip.has(`${plan.col.rowId}|${t.partNo}|${k}`)))
         if (Object.keys(own).length === 0) continue
         updateEntryValues(plan.col.rowId, t.partNo, own, role)
         if (submit) transitionEntryState(makeEntryId(plan.col.rowId, t.partNo), 'Submit', undefined, role)
@@ -494,9 +494,13 @@ export function BulkEntryPage() {
             fields: p.fields,
           }))}
           targetCount={fillPartCount}
+          targets={fillPlan.flatMap((p) => p.targets.map((t) => ({
+            id: `${p.col.rowId}|${t.partNo}`, sectionId: p.col.rowId, label: `${t.partNo} · ${p.col.name}`,
+            values: entries.find((e) => e.id === makeEntryId(p.col.rowId, t.partNo))?.values ?? {},
+          })))}
           currentPersona={role}
           onClose={() => setFillRowIds(null)}
-          onApply={(_v, submit, bySection) => applyFill(bySection, submit)}
+          onApply={(_v, submit, bySection, skip) => applyFill(bySection, submit, skip)}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { picLabel } from '../../domain/people'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { ActivityDefinition, FieldDefinition, ActivityEntry, TemplateRow, PartRecord } from '../../domain'
 import { makeEntryId } from '../../domain'
@@ -533,7 +534,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
             <span>Section: <strong className="text-[var(--color-text)]">{part.section}</strong></span>
             <span>
               PIC:{' '}
-              <strong className="text-[var(--color-text)]">{currentPic.name || 'Unassigned'}</strong>
+              <strong className="text-[var(--color-text)]">{currentPic.name ? picLabel(currentPic.name) : 'Unassigned'}</strong>
               {currentPic.assignment && (
                 <span className="ml-1 text-[10px]">
                   (assigned from {fmtDate(currentPic.assignment.effectiveFrom)})
@@ -749,7 +750,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
             />
           )}
           {activeTab === 'history' && (
-            <HistoryTimeline history={entry?.history ?? []} />
+            <HistoryTimeline history={entry?.history ?? []} part={part} />
           )}
           {activeTab === 'ng' && (
             <div className="space-y-3">

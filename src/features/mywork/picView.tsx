@@ -3,6 +3,7 @@
  * in my department. The choice is remembered and applies to every My Work page (Overview, My Actions, Approvals,
  * Calendar and the entry grid). Other roles are not affected.
  */
+import { picLabel } from '../../domain/people'
 import { useCallback, useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -71,11 +72,11 @@ export function PicViewSelect() {
       View
       <select value={value} onChange={(e) => setView(e.target.value)} aria-label="Whose work to show"
         className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]">
-        <option value="me">Tagged to me ({FIXED_PIC_NAME})</option>
+        <option value="me">Tagged to me ({picLabel(FIXED_PIC_NAME)})</option>
         <option value="dept">My department ({FIXED_SECTION}): all PICs</option>
         {others.length > 0 && (
           <optgroup label="A PIC in my department">
-            {others.map((n) => <option key={n} value={n}>{n}</option>)}
+            {others.map((n) => <option key={n} value={n}>{picLabel(n)}</option>)}
           </optgroup>
         )}
       </select>

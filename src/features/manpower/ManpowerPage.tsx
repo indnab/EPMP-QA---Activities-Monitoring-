@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { picLabel } from '../../domain/people'
 import { PageHeader, Card, Button, Modal, Tabs } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -108,7 +109,7 @@ export function ManpowerPage() {
               <tbody>
                 {loads.map((l) => (
                   <tr key={l.pic} className="border-b border-[var(--color-border)] last:border-0">
-                    <td className="px-4 py-3 font-medium text-[#101828]">{l.pic}</td>
+                    <td className="px-4 py-3 font-medium text-[#101828]">{l.pic === 'Unassigned' ? l.pic : picLabel(l.pic)}</td>
                     <td className="px-4 py-3 w-48">
                       <div className="flex items-center gap-2">
                         <div className="h-2 flex-1 rounded-full bg-[var(--color-surface)] overflow-hidden">
