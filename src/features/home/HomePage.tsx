@@ -221,7 +221,7 @@ export function HomePage() {
     <div className="mx-auto max-w-[1600px] pb-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="m-0 text-[28px] font-bold leading-9 tracking-[-0.3px] text-[var(--color-text)]">Welcome back, {label}!</h1>
+          <h1 className="m-0 text-[26px] font-bold leading-9 tracking-[-0.3px] text-[var(--color-text)]">Welcome back, {label}!</h1>
         </div>
         <button
           type="button"
@@ -237,15 +237,15 @@ export function HomePage() {
         {/* ── My Work / My Modules ─────────────────────────────────────── */}
         <section className="flex min-h-[300px] flex-col rounded-2xl p-5 text-white shadow-[0_8px_24px_rgba(37,99,235,.25)]" style={{ background: 'linear-gradient(160deg,#1d4ed8,#2563eb 60%,#1e40af)' }} aria-label="My work">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 text-[14px] font-semibold">{hasMyWork(currentPersona) ? 'My Work' : 'My Modules'}</h2>
-            <Link to={hasMyWork(currentPersona) ? '/mywork' : home.links[0].to} className="text-[11px] font-medium text-white/85 hover:text-white">
+            <h2 className="m-0 text-[13px] font-semibold">{hasMyWork(currentPersona) ? 'My Work' : 'My Modules'}</h2>
+            <Link to={hasMyWork(currentPersona) ? '/mywork' : home.links[0].to} className="text-[10.5px] font-medium text-white/85 hover:text-white">
               View all ›
             </Link>
           </div>
           <div className="flex flex-1 flex-col gap-2.5">
             {hasMyWork(currentPersona) ? (
               workGroups.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center rounded-xl bg-white/10 px-4 text-center text-[12px] text-white/85">
+                <div className="flex flex-1 items-center justify-center rounded-xl bg-white/10 px-4 text-center text-[11.5px] text-white/85">
                   Nothing is waiting for you in My Work.
                 </div>
               ) : (
@@ -261,7 +261,7 @@ export function HomePage() {
                     >
                       <span className="inline-block h-9 w-9 flex-none rounded-full" style={{ background: `${col}22`, boxShadow: `inset 0 0 0 2px ${col}` }} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] font-semibold">{g.activity.name}</span>
+                        <span className="block truncate text-[11.5px] font-semibold">{g.activity.name}</span>
                         <span className="block truncate text-[10.5px] text-[var(--color-muted)]">{g.milestoneId} · {n} part{n === 1 ? '' : 's'}{bits.length ? ` · ${bits.join(', ')}` : ''}</span>
                       </span>
                       <span className="text-[var(--color-muted)]" aria-hidden="true">→</span>
@@ -274,7 +274,7 @@ export function HomePage() {
                 <Link key={l.to} to={l.to} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-[var(--color-text)] hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#eef2ff] text-[#4338ca]"><Icon name={l.icon} size={18} /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-semibold">{l.label}</span>
+                    <span className="block truncate text-[11.5px] font-semibold">{l.label}</span>
                     <span className="block truncate text-[10.5px] text-[var(--color-muted)]">{l.desc}</span>
                   </span>
                   <span className="text-[var(--color-muted)]" aria-hidden="true">→</span>
@@ -286,7 +286,7 @@ export function HomePage() {
 
         {/* ── Quick Links ──────────────────────────────────────────────── */}
         <section className="epmp-card flex min-h-[300px] flex-col p-5" aria-label="Quick links">
-          <h2 className="m-0 mb-3 text-[14px] font-semibold text-[var(--color-text)]">Quick Links</h2>
+          <h2 className="m-0 mb-3 text-[13px] font-semibold text-[var(--color-text)]">Quick Links</h2>
           <div className="grid flex-1 grid-cols-2 gap-3">
             {home.links.map((l) => (
               <Link
@@ -295,7 +295,7 @@ export function HomePage() {
                 className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white p-3 text-center shadow-sm transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3efff] text-[#6d28d9]"><Icon name={l.icon} /></span>
-                <span className="text-[12px] font-medium leading-tight text-[var(--color-text)]">{l.label}</span>
+                <span className="text-[11.5px] font-medium leading-tight text-[var(--color-text)]">{l.label}</span>
               </Link>
             ))}
           </div>
@@ -303,11 +303,11 @@ export function HomePage() {
 
         {/* ── AI Smart Insights ────────────────────────────────────────── */}
         <section className="flex min-h-[300px] flex-col rounded-2xl p-5 text-white shadow-[0_8px_24px_rgba(79,70,229,.25)]" style={{ background: 'linear-gradient(160deg,#2f6bf2,#4b3fd4 70%,#5b34c9)' }} aria-label="AI smart insights">
-          <h2 className="m-0 mb-3 flex items-center gap-2 text-[14px] font-semibold">
+          <h2 className="m-0 mb-3 flex items-center gap-2 text-[13px] font-semibold">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20"><Icon name="spark" size={16} /></span>
             AI Smart Insights
           </h2>
-          <p className="m-0 flex-1 overflow-auto text-[12px] leading-[1.55] text-white/95">{insightText}</p>
+          <p className="m-0 flex-1 overflow-auto text-[11.5px] leading-[1.55] text-white/95">{insightText}</p>
           <form
             className="mt-3 flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2"
             onSubmit={(e) => {
@@ -320,7 +320,7 @@ export function HomePage() {
               onChange={(e) => { setAsk(e.target.value); setAskNote(false) }}
               placeholder="Ask AI anything…"
               aria-label="Ask AI anything"
-              className="min-w-0 flex-1 bg-transparent text-[12px] text-white placeholder-white/70 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-[11.5px] text-white placeholder-white/70 focus:outline-none"
             />
             <button type="submit" className="text-white/90 hover:text-white" aria-label="Ask">→</button>
           </form>
@@ -334,8 +334,8 @@ export function HomePage() {
         {/* ── My Tasks ─────────────────────────────────────────────────── */}
         <section className="epmp-card flex min-h-[260px] flex-col p-5" aria-label="My tasks" data-tour="inbox-card">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 text-[14px] font-semibold text-[var(--color-text)]">My Tasks</h2>
-            <div className="flex rounded-lg border border-[var(--color-border)] bg-white p-0.5 text-[11px]" role="tablist">
+            <h2 className="m-0 text-[13px] font-semibold text-[var(--color-text)]">My Tasks</h2>
+            <div className="flex rounded-lg border border-[var(--color-border)] bg-white p-0.5 text-[10.5px]" role="tablist">
               {([['today', `Today (${todayTasks.length})`], ['tomorrow', `Tomorrow (${tomorrowTasks.length})`]] as const).map(([id, text]) => (
                 <button
                   key={id}
@@ -351,7 +351,7 @@ export function HomePage() {
           </div>
           <div className="flex max-h-[230px] flex-1 flex-col gap-2 overflow-y-auto">
             {shownTasks.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center rounded-xl bg-[#f6f9ff] px-4 py-8 text-center text-[12px] text-[var(--color-muted)]">
+              <div className="flex flex-1 items-center justify-center rounded-xl bg-[#f6f9ff] px-4 py-8 text-center text-[11.5px] text-[var(--color-muted)]">
                 {taskTab === 'today' ? 'Nothing is due today or overdue.' : 'Nothing is due tomorrow.'}
               </div>
             ) : (
@@ -366,7 +366,7 @@ export function HomePage() {
                       <span className={`whitespace-nowrap flex-none rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${KIND_STYLE[t.kind] ?? 'bg-slate-100 text-slate-700'}`}>{t.kind}</span>
                       <span className={`text-[10.5px] ${t.due < today ? 'font-semibold text-[#b91c1c]' : 'text-[var(--color-muted)]'}`}>{t.due < today ? 'Overdue ' : ''}{fmtDate(t.due)}</span>
                     </span>
-                    <span className="block text-[12.5px] font-semibold leading-snug text-[var(--color-text)]">{t.title}</span>
+                    <span className="block text-[11.5px] font-semibold leading-snug text-[var(--color-text)]">{t.title}</span>
                     <span className="block text-[10.5px] text-[var(--color-muted)]">{t.sub}</span>
                   </span>
                 </Link>
@@ -377,14 +377,14 @@ export function HomePage() {
 
         {/* ── What’s new ───────────────────────────────────────────────── */}
         <section className="epmp-card flex min-h-[260px] flex-col p-6 lg:col-span-2" aria-label="What is new">
-          <h2 className="m-0 mb-3 text-[13px] font-semibold text-[var(--color-text)]">What’s new in EPMP</h2>
-          <p className="m-0 mb-2 text-[22px] font-bold leading-8 tracking-[-0.2px] text-[var(--color-text)]">Exceptions now live in one place</p>
-          <p className="m-0 flex-1 text-[13px] leading-[1.6] text-[var(--color-muted)]">
+          <h2 className="m-0 mb-3 text-[12px] font-semibold text-[var(--color-text)]">What’s new in EPMP</h2>
+          <p className="m-0 mb-2 text-[20px] font-bold leading-8 tracking-[-0.2px] text-[var(--color-text)]">Exceptions now live in one place</p>
+          <p className="m-0 flex-1 text-[12px] leading-[1.6] text-[var(--color-muted)]">
             Deviations, actions and delay reasons are now managed together. When an activity runs late, the vendor gives a reason and the PIC accepts it or sends it back.
             Vendors also acknowledge or return the parts a PIC releases, and each PIC sees how many parts are released, pending and returned. Everything that needs you is
             listed on the Exception Management overview.
           </p>
-          <Link to="/exceptions" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--color-primary)] hover:underline">
+          <Link to="/exceptions" className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--color-primary)] hover:underline">
             Learn more →
           </Link>
         </section>

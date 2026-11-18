@@ -94,7 +94,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
         aria-pressed={active}
         className={`epmp-card min-w-[150px] flex-1 px-4 py-3 text-left transition-colors ${active ? 'ring-2 ring-[var(--color-accent)]' : 'hover:bg-[var(--color-surface)]'}`}
       >
-        <div className="text-[11px] font-medium text-[var(--color-muted)]">{label}</div>
+        <div className="text-[10.5px] font-medium text-[var(--color-muted)]">{label}</div>
         <div className="mt-0.5 text-2xl font-semibold text-[var(--color-text)]">{value}</div>
       </button>
     )
@@ -138,7 +138,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
           aria-label="Search the part intake list"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="h-9 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]"
+          className="h-9 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]"
         />
         {PRIMARY.map((f) => (
           <MultiSelect
@@ -150,7 +150,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
           />
         ))}
         {anyFilter && (
-          <button type="button" onClick={() => { setOrigins([]); setFilters({}); setText('') }} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">
+          <button type="button" onClick={() => { setOrigins([]); setFilters({}); setText('') }} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">
             Clear filters
           </button>
         )}
@@ -176,7 +176,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
           </p>
         ) : (
           <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-            <table className="border-separate border-spacing-0 text-[11px]">
+            <table className="border-separate border-spacing-0 text-[10.5px]">
               <thead>
                 <tr>
                   <th className="sticky left-0 top-0 z-30 min-w-[130px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
@@ -225,7 +225,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                           {actions!.canRelease && (
                             <button
                               onClick={() => actions!.onRelease(part, !withVendor)}
-                              className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[#344054] hover:border-[#bfdbfe]"
+                              className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe]"
                             >
                               {withVendor ? 'Recall' : release === 'Returned' ? 'Release again' : 'Release'}
                             </button>
@@ -233,7 +233,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                           {actions!.canEcn && (
                             <button
                               onClick={() => actions!.onEcn(part)}
-                              className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-medium text-[#344054] hover:border-[#bfdbfe]"
+                              className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe]"
                             >
                               ECN transfer
                             </button>
@@ -258,7 +258,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
         )}
       </Card>
       {!canAdd && (
-        <p className="mt-3 text-[11px] text-[var(--color-muted)]">Parts are added manually by the Department Co-ordinator, a PIC or Admin when SAP / ENOVIA has no number yet.</p>
+        <p className="mt-3 text-[10.5px] text-[var(--color-muted)]">Parts are added manually by the Department Co-ordinator, a PIC or Admin when SAP / ENOVIA has no number yet.</p>
       )}
       {addOpen && <ManualPartDialog onClose={closeAdd} sections={sections.map((s) => s.id)} />}
     </div>

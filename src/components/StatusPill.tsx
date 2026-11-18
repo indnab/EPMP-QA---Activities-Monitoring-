@@ -24,7 +24,7 @@ interface StatusPillProps {
 /** EPMP badge: 6px radius, hairline border, leading status dot. */
 export function StatusPill({ status, size = 'md' }: StatusPillProps) {
   const meta = STATUS_META[status]
-  const padding = size === 'sm' ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[11px]'
+  const padding = size === 'sm' ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1 text-[10.5px]'
   return (
     <span
       className={`inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-md border font-medium ${padding}`}

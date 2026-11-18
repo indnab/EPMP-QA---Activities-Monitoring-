@@ -44,7 +44,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
       >
         {title && (
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
-            <h2 id="modal-title" className="text-[15px] font-semibold text-[var(--color-text)]">
+            <h2 id="modal-title" className="text-[14px] font-semibold text-[var(--color-text)]">
               {title}
             </h2>
             <button

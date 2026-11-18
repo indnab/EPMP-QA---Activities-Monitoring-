@@ -5,7 +5,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { buildCsv, downloadCsv } from '../mywork/csv'
 
 const ALLOWED = ['PIC', 'SIC', 'DPM', 'Admin']
-const selCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
+const selCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]'
 
 function fmtWhen(iso: string): string {
   const d = new Date(iso)
@@ -70,7 +70,7 @@ export function AuditLogPage() {
           aria-label="Search the audit log"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="h-9 w-72 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]"
+          className="h-9 w-72 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]"
         />
         <select value={action} onChange={(e) => setAction(e.target.value)} aria-label="Filter by action" className={selCls}>
           <option value="All">All actions</option>

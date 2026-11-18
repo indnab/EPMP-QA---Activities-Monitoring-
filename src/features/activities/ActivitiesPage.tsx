@@ -129,7 +129,7 @@ export function ActivitiesPage() {
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <UpcomingToggle />
-            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
+            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
             </Link>
             {hasMyWork(currentPersona) ? (
@@ -151,13 +151,13 @@ export function ActivitiesPage() {
           aria-label="Search activities"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-9 w-64 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054] placeholder-[var(--color-muted)]"
+          className="h-9 w-64 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
         />
         <select
           value={milestoneFilter}
           onChange={(e) => setMilestoneFilter(e.target.value)}
           aria-label="Filter by milestone"
-          className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]"
+          className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]"
         >
           <option value="All">All Milestones</option>
           {milestones.map((m) => (
@@ -169,7 +169,7 @@ export function ActivitiesPage() {
             value={sectionFilter}
             onChange={(e) => setSectionFilter(e.target.value)}
             aria-label="Filter by section"
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]"
+            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]"
           >
             <option value="All">All Sections</option>
             {sections.map((s) => (
@@ -177,11 +177,11 @@ export function ActivitiesPage() {
             ))}
           </select>
         )}
-        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]" />
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]" />
         {hasFilters && (
           <button
             onClick={() => { setSearch(''); setMilestoneFilter('All'); setSectionFilter('All'); setAttrFilter({}) }}
-            className="rounded text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+            className="rounded text-[10.5px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
           >
             Clear filters
           </button>

@@ -56,7 +56,7 @@ function ApplicabilityDialogBody({
           : `This activity will apply again for ${subject}. Anything already entered is kept.`}
       </p>
       <label className="block">
-        <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason (optional)</span>
+        <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (optional)</span>
         <input
           type="text"
           value={reason}
@@ -66,7 +66,7 @@ function ApplicabilityDialogBody({
           autoFocus
         />
       </label>
-      <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
         This is logged with your name and the date in each part's history.
       </p>
     </Modal>

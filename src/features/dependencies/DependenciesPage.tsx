@@ -30,29 +30,29 @@ export function DependenciesPage() {
         title="Activity Dependencies"
         section="Project Execution"
         actions={isAdmin && arc ? (
-          <Link to={`/governance/${arc.id}`} className="inline-flex items-center rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white hover:brightness-105">
+          <Link to={`/governance/${arc.id}`} className="inline-flex items-center rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[10.5px] font-semibold text-white hover:brightness-105">
             Edit in archetype →
           </Link>
         ) : undefined}
       />
 
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
           Project archetype
-          <select value={arcId} onChange={(e) => setArcId(e.target.value)} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] font-normal normal-case text-[#344054]">
+          <select value={arcId} onChange={(e) => setArcId(e.target.value)} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]">
             {archetypes.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.id})</option>)}
           </select>
         </label>
-        <span className="ml-auto text-[11px] text-[var(--color-muted)]">
+        <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">
           Read-only · dependencies are set on each WBS object in Governance → Manage Archetypes.
         </span>
       </section>
 
       <Card flush className="!overflow-visible">
         <div className="table-scroll">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[11.5px]">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+              <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                 <th className="min-w-[260px] px-4 py-3">WBS object (dependent)</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Depends on (predecessor)</th>

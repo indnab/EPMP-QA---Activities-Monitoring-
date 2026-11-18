@@ -58,7 +58,7 @@ export function ViewModeToggle({
         aria-pressed={active}
         title={`${label} view`}
         data-export-ignore="true"
-        className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition ${pad} ${
+        className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold transition ${pad} ${
           active
             ? 'bg-[var(--color-primary)] text-white'
             : 'bg-white text-[#344054] hover:bg-[#fafafa]'

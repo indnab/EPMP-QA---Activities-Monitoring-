@@ -66,9 +66,9 @@ export function DataEntryLandingPage() {
                 className="group flex flex-col items-start rounded-2xl border border-[var(--color-border)] bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
               >
                 <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#eef2ff]">{d.icon}</span>
-                <span className="text-[14px] font-semibold text-[var(--color-text)]">{d.title}</span>
-                <span className="mt-0.5 text-[11px] leading-4 text-[var(--color-muted)]">{d.desc}</span>
-                <span className="mt-2 text-[12px] font-medium text-[var(--color-accent)]">
+                <span className="text-[13px] font-semibold text-[var(--color-text)]">{d.title}</span>
+                <span className="mt-0.5 text-[10.5px] leading-4 text-[var(--color-muted)]">{d.desc}</span>
+                <span className="mt-2 text-[11.5px] font-medium text-[var(--color-accent)]">
                   Open →
                 </span>
               </button>

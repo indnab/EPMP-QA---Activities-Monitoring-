@@ -225,7 +225,7 @@ export function AppLayout() {
             type="button"
             onClick={() => setNavCollapsed((v) => !v)}
             aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className="hidden items-center gap-3 text-[11px] text-[#dadcfb] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:flex"
+            className="hidden items-center gap-3 text-[10.5px] text-[#dadcfb] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:flex"
           >
             <svg width="16" height="12" viewBox="0 0 42 32" fill="#f0f7fd" aria-hidden="true">
               <path d="M9.52 18.92a1.5 1.5 0 01-1.06-.44L.55 10.76a1.5 1.5 0 010-2.1L8.17.46a1.5 1.5 0 112.17 2.08L4.6 9.4l6.26 6.26a1.5 1.5 0 01-1.34 2.26z" />
@@ -245,7 +245,7 @@ export function AppLayout() {
 
       {/* ── Main column ─────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="mx-4 flex min-h-[98px] flex-none flex-wrap items-center gap-3.5 py-3.5 lg:mx-7">
+        <header className="mx-4 flex min-h-[72px] flex-none flex-wrap items-center gap-3 py-2.5 lg:mx-7">
           <button
             type="button"
             className="flex h-9 w-9 flex-none items-center justify-center lg:hidden"

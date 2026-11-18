@@ -18,7 +18,7 @@ export function BackButton() {
   if (idx <= 0) return null
   return (
     <button type="button" onClick={() => navigate(-1)} aria-label="Back to the previous page"
-      className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-1 text-[11px] font-semibold text-[#344054] hover:border-[#bfdbfe] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
+      className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-1 text-[10.5px] font-semibold text-[#344054] hover:border-[#bfdbfe] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
       <Icon name="undo" size={12} /> Back
     </button>
   )

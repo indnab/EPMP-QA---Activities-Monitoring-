@@ -71,13 +71,13 @@ export function HeaderSearch({ pages }: { pages: { to: string; label: string }[]
           }}
           placeholder="Search anything to begin…"
           aria-label="Search pages, activities and parts"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-[var(--color-text)] placeholder-[var(--color-muted)] focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--color-text)] placeholder-[var(--color-muted)] focus:outline-none"
         />
       </div>
       {open && q.trim().length >= 2 && (
         <div className="absolute left-0 right-0 top-[50px] z-50 max-h-[360px] overflow-auto rounded-2xl border border-[var(--color-border)] bg-white p-1.5 shadow-xl" role="listbox">
           {hits.length === 0 ? (
-            <p className="m-0 px-3 py-3 text-[12px] text-[var(--color-muted)]">No pages, activities or parts match “{q.trim()}”.</p>
+            <p className="m-0 px-3 py-3 text-[11.5px] text-[var(--color-muted)]">No pages, activities or parts match “{q.trim()}”.</p>
           ) : (
             hits.map((h, i) => (
               <div key={h.to + h.label + i}>
@@ -90,7 +90,7 @@ export function HeaderSearch({ pages }: { pages: { to: string; label: string }[]
                   onClick={() => go(h.to)}
                   className="flex w-full flex-col rounded-lg px-3 py-1.5 text-left hover:bg-[var(--color-secondary)] focus:bg-[var(--color-secondary)] focus:outline-none"
                 >
-                  <span className="truncate text-[12.5px] font-medium text-[var(--color-text)]">{h.label}</span>
+                  <span className="truncate text-[11.5px] font-medium text-[var(--color-text)]">{h.label}</span>
                   <span className="truncate text-[10.5px] text-[var(--color-muted)]">{h.sub}</span>
                 </button>
               </div>

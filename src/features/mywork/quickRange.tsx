@@ -53,7 +53,7 @@ export function QuickRangeControl() {
       <div className="inline-flex rounded-xl bg-[#eef0f4] p-1" role="group" aria-label="Quick date filter">
         {OPTIONS.map((o) => (
           <button key={o.id} type="button" onClick={() => setRange(o.id)} aria-pressed={range === o.id}
-            className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${range === o.id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467] hover:text-[#101828]'}`}>
+            className={`rounded-lg px-3 py-1.5 text-[11.5px] font-medium transition-colors ${range === o.id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467] hover:text-[#101828]'}`}>
             {o.label}
           </button>
         ))}

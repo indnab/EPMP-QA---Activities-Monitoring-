@@ -34,10 +34,10 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
       className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
       style={props.active ? { boxShadow: `inset 0 0 0 2px ${props.color}` } : undefined}
     >
-      <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
+      <span className="flex w-full items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: props.color }}>
         <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
         {props.title}
-        <span className="ml-auto text-[20px] font-bold leading-none">{props.count}</span>
+        <span className="ml-auto text-[18px] font-bold leading-none">{props.count}</span>
       </span>
       <span className="mt-0.5 text-[10px] leading-tight text-[var(--color-muted)]">{props.sub}</span>
     </button>
@@ -127,8 +127,8 @@ export function ReleasePanel() {
   return (
     <section className="mb-4" aria-label="Part release status">
       <div className="mb-2 flex items-baseline justify-between gap-3 max-sm:flex-col max-sm:gap-1">
-        <h2 className="text-[13px] font-semibold whitespace-nowrap text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Release to vendor'}</h2>
-        <span className="text-[11px] text-[var(--color-muted)]">
+        <h2 className="text-[12px] font-semibold whitespace-nowrap text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Release to vendor'}</h2>
+        <span className="text-[10.5px] text-[var(--color-muted)]">
           {isVendor
             ? 'Acknowledge a part to start work on it, or return it to the PIC with a reason.'
             : 'Parts released to the vendor, waiting to be released, and returned by the vendor.'}
@@ -152,10 +152,10 @@ export function ReleasePanel() {
 
       <div className="epmp-card mt-3 overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
-          <span className="text-[12px] font-medium text-[var(--color-text)]">
+          <span className="text-[11.5px] font-medium text-[var(--color-text)]">
             {shown.length} part{shown.length === 1 ? '' : 's'}
           </span>
-          {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          {notice && <span className="text-[10.5px] text-emerald-700" role="status">{notice}</span>}
           <div className="ml-auto flex items-center gap-2">
             {isVendor && (
               <>
@@ -175,10 +175,10 @@ export function ReleasePanel() {
           </div>
         </div>
         {shown.length === 0 ? (
-          <p className="px-4 py-5 text-center text-[12px] text-[var(--color-muted)]">No parts here.</p>
+          <p className="px-4 py-5 text-center text-[11.5px] text-[var(--color-muted)]">No parts here.</p>
         ) : (
           <div className="max-h-[260px] overflow-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[11.5px]">
               <thead className="sticky top-0 bg-[var(--color-surface)]">
                 <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-muted)]">
                   <th className="w-8 px-3 py-2">
@@ -225,7 +225,7 @@ export function ReleasePanel() {
                       <td className="px-3 py-2">
                         <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_PILL[state].cls}`}>{STATE_PILL[state].label}</span>
                       </td>
-                      <td className="max-w-[360px] px-3 py-2 text-[11px] text-[var(--color-muted)]">
+                      <td className="max-w-[360px] px-3 py-2 text-[10.5px] text-[var(--color-muted)]">
                         {state === 'Returned' && ret
                           ? `Returned ${fmtDate(ret.at.slice(0, 10))}: “${ret.reason}”`
                           : state === 'Pending'
@@ -263,12 +263,12 @@ export function ReleasePanel() {
             The PIC sees your reason, fixes the part details and releases the part again. You cannot work on a returned part until then.
           </p>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason (required)</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (required)</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
               placeholder="e.g. Vendor code is wrong for this part"
             />
           </label>

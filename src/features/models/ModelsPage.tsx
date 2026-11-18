@@ -90,7 +90,7 @@ function SyncPanel({ modelName, onClose }: SyncPanelProps) {
             Last synced: {new Date().toLocaleString()} · {partsForModel.length} parts found
           </div>
 
-          <h4 className="mb-2 text-[12px] font-semibold text-[var(--color-text)]">Parts by section</h4>
+          <h4 className="mb-2 text-[11.5px] font-semibold text-[var(--color-text)]">Parts by section</h4>
           <table className="mb-5 w-full text-xs">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
@@ -112,7 +112,7 @@ function SyncPanel({ modelName, onClose }: SyncPanelProps) {
             </tbody>
           </table>
 
-          <h4 className="mb-2 text-[12px] font-semibold text-[var(--color-text)]">Parts by vendor</h4>
+          <h4 className="mb-2 text-[11.5px] font-semibold text-[var(--color-text)]">Parts by vendor</h4>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
@@ -196,7 +196,7 @@ function ModelForm({ initial, archetypes, defaultArchetypeId, lockArchetype, exi
               ${errors['_name'] ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}
               ${isEdit ? 'bg-[var(--color-surface)] text-[var(--color-muted)]' : 'bg-white'}`}
           />
-          {errors['_name'] && <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors['_name']}</p>}
+          {errors['_name'] && <p className="mt-1 text-[10.5px] text-[var(--color-destructive)]">{errors['_name']}</p>}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--color-text)]">Planned dates of archetype</label>
@@ -364,21 +364,21 @@ export function ModelsPage() {
                       <button
                         type="button"
                         onClick={() => setSyncTarget(model.name)}
-                        className="text-[11px] font-medium text-[#0891b2] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                        className="text-[10.5px] font-medium text-[#0891b2] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                       >
                         Sync parts
                       </button>
                       <button
                         type="button"
                         onClick={() => openEdit(model)}
-                        className="text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                        className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDelete(model.name)}
-                        className="text-[11px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                        className="text-[10.5px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                       >
                         Delete
                       </button>

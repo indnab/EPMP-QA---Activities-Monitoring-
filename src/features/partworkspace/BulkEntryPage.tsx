@@ -26,7 +26,7 @@ import { downloadBlob } from '../excel/xlsxIO'
 import { excelFillable } from '../excel/cellValues'
 import { actorLabel } from '../excel/audit'
 
-const selCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
+const selCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]'
 
 /** One activity's contribution to the flat column list: its definition + the PIC-entered fields. */
 interface ActivityCols {
@@ -303,7 +303,7 @@ export function BulkEntryPage() {
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <UpcomingToggle />
-            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
+            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
             </Link>
           </div>
@@ -335,7 +335,7 @@ export function BulkEntryPage() {
 
       {/* Toolbar */}
       <div className="epmp-card mb-4 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold text-[#101828]">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-semibold text-[#101828]">
           {partRows.length} parts · {activityCols.length} activities · {totalCols} fields
           {pickedRows.length > 0 ? (
             <span className="inline-flex flex-wrap items-center gap-2 font-normal text-[var(--color-primary)]">
@@ -345,14 +345,14 @@ export function BulkEntryPage() {
                   Fill {pickedActCols.length} activit{pickedActCols.length === 1 ? 'y' : 'ies'} ({pickedRows.length} part{pickedRows.length === 1 ? '' : 's'})
                 </Button>
               )}
-              <button onClick={() => { setPicked(new Set()); setPickedActs(new Set()) }} className="text-[11px] text-[var(--color-muted)] hover:underline">Clear</button>
+              <button onClick={() => { setPicked(new Set()); setPickedActs(new Set()) }} className="text-[10.5px] text-[var(--color-muted)] hover:underline">Clear</button>
             </span>
           ) : (
-            <span className="font-normal text-[11px] text-[var(--color-muted)]">Tick parts, then click an activity name to fill it for all of them.</span>
+            <span className="font-normal text-[10.5px] text-[var(--color-muted)]">Tick parts, then click an activity name to fill it for all of them.</span>
           )}
         </span>
         <div className="flex items-center gap-2">
-          {toast && <span className="text-[11px] font-medium text-emerald-700">{toast}</span>}
+          {toast && <span className="text-[10.5px] font-medium text-emerald-700">{toast}</span>}
           <Button variant="secondary" size="sm" disabled={excelBusy || partRows.length === 0} onClick={downloadExcelTemplate} title="Downloads an Excel template: one row per part, every activity's fields as columns">
             Download Excel template
           </Button>
@@ -372,7 +372,7 @@ export function BulkEntryPage() {
       ) : (
         /* Single scrollable grid: sticky header row + sticky Part column. */
         <div className="epmp-card overflow-auto p-0" style={{ maxHeight: 'calc(100vh - 290px)' }}>
-          <table className="border-separate border-spacing-0 text-[11px]">
+          <table className="border-separate border-spacing-0 text-[10.5px]">
             <thead>
               {/* Tier 1: activity group headers */}
               <tr>
@@ -392,7 +392,7 @@ export function BulkEntryPage() {
                     <th
                       key={a.rowId}
                       colSpan={a.columns.length}
-                      className={`sticky top-0 z-20 whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 text-left text-[11px] font-semibold text-[#101828] ${ai % 2 ? 'bg-[#eef2ff]' : 'bg-[#f3f4f6]'}`}
+                      className={`sticky top-0 z-20 whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 text-left text-[10.5px] font-semibold text-[#101828] ${ai % 2 ? 'bg-[#eef2ff]' : 'bg-[#f3f4f6]'}`}
                     >
                       {n > 0 ? (
                         // With parts ticked: tick several activities to fill together, or click a name to open just that one.

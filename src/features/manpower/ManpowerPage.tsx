@@ -8,7 +8,7 @@ import { buildPicLoads, visitCoverage, vendorLocation, getPicOn } from '../../en
 import { DEMO_TODAY, fmtDate } from '../scope'
 import type { VendorVisit } from '../../domain'
 
-const inputCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054]'
+const inputCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]'
 const thCls = 'text-left px-4 py-3 font-medium text-[var(--color-muted)]'
 
 export function ManpowerPage() {
@@ -83,9 +83,9 @@ export function ManpowerPage() {
         <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <div className="epmp-card px-3 py-2.5" data-export-stat="Parts / PIC" data-export-stat-value={partsPerPic.toFixed(1)}
             title={`${namedParts} parts across ${named.length} PIC${named.length === 1 ? '' : 's'}`}>
-            <div className="text-[11px] font-medium text-[var(--color-primary)]">Parts / PIC</div>
+            <div className="text-[10.5px] font-medium text-[var(--color-primary)]">Parts / PIC</div>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-[22px] font-bold leading-none text-[var(--color-primary)]">{partsPerPic.toFixed(1)}</span>
+              <span className="text-[20px] font-bold leading-none text-[var(--color-primary)]">{partsPerPic.toFixed(1)}</span>
               <span className="text-[10px] text-[var(--color-muted)]">{namedParts} parts · {named.length} PIC{named.length === 1 ? '' : 's'}</span>
             </div>
           </div>
@@ -146,9 +146,9 @@ export function ManpowerPage() {
             {canPlan ? (
               <Button variant="primary" size="md" onClick={openNew}>+ Plan a visit</Button>
             ) : (
-              <span className="text-[11px] text-[var(--color-muted)]">Read-only.</span>
+              <span className="text-[10.5px] text-[var(--color-muted)]">Read-only.</span>
             )}
-            <span className="text-[11px] text-[var(--color-muted)]">
+            <span className="text-[10.5px] text-[var(--color-muted)]">
               Each planned visit shows what else can be covered at that vendor and nearby.
             </span>
           </section>
@@ -188,24 +188,24 @@ export function ManpowerPage() {
         <div className="space-y-3 text-sm">
           <div className="flex gap-3">
             <label className="block flex-1">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">PIC</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">PIC</span>
               <select value={vPic} onChange={(e) => setVPic(e.target.value)} className={`${inputCls} w-full`}>
                 {pics.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </label>
             <label className="block flex-1">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Date</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Date</span>
               <input type="date" value={vDate} onChange={(e) => setVDate(e.target.value)} className={`${inputCls} w-full`} />
             </label>
           </div>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Vendor</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Vendor</span>
             <select value={vVendor} onChange={(e) => setVVendor(e.target.value)} className={`${inputCls} w-full`}>
               {vendors.map((v) => <option key={v} value={v}>{v} — {vendorLocation(v, vendorInfo)}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Purpose (optional)</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Purpose (optional)</span>
             <input value={vPurpose} onChange={(e) => setVPurpose(e.target.value)} className={`${inputCls} w-full`} />
           </label>
           {vVendor && (
@@ -223,7 +223,7 @@ function CoveragePreview({ pic, vendor }: { pic: string; vendor: string }) {
   const parts = useWorkParts()
   const cov = visitCoverage(pic, vendor, parts, picAssignments, vendorInfo, DEMO_TODAY)
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[11px] text-[#344054]">
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[10.5px] text-[#344054]">
       <div className="font-medium">While at {vendor} ({cov.location}) you could also cover:</div>
       <div className="mt-1">· {cov.sameVendorOtherParts.length} other part(s) at this vendor</div>
       <div>· {cov.sameLocationOtherVendors.length} other vendor(s) in {cov.location}</div>
@@ -251,11 +251,11 @@ function VisitCard({
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-[14px] font-semibold text-[var(--color-text)]">{visit.vendorName}</h3>
+            <h3 className="text-[13px] font-semibold text-[var(--color-text)]">{visit.vendorName}</h3>
             <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-primary">{location}</span>
             <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${statusTone}`}>{visit.status}</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+          <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
             <strong className="text-[var(--color-text)]">{visit.pic}</strong> · {fmtDate(visit.date)}
             {visit.purpose ? ` · ${visit.purpose}` : ''}
           </p>
@@ -272,13 +272,13 @@ function VisitCard({
       {/* Opportunistic coverage */}
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-[var(--color-border)] p-3">
-          <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text)]">
+          <div className="mb-1.5 text-[10.5px] font-semibold text-[var(--color-text)]">
             Other parts at {visit.vendorName} ({coverage.sameVendorOtherParts.length})
           </div>
           {coverage.sameVendorOtherParts.length === 0 ? (
-            <p className="text-[11px] text-[var(--color-muted)]">No other parts here — the PIC owns everything at this vendor.</p>
+            <p className="text-[10.5px] text-[var(--color-muted)]">No other parts here — the PIC owns everything at this vendor.</p>
           ) : (
-            <ul className="space-y-1 text-[11px]">
+            <ul className="space-y-1 text-[10.5px]">
               {coverage.sameVendorOtherParts.map(({ part, owner }) => (
                 <li key={part.partNo} className="flex justify-between gap-2">
                   <span><span className="font-mono">{part.partNo}</span> · {part.partName}</span>
@@ -291,13 +291,13 @@ function VisitCard({
         </div>
 
         <div className="rounded-lg border border-[var(--color-border)] p-3">
-          <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text)]">
+          <div className="mb-1.5 text-[10.5px] font-semibold text-[var(--color-text)]">
             Other vendors in {location} ({coverage.sameLocationOtherVendors.length})
           </div>
           {coverage.sameLocationOtherVendors.length === 0 ? (
-            <p className="text-[11px] text-[var(--color-muted)]">No other vendors in this location.</p>
+            <p className="text-[10.5px] text-[var(--color-muted)]">No other vendors in this location.</p>
           ) : (
-            <ul className="space-y-1 text-[11px]">
+            <ul className="space-y-1 text-[10.5px]">
               {coverage.sameLocationOtherVendors.map((v) => (
                 <li key={v.vendorName} className="flex justify-between gap-2">
                   <span>{v.vendorName}</span>

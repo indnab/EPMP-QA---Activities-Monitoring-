@@ -122,7 +122,7 @@ export function DocumentsTab({ entryId, templateRowId, activityId, partNo, perso
           </tbody>
         </table>
       )}
-      {persona !== 'SIC' && list.length > 0 && <p className="text-[11px] text-[var(--color-muted)]">Only the SIC can delete a document.</p>}
+      {persona !== 'SIC' && list.length > 0 && <p className="text-[10.5px] text-[var(--color-muted)]">Only the SIC can delete a document.</p>}
     </div>
   )
 }

@@ -437,7 +437,7 @@ function MyWorkGridPageInner() {
           <PicViewSelect />
           <Link
             to="/mywork"
-            className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]"
+            className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]"
           >
             ← My Work
           </Link>
@@ -449,7 +449,7 @@ function MyWorkGridPageInner() {
       {upload && <UploadReport summary={upload} onClose={() => setUpload(null)} />}
 
       {/* Summary + filters */}
-      <div className="epmp-card mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[11px] text-[var(--color-muted)]">
+      <div className="epmp-card mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[10.5px] text-[var(--color-muted)]">
         <span>
           <strong className="text-[var(--color-text)]">{milestoneId}</strong> · {shown.length} part{shown.length !== 1 ? 's' : ''}
         </span>
@@ -463,7 +463,7 @@ function MyWorkGridPageInner() {
             <select
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
-              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]"
+              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[10.5px] text-[#344054]"
             >
               <option value="All">All sections</option>
               {sections.map((s) => (
@@ -478,7 +478,7 @@ function MyWorkGridPageInner() {
             <select
               value={modelFilter}
               onChange={(e) => setModelFilter(e.target.value)}
-              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]"
+              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[10.5px] text-[#344054]"
             >
               <option value="All">All models</option>
               {modelOptions.map((m) => (
@@ -493,7 +493,7 @@ function MyWorkGridPageInner() {
             <select
               value={vendorFilter}
               onChange={(e) => setVendorFilter(e.target.value)}
-              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]"
+              className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[10.5px] text-[#344054]"
             >
               <option value="All">All vendors</option>
               {vendorOptions.map((v) => (
@@ -509,7 +509,7 @@ function MyWorkGridPageInner() {
               <select
                 value={attrFilters[f.key] ?? 'All'}
                 onChange={(e) => setAttrFilters((a) => ({ ...a, [f.key]: e.target.value }))}
-                className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]"
+                className="h-8 rounded-md border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[10.5px] text-[#344054]"
               >
                 <option value="All">All</option>
                 {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -535,7 +535,7 @@ function MyWorkGridPageInner() {
                 setFillKey(e.target.value)
                 setFillValue('')
               }}
-              className="h-8 min-w-[160px] rounded-md border border-[var(--color-border)] bg-white px-2 text-[11px] normal-case tracking-normal text-[var(--color-text)]"
+              className="h-8 min-w-[160px] rounded-md border border-[var(--color-border)] bg-white px-2 text-[10.5px] normal-case tracking-normal text-[var(--color-text)]"
             >
               <option value="">Choose a column…</option>
               {fillCols.map((f) => (
@@ -639,7 +639,7 @@ function MyWorkGridPageInner() {
       )}
 
       <div className="epmp-card overflow-x-auto" data-tour="grid-table">
-        <table ref={tableRef} onKeyDown={onKeyDown} className="w-full border-collapse text-[11px]">
+        <table ref={tableRef} onKeyDown={onKeyDown} className="w-full border-collapse text-[10.5px]">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <th className={`${thCls} sticky left-0 z-10 bg-[var(--color-surface)]`}>
@@ -762,7 +762,7 @@ function MyWorkGridPageInner() {
                           <button
                             type="button"
                             onClick={() => openForm(m)}
-                            className="text-[11px] text-[var(--color-accent)] underline"
+                            className="text-[10.5px] text-[var(--color-accent)] underline"
                             title="Attachments are added and opened in the part form. Your edits to this row are saved first."
                           >
                             {value ? String(value) : locked || f.enteredBy !== role ? '—' : 'Add in part form'}
@@ -777,7 +777,7 @@ function MyWorkGridPageInner() {
                           <button
                             type="button"
                             onClick={() => openForm(m)}
-                            className="text-[11px] text-[var(--color-accent)] underline"
+                            className="text-[10.5px] text-[var(--color-accent)] underline"
                             title="This list is entered and reviewed in the part form."
                           >
                             {n > 0 ? `${n} row${n === 1 ? '' : 's'} — open` : locked ? '—' : 'Add in part form'}
@@ -832,7 +832,7 @@ function MyWorkGridPageInner() {
         </table>
       </div>
 
-      <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
         Enter moves down a column (Shift+Enter up). Amber cells become required because of another answer in the row.{' '}
         {validating
           ? 'Only rows waiting for you are listed; Vendor-entered values are read-only. Tick rows to approve or send back several at once; nothing is pre-ticked and you confirm first.'

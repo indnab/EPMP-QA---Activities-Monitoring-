@@ -48,7 +48,7 @@ import { SortMenu } from './SortMenu'
 import type { SortDir } from './SortMenu'
 
 const filterCls =
-  'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+  'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
 
 // Detail-table columns: sortable + per-column filterable.
@@ -110,8 +110,8 @@ function ApprovalCard({
             {r.statusLabel && <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_STYLE[r.statusLabel] ?? 'bg-slate-100 text-slate-700'}`}>{r.statusLabel}</span>}
             <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{r.trial}</span>
           </div>
-          <h3 className="mt-1 text-[14px] font-semibold text-[var(--color-text)]">{r.title}</h3>
-          <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 text-[11px] text-[var(--color-muted)] sm:grid-cols-3 lg:grid-cols-6">
+          <h3 className="mt-1 text-[13px] font-semibold text-[var(--color-text)]">{r.title}</h3>
+          <div className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 text-[10.5px] text-[var(--color-muted)] sm:grid-cols-3 lg:grid-cols-6">
             <span><span className="text-[var(--color-muted)]">Part </span><span className="font-mono text-[var(--color-text)]">{r.partNo}</span></span>
             <span><span className="text-[var(--color-muted)]">Vendor </span><span className="text-[var(--color-text)]">{r.vendorCode} · {r.vendorName}</span></span>
             <span><span className="text-[var(--color-muted)]">Model </span><span className="text-[var(--color-text)]">{r.model}</span></span>
@@ -150,7 +150,7 @@ function ApprovalTable({
   return (
     <Card flush>
       <div className="table-scroll cta-pin">
-        <table className="w-full text-[12px]">
+        <table className="w-full text-[11.5px]">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <th className={`${th} w-8`}></th>
@@ -192,7 +192,7 @@ function ApprovalTable({
                     <div className="font-medium text-[var(--color-text)]">{r.title}</div>
                     {r.statusLabel && <span className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_STYLE[r.statusLabel] ?? 'bg-slate-100 text-slate-700'}`}>{r.statusLabel}</span>}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-[11px]">{r.partNo}</td>
+                  <td className="px-3 py-2.5 font-mono text-[10.5px]">{r.partNo}</td>
                   <td className="px-3 py-2.5">{r.vendorCode} · {r.vendorName}</td>
                   <td className="px-3 py-2.5">{r.model}</td>
                   <td className="px-3 py-2.5">{r.department}</td>
@@ -356,16 +356,16 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
         </div>
         {sentBackOnly && segment === 'enter' && (
           <button type="button" onClick={() => setSentBackOnly(false)} title="Show all items to enter"
-            className="inline-flex flex-none items-center gap-1 rounded-full bg-[#fef2f2] px-2.5 py-1 text-[11px] font-semibold text-[#dc2626] hover:brightness-95">
+            className="inline-flex flex-none items-center gap-1 rounded-full bg-[#fef2f2] px-2.5 py-1 text-[10.5px] font-semibold text-[#dc2626] hover:brightness-95">
             Sent back only <FbIcon name="close" size={11} />
           </button>
         )}
         <div className="ml-auto flex flex-none items-center gap-2">
-          {notice && <span className="whitespace-nowrap text-[11px] text-emerald-700" role="status">{notice}</span>}
+          {notice && <span className="whitespace-nowrap text-[10.5px] text-emerald-700" role="status">{notice}</span>}
           <SortMenu options={WORK_SORT_OPTIONS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
           {selectableShown.length > 0 && (
-            <label className="flex flex-none items-center gap-1.5 whitespace-nowrap text-[11px] text-[#344054]">
+            <label className="flex flex-none items-center gap-1.5 whitespace-nowrap text-[10.5px] text-[#344054]">
               <input type="checkbox" checked={allOn} onChange={() => setPicked(allOn ? new Set() : new Set(selectableShown.map((r) => r.key)))} />
               Select all
             </label>
@@ -417,10 +417,10 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
         }
       >
         <label className="block text-sm">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason for sending back</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason for sending back</span>
           <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
             placeholder="Tell them what to correct before resubmitting…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
         </label>
       </Modal>
 
@@ -482,12 +482,12 @@ function CompactFilterBar(f: FilterBarProps) {
         <PartAttrFilters value={f.attrs} onChange={f.setAttrs} />
         <button
           onClick={() => setMore((v) => !v)}
-          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
+          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
         >
           <FbIcon name="tools" size={12} /> More filters
         </button>
         {f.hasFilters && (
-          <button onClick={f.clearFilters} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
+          <button onClick={f.clearFilters} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
         )}
       </div>
       {more && (
@@ -920,7 +920,7 @@ function MyWorkPageInner() {
           {/* Graphical: stacked bars by the chosen dimension */}
           <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="mb-3">
             <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>
-              <h3 className="flex-none whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
+              <h3 className="flex-none whitespace-nowrap text-[12px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
               {!chartClosed && (
               <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
                 <option value="model">By Model</option>
@@ -964,7 +964,7 @@ function MyWorkPageInner() {
           <div id="mw-detail" />
           <ExportSection id="mw-ins-detail" label="Insights – parts detail"><Card flush className="!overflow-visible">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
-              <h3 className="text-[13px] font-semibold text-[var(--color-text)]">
+              <h3 className="text-[12px] font-semibold text-[var(--color-text)]">
                 {selectedBucket ? (
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[selectedBucket] }} />
@@ -972,15 +972,15 @@ function MyWorkPageInner() {
                   </span>
                 ) : returnedFilter ? (returnedFilter === 'vendor' ? 'Returned to vendor' : 'Returned to PIC') : pendFilter ? `Pending at ${PERSONA_LABEL[pendFilter] ?? pendFilter}` : mineFilter ? MINE_LABEL[mineFilter] : 'All parts'}
                 {selectedGroup ? <span className="text-[var(--color-muted)]"> · {selectedGroup}</span> : ''}
-                <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[11px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
+                <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[10.5px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
               </h3>
               <div className="ml-auto flex items-center gap-3">
                 {anyColFilter && detailView === 'table' && (
                   <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: '' })}
-                    className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
+                    className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
                 )}
                 {(selectedBucket || selectedGroup || returnedFilter || pendFilter || mineFilter) && (
-                  <button onClick={() => { setSelectedGroup(null); setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('bucket'); n.delete('ret'); n.delete('pend'); n.delete('mine'); return n }, { replace: true }) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
+                  <button onClick={() => { setSelectedGroup(null); setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('bucket'); n.delete('ret'); n.delete('pend'); n.delete('mine'); return n }, { replace: true }) }} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
                 <SortMenu options={TABLE_COLS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
                 {!listClosed && <ViewModeToggle value={detailView} onChange={setDetailView} />}
@@ -999,11 +999,11 @@ function MyWorkPageInner() {
                       Fill selected ({insSelected.length})
                     </Button>
                     {insCommonFields.length === 0 && (
-                      <span className="text-[11px] text-[var(--color-muted)]">No common fields you can fill for these rows.</span>
+                      <span className="text-[10.5px] text-[var(--color-muted)]">No common fields you can fill for these rows.</span>
                     )}
                   </>
                 )}
-                {insNotice && <span className="text-[11px] text-emerald-700" role="status">{insNotice}</span>}
+                {insNotice && <span className="text-[10.5px] text-emerald-700" role="status">{insNotice}</span>}
                 {insSelected.length > 0 && (
                   <button onClick={() => setInsPicked(new Set())} className="ml-auto text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]">Clear selection</button>
                 )}
@@ -1028,8 +1028,8 @@ function MyWorkPageInner() {
                         <span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span>
                       </div>
                       <div>
-                        <div className="text-[13px] font-semibold text-[var(--color-text)]">{i.activity.name}</div>
-                        <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] text-[var(--color-muted)]">
+                        <div className="text-[12px] font-semibold text-[var(--color-text)]">{i.activity.name}</div>
+                        <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10.5px] text-[var(--color-muted)]">
                           <span>Part <span className="font-mono text-[var(--color-text)]">{i.part.partNo}</span></span>
                           <span>Model <span className="text-[var(--color-text)]">{i.part.model}</span></span>
                           <span>Dept <span className="text-[var(--color-text)]">{i.part.department}</span></span>
@@ -1102,34 +1102,34 @@ function MyWorkPageInner() {
                         </td>
                           ),
                           partNo: (
-                        <td className="px-3 py-2.5 font-mono text-[11px]">{i.part.partNo}</td>
+                        <td className="px-3 py-2.5 font-mono text-[10.5px]">{i.part.partNo}</td>
                           ),
                           partName: (
                         <td className="px-3 py-2.5">{i.part.partName}</td>
                           ),
                           model: (
-                        <td className="px-3 py-2.5 text-[12px]">{i.part.model}</td>
+                        <td className="px-3 py-2.5 text-[11.5px]">{i.part.model}</td>
                           ),
                           department: (
-                        <td className="px-3 py-2.5 text-[12px]">{i.part.department}</td>
+                        <td className="px-3 py-2.5 text-[11.5px]">{i.part.department}</td>
                           ),
                           vendorName: (
-                        <td className="px-3 py-2.5 text-[12px]">{i.part.vendorName}</td>
+                        <td className="px-3 py-2.5 text-[11.5px]">{i.part.vendorName}</td>
                           ),
                           milestoneId: (
                         <td className="px-3 py-2.5"><span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span></td>
                           ),
                           activity: (
-                        <td className="px-3 py-2.5 text-[12px]">{i.activity.name}</td>
+                        <td className="px-3 py-2.5 text-[11.5px]">{i.activity.name}</td>
                           ),
                           planned: (
-                        <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-[var(--color-muted)]">{planned}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-[10.5px] text-[var(--color-muted)]">{planned}</td>
                           ),
                           pendingName: (
-                        <td className="px-3 py-2.5 whitespace-nowrap text-[12px] text-[var(--color-text)]">{pendOf(i)?.name ?? <span className="text-[var(--color-muted)]">—</span>}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-[11.5px] text-[var(--color-text)]">{pendOf(i)?.name ?? <span className="text-[var(--color-muted)]">—</span>}</td>
                           ),
                           pendingRole: (
-                        <td className="px-3 py-2.5 whitespace-nowrap">{pendOf(i) ? <PendingRoleChip role={pendOf(i)!.role} /> : <span className="text-[11px] text-[var(--color-muted)]">—</span>}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">{pendOf(i) ? <PendingRoleChip role={pendOf(i)!.role} /> : <span className="text-[10.5px] text-[var(--color-muted)]">—</span>}</td>
                           ),
                         } as Record<TableColKey, React.ReactNode>)[c.key]}</Fragment>)}
                         <td className="px-3 py-2.5 text-right">

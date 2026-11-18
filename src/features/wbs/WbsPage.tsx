@@ -159,21 +159,21 @@ export function WbsPage() {
       />
 
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
           Model
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] font-normal normal-case text-[#344054]"
+            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]"
           >
             {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
-        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]" />
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]" />
         {hasAttrValues(attrFilter) && (
-          <button onClick={() => setAttrFilter({})} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">Clear</button>
+          <button onClick={() => setAttrFilter({})} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">Clear</button>
         )}
-        <div className="ml-auto flex items-center gap-2 text-[11px]">
+        <div className="ml-auto flex items-center gap-2 text-[10.5px]">
           <button onClick={() => setCollapsed(new Set())} className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]">Expand all</button>
           <button
             onClick={() => setCollapsed(new Set(tree.flatMap((m) => [m.id, ...(m.children ?? []).map((p) => p.id)])))}
@@ -189,9 +189,9 @@ export function WbsPage() {
       ) : (
         <Card flush>
           <div className="table-scroll">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[11.5px]">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+                <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                   <th className="px-4 py-3 min-w-[110px]">WBS ID</th>
                   <th className="px-4 py-3 min-w-[280px]">Milestone / Part / Activity</th>
                   <th className="px-4 py-3 text-right">EV Weightage (%)</th>
@@ -208,7 +208,7 @@ export function WbsPage() {
                   const isOpen = !collapsed.has(n.id)
                   return (
                     <tr key={n.id} className={`border-b border-[var(--color-border)] last:border-0 ${n.kind === 'milestone' ? 'bg-[#f5f7ff]' : ''}`}>
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-[var(--color-muted)]">WBS-{n.id}</td>
+                      <td className="px-4 py-2.5 font-mono text-[10.5px] text-[var(--color-muted)]">WBS-{n.id}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2" style={{ paddingLeft: `${n.depth * 20}px` }}>
                           {hasKids ? (

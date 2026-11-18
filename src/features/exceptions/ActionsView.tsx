@@ -10,9 +10,9 @@ import { actionRyg, getPicOn } from '../../engine'
 import { DEMO_TODAY, fmtDate, partInScope, toRygStatus } from '../scope'
 import { useExcMatcher } from './exceptionFilters'
 
-const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]'
+const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] text-[#344054]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
-const fieldCls = 'w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+const fieldCls = 'w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 const STATUSES: ActionStatus[] = ['Open', 'In progress', 'Done']
 const STATUS_STYLE: Record<ActionStatus, string> = {
   Open: 'bg-slate-100 text-slate-700',
@@ -164,14 +164,14 @@ export function ActionsView() {
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-[11px] text-[#344054]">
+        <label className="flex items-center gap-2 text-[10.5px] text-[#344054]">
           <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
           Assigned to me{myOpen > 0 ? ` (${myOpen})` : ''}
         </label>
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search part / action / vendor…"
           className={`${filterCls} w-64 max-w-full placeholder-[var(--color-muted)]`} />
         <div className="ml-auto flex items-center gap-2">
-          {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          {notice && <span className="text-[10.5px] text-emerald-700" role="status">{notice}</span>}
           <Button variant="secondary" size="sm" disabled={pickedRows.length === 0} onClick={markDone}>
             Mark selected done ({pickedRows.length})
           </Button>
@@ -210,23 +210,23 @@ export function ActionsView() {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-[#101828]">{a.title}</div>
-                      {a.description && <div className="text-[11px] text-[var(--color-muted)]">{a.description}</div>}
+                      {a.description && <div className="text-[10.5px] text-[var(--color-muted)]">{a.description}</div>}
                       <div className="text-[10px] text-[var(--color-muted)]">raised by {a.createdBy} · {fmtDate(a.createdAt.slice(0, 10))}</div>
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="font-mono text-[11px]">{r.partNo}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">{r.partName}</div>
+                      <div className="font-mono text-[10.5px]">{r.partNo}</div>
+                      <div className="text-[10.5px] text-[var(--color-muted)]">{r.partName}</div>
                       <div className="text-[10px] text-[var(--color-muted)]">{r.vendorName}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-[12px]">
+                    <td className="px-3 py-2.5 text-[11.5px]">
                       {r.activityName}
                       <div className="text-[10px] text-[var(--color-muted)]">{r.milestoneId}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-[12px]">
+                    <td className="px-3 py-2.5 text-[11.5px]">
                       {a.assignedTo}
                       {a.assignedToName && <div className="text-[10px] text-[var(--color-muted)]">{a.assignedToName}</div>}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[11px]">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[10.5px]">
                       {a.targetDate ? (
                         <span className="inline-flex items-center gap-1.5">
                           <RygDot status={toRygStatus(actionRyg(a, DEMO_TODAY))} />
@@ -242,7 +242,7 @@ export function ActionsView() {
                           aria-label={`Status of ${a.title}`}
                           value={a.status}
                           onChange={(e) => setStatusOf(r, e.target.value as ActionStatus)}
-                          className={`h-7 rounded-md border border-[var(--color-border)] px-1.5 text-[11px] ${STATUS_STYLE[a.status]}`}
+                          className={`h-7 rounded-md border border-[var(--color-border)] px-1.5 text-[10.5px] ${STATUS_STYLE[a.status]}`}
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>{s}</option>
@@ -253,7 +253,7 @@ export function ActionsView() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Link to={`/activities/${r.templateRowId}?part=${encodeURIComponent(r.partNo)}`} className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">
+                      <Link to={`/activities/${r.templateRowId}?part=${encodeURIComponent(r.partNo)}`} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">
                         Open →
                       </Link>
                     </td>
@@ -281,7 +281,7 @@ export function ActionsView() {
       >
         <div className="space-y-3 text-sm">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Part</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Part</span>
             <select value={fPart} onChange={(e) => { setFPart(e.target.value); setFRow('') }} className={fieldCls} aria-label="Part">
               <option value="">Choose a part…</option>
               {scopeParts.map((p) => (
@@ -290,7 +290,7 @@ export function ActionsView() {
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Activity</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Activity</span>
             <select value={fRow} onChange={(e) => setFRow(e.target.value)} disabled={!part} className={fieldCls} aria-label="Activity">
               <option value="">Choose an activity…</option>
               {rowChoices.map((r) => (
@@ -299,16 +299,16 @@ export function ActionsView() {
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Action</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Action</span>
             <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} className={fieldCls} placeholder="What has to be done" />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Details (optional)</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Details (optional)</span>
             <textarea value={fDesc} onChange={(e) => setFDesc(e.target.value)} rows={2} className={fieldCls} />
           </label>
           <div className="flex gap-3">
             <label className="block flex-1">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Assign to</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Assign to</span>
               <select value={fTo} onChange={(e) => setFTo(e.target.value as PersonaId)} className={fieldCls} aria-label="Assign to">
                 {ASSIGNEES.map((a) => (
                   <option key={a} value={a}>{a}</option>
@@ -316,7 +316,7 @@ export function ActionsView() {
               </select>
             </label>
             <label className="block flex-1">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Target date (optional)</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Target date (optional)</span>
               <input type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} className={fieldCls} />
             </label>
           </div>

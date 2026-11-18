@@ -48,11 +48,11 @@ export type OverviewGo = (
 function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; value: number; color: string; icon: string; onClick?: () => void; hint?: string }) {
   const body = (
     <>
-      <span className="flex min-w-0 items-start gap-1.5 text-[11px] font-medium leading-[14px] text-[#475467]">
+      <span className="flex min-w-0 items-start gap-1.5 text-[10.5px] font-medium leading-[14px] text-[#475467]">
         <FbIcon name={icon} size={12} style={{ color }} className="mt-px flex-none" />
         <span className="min-w-0 break-words">{title}</span>
       </span>
-      <span className="pl-[18px] text-[18px] font-bold leading-none tabular-nums" style={{ color }}>{value}</span>
+      <span className="pl-[18px] text-[16px] font-bold leading-none tabular-nums" style={{ color }}>{value}</span>
     </>
   )
   const cls = 'flex min-h-[58px] min-w-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-2 text-left'
@@ -102,7 +102,7 @@ function TilePicker({ title, tiles }: { title: string; tiles: Tile[] }) {
         <FbIcon name="cog" size={13} />{shownCount < ids.length && <span>{shownCount}/{ids.length}</span>}
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-[var(--color-border)] bg-white p-1.5 text-[11px] font-normal normal-case tracking-normal text-[#344054] shadow-lg">
+        <div role="menu" className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-[var(--color-border)] bg-white p-1.5 text-[10.5px] font-normal normal-case tracking-normal text-[#344054] shadow-lg">
           <div className="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Show {title} tiles</div>
           {tiles.map((t) => (
             <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-[var(--color-surface)]">
@@ -127,7 +127,7 @@ function Segment({ id, title, icon, tiles, className = '' }: { id: string; title
   const visible = tiles.filter((t) => !hidden.includes(t.id))
   return (
     <section className={`epmp-card p-3 ${collapsed ? 'self-start' : ''} ${className}`}>
-      <h3 className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#344054] ${collapsed ? '' : 'mb-2'}`}>
+      <h3 className={`flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[#344054] ${collapsed ? '' : 'mb-2'}`}>
         <FbIcon name={icon} size={12} />{title}
         <span className="ml-auto flex items-center gap-0.5">
           <TilePicker title={title} tiles={tiles} />
@@ -135,7 +135,7 @@ function Segment({ id, title, icon, tiles, className = '' }: { id: string; title
         </span>
       </h3>
       {!collapsed && (visible.length === 0 ? (
-        <p className="py-2 text-[11px] text-[var(--color-muted)]">All tiles hidden. Use <FbIcon name="cog" size={11} /> to show them.</p>
+        <p className="py-2 text-[10.5px] text-[var(--color-muted)]">All tiles hidden. Use <FbIcon name="cog" size={11} /> to show them.</p>
       ) : (
         <div className={TILE_GRID}>
           {visible.map(({ id: tid, ...t }) => <KpiCard key={tid} {...t} />)}
@@ -296,21 +296,21 @@ export function PriorityModels({ instances, parts, className = '', selected = []
   return (
     <ExportSection id="mw-ov-models" label="Overview – models" className={`epmp-card flex min-h-0 flex-col p-4 ${className}`}>
       <div className={`flex flex-wrap items-center gap-2 ${collapsed ? '' : 'mb-3'}`}>
-        <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority Models</h3>
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{cards.priority.length} of {all.length}</span>
-        <span className="text-[11px] text-[var(--color-muted)]" title="Click a model to filter the list below.">Delayed or NG activities first · click a model to filter</span>
+        <h3 className="text-[12px] font-semibold text-[var(--color-text)]">Priority Models</h3>
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10.5px] font-medium text-primary">{cards.priority.length} of {all.length}</span>
+        <span className="text-[10.5px] text-[var(--color-muted)]" title="Click a model to filter the list below.">Delayed or NG activities first · click a model to filter</span>
         <span className="ml-auto flex items-center gap-2">
           {!collapsed && paged && (
-            <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
+            <label className="flex items-center gap-1.5 text-[10.5px] text-[#344054]">
               Per page
               <select value={pageSize} aria-label="Models per page" onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0) }}
-                className="h-7 rounded-md border border-[var(--color-border)] px-1.5 text-[11px]">
+                className="h-7 rounded-md border border-[var(--color-border)] px-1.5 text-[10.5px]">
                 {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
           )}
           {!collapsed && all.length > 3 && (
-            <button type="button" onClick={() => { setPaged((v) => !v); setPage(0) }} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+            <button type="button" onClick={() => { setPaged((v) => !v); setPage(0) }} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
               <FbIcon name={paged ? 'chevron-up' : 'chevron-down'} size={13} />
               {paged ? 'Show one line' : `More models (${all.length - 3})`}
             </button>
@@ -319,7 +319,7 @@ export function PriorityModels({ instances, parts, className = '', selected = []
         </span>
       </div>
       {collapsed ? null : shown.length === 0 ? (
-        <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">No models in this view.</p>
+        <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)]">No models in this view.</p>
       ) : (<>
         <div className="grid grid-cols-1 content-start gap-2 sm:grid-cols-3">
           {shown.map((t) => (
@@ -327,7 +327,7 @@ export function PriorityModels({ instances, parts, className = '', selected = []
               title={selected.includes(t.model) ? `Showing ${t.model} below · click to clear` : `Show ${t.model}'s activities below`}
               className={`rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${t.delayed + t.ng > 0 ? 'border-l-4 border-l-[#dc2626]' : ''} ${selected.includes(t.model) ? 'ring-2 ring-[var(--color-primary)]' : ''}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[12.5px] font-semibold text-[var(--color-text)]">{t.model}</span>
+                <span className="truncate text-[11.5px] font-semibold text-[var(--color-text)]">{t.model}</span>
                 <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${t.stage === 'developed' ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-primary'}`}>
                   {t.stage === 'developed' ? 'Developed' : 'Under dev.'}
                 </span>
@@ -342,7 +342,7 @@ export function PriorityModels({ instances, parts, className = '', selected = []
           ))}
         </div>
         {paged && pages > 1 && (
-          <div className="mt-3 flex items-center justify-end gap-2 text-[11px] text-[#344054]">
+          <div className="mt-3 flex items-center justify-end gap-2 text-[10.5px] text-[#344054]">
             <span className="mr-1 text-[var(--color-muted)]">{cur * size + 1}–{Math.min(all.length, cur * size + size)} of {all.length}</span>
             <button type="button" disabled={cur === 0} onClick={() => setPage(cur - 1)} aria-label="Previous models"
               className="inline-flex h-7 items-center rounded-md border border-[var(--color-border)] bg-white px-2 font-semibold disabled:opacity-40">‹ Prev</button>

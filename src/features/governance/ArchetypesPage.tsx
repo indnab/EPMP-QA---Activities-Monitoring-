@@ -56,7 +56,7 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
           <>
             <label className="sr-only" htmlFor="arc-filter">Show</label>
             <select id="arc-filter" value={filter} onChange={(e) => setFilter(e.target.value as ActiveFilter)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All archetypes</option>
               <option value="active">Active only</option>
               <option value="inactive">Inactive only</option>
@@ -75,7 +75,7 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
           <>
             <label className="sr-only" htmlFor="arc-filter">Show</label>
             <select id="arc-filter" value={filter} onChange={(e) => setFilter(e.target.value as ActiveFilter)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All archetypes</option>
               <option value="active">Active only</option>
               <option value="inactive">Inactive only</option>
@@ -92,9 +92,9 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
       <ExportSection id="arc-list" label="Project archetypes">
         <Card flush className="!overflow-visible">
           <div className="table-scroll cta-pin">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[11.5px]">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+                <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                   <th className="px-4 py-3">Archetype ID</th>
                   <th className="px-4 py-3">Project Archetype</th>
                   <th className="px-4 py-3 text-center">Number of Projects Associated</th>
@@ -110,11 +110,11 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
                 ) : rows.map(({ a, projects, objects, qa, configured }) => (
                   <tr key={a.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
                     <td className="px-4 py-2.5">
-                      <Link to={`/governance/${a.id}`} className="font-mono text-[11px] font-semibold text-[var(--color-accent)] underline">{a.id}</Link>
+                      <Link to={`/governance/${a.id}`} className="font-mono text-[10.5px] font-semibold text-[var(--color-accent)] underline">{a.id}</Link>
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-[#101828]">{a.name}</div>
-                      {a.description && <div className="max-w-[420px] truncate text-[11px] text-[var(--color-muted)]" title={a.description}>{a.description}</div>}
+                      {a.description && <div className="max-w-[420px] truncate text-[10.5px] text-[var(--color-muted)]" title={a.description}>{a.description}</div>}
                     </td>
                     <td className="px-4 py-2.5 text-center tabular-nums">{projects}</td>
                     <td className="px-4 py-2.5 text-center tabular-nums">{objects}</td>
@@ -137,7 +137,7 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
           </div>
         </Card>
       </ExportSection>
-      <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
         Projects associated = projects initiated from the archetype (Project Initiation). WBS objects of type Activity Builder appear in the Activity Builder.
       </p>
     </div>

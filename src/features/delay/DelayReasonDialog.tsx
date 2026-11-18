@@ -13,7 +13,7 @@ interface Props {
 }
 
 const fieldCls =
-  'w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
+  'w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]'
 
 /**
  * Pop-up the vendor sees when an activity it holds is late. One reason can cover several activities. The PIC then accepts
@@ -63,13 +63,13 @@ export function DelayReasonDialog({ open, onClose, items, onSubmit }: Props) {
       }
     >
       <div className="space-y-3 text-sm">
-        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[12px] text-[#991b1b]">
+        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[11.5px] text-[#991b1b]">
           {items.length === 1 ? 'This activity is' : `${items.length} activities are`} past the planned end date. Tell the PIC why. The PIC will
           accept the reason or send it back. You cannot submit the activity until a reason is given.
         </div>
 
         <div className="max-h-[200px] overflow-auto rounded-lg border border-[var(--color-border)]">
-          <table className="w-full text-[11.5px]">
+          <table className="w-full text-[11px]">
             <tbody>
               {items.map((i) => (
                 <tr key={i.key} className="border-b border-[var(--color-border)] last:border-0">
@@ -87,7 +87,7 @@ export function DelayReasonDialog({ open, onClose, items, onSubmit }: Props) {
                       </div>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-right align-top text-[11px]">
+                  <td className="whitespace-nowrap px-3 py-2 text-right align-top text-[10.5px]">
                     <div className="text-[var(--color-muted)]">Planned end {fmtDate(i.plannedEnd)}</div>
                     <div className="font-semibold text-[#b91c1c]">{i.daysLate} day{i.daysLate === 1 ? '' : 's'} late</div>
                   </td>
@@ -98,7 +98,7 @@ export function DelayReasonDialog({ open, onClose, items, onSubmit }: Props) {
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason (required)</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (required)</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={fieldCls} aria-label="Reason for delay">
             <option value="">Choose a reason…</option>
             {DELAY_REASON_CATEGORIES.map((c) => (
@@ -107,13 +107,13 @@ export function DelayReasonDialog({ open, onClose, items, onSubmit }: Props) {
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">
             Remark {needsRemark ? '(required for Others)' : '(optional)'}
           </span>
           <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={2} className={fieldCls} placeholder="What happened, and what is being done" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">New expected completion date (optional)</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">New expected completion date (optional)</span>
           <input type="date" value={revised} onChange={(e) => setRevised(e.target.value)} className={`${fieldCls} w-48`} />
         </label>
       </div>

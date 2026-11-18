@@ -68,10 +68,10 @@ export function PicViewSelect() {
   // A saved PIC who is no longer in the department falls back to "me".
   const value = view === 'me' || view === 'dept' || others.includes(view) ? view : 'me'
   return (
-    <label className="flex items-center gap-2 text-[11px] font-medium text-[#344054]">
+    <label className="flex items-center gap-2 text-[10.5px] font-medium text-[#344054]">
       View
       <select value={value} onChange={(e) => setView(e.target.value)} aria-label="Whose work to show"
-        className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-[12px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]">
+        className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-[11.5px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]">
         <option value="me">Tagged to me ({picLabel(FIXED_PIC_NAME)})</option>
         <option value="dept">My department ({FIXED_SECTION}): all PICs</option>
         {others.length > 0 && (

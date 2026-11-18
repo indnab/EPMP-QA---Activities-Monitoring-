@@ -32,8 +32,8 @@ export function ActivityLibrary() {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search activities…" aria-label="Search activities"
-          className="h-9 w-64 max-w-full rounded-lg border border-[var(--color-border)] bg-white px-3 text-[12px] text-[#344054]" />
-        <span className="text-[12px] text-[var(--color-muted)]">{library.length} activit{library.length === 1 ? 'y' : 'ies'}</span>
+          className="h-9 w-64 max-w-full rounded-lg border border-[var(--color-border)] bg-white px-3 text-[11.5px] text-[#344054]" />
+        <span className="text-[11.5px] text-[var(--color-muted)]">{library.length} activit{library.length === 1 ? 'y' : 'ies'}</span>
       </div>
       <Card flush className="!overflow-visible">
         <div className="table-scroll cta-pin">
@@ -59,7 +59,7 @@ export function ActivityLibrary() {
                 return (
                   <tr key={act.id} className="border-b border-[var(--color-border)]">
                     <td className="px-4 py-3 font-medium text-[var(--color-text)]">{act.name}</td>
-                    <td className="px-4 py-3 text-[12px] text-[var(--color-muted)]">{archetypeName(act.archetypeId) ?? '—'}</td>
+                    <td className="px-4 py-3 text-[11.5px] text-[var(--color-muted)]">{archetypeName(act.archetypeId) ?? '—'}</td>
                     <td className="px-4 py-3 text-[var(--color-text)]">{act.fields.length}</td>
                     <td className="px-4 py-3 text-[var(--color-muted)]">{act.scope === 'Both' ? 'New Part + ECN' : act.scope === 'NewPart' ? 'New Part' : 'ECN'}</td>
                     <td className="px-4 py-3 text-[var(--color-muted)]">{act.allowNotApplicable ? 'Yes' : 'No'}</td>
@@ -76,7 +76,7 @@ export function ActivityLibrary() {
                         <Button variant="secondary" size="sm" onClick={() => handleDuplicate(act)}>Duplicate</Button>
                         {deleteConfirm === act.id ? (
                           <>
-                            <span className="max-w-[260px] text-left text-[11px] text-[var(--color-muted)]">
+                            <span className="max-w-[260px] text-left text-[10.5px] text-[var(--color-muted)]">
                               Existing template rows, entries and dashboards keep working. It cannot be used for anything new and cannot be restored.
                             </span>
                             <Button variant="danger" size="sm" onClick={() => { deleteActivity(act.id); setDeleteConfirm(null) }}>Confirm delete</Button>

@@ -27,7 +27,7 @@ export function RygDot({ status, size = 8, label }: RygDotProps) {
         }}
         aria-label={label ?? status}
       />
-      {label && <span className="text-[11px] text-[var(--color-muted)]">{label}</span>}
+      {label && <span className="text-[10.5px] text-[var(--color-muted)]">{label}</span>}
     </span>
   )
 }

@@ -8,7 +8,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { getPicOn } from '../../engine'
 import { DEMO_TODAY, partInScope, fmtDate } from '../scope'
 
-const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
+const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]'
 
 /**
  * History Transfer: pick a source part, pick one or more target parts, choose whether the source stays active,
@@ -183,7 +183,7 @@ export function HistoryTransferPage() {
       />
 
       {done && (
-        <div role="status" className="epmp-card mb-4 border-l-4 border-l-emerald-500 px-4 py-3 text-[12px] text-emerald-800">
+        <div role="status" className="epmp-card mb-4 border-l-4 border-l-emerald-500 px-4 py-3 text-[11.5px] text-emerald-800">
           {done}
         </div>
       )}
@@ -192,7 +192,7 @@ export function HistoryTransferPage() {
         <div className="space-y-5 p-5">
           {/* Step 1: source part */}
           <div>
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Part whose history is transferred</div>
+            <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Part whose history is transferred</div>
             <div className="flex flex-wrap items-center gap-2">
               <select value={srcModel} onChange={(e) => { setSrcModel(e.target.value); if (source && e.target.value !== 'All' && source.model !== e.target.value) onPickSource('') }} className={`${inputCls} w-40`} aria-label="Filter source by model">
                 <option value="All">All models</option>
@@ -212,7 +212,7 @@ export function HistoryTransferPage() {
               </select>
             </div>
             {source && (
-              <p className="mt-1.5 text-[11px] text-[var(--color-muted)]">
+              <p className="mt-1.5 text-[10.5px] text-[var(--color-muted)]">
                 {sourceActivities.length} activit{sourceActivities.length === 1 ? 'y' : 'ies'} with history. Section {source.section} · Type {source.type} · Vendor {source.vendorName} ({source.vendorCode}).
               </p>
             )}
@@ -222,15 +222,15 @@ export function HistoryTransferPage() {
           {source && sourceActivities.length > 0 && (
             <div>
               <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                   2 · Activities to transfer <span className="text-primary">· {selectedActivityCount} of {sourceActivities.length}</span>
                 </span>
                 <div className="flex gap-2">
-                  <button onClick={() => setExcludedRows(new Set())} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">Select all</button>
-                  <button onClick={() => setExcludedRows(new Set(sourceActivities.map((a) => a.templateRowId)))} className="text-[11px] font-medium text-[var(--color-muted)] hover:underline">Clear</button>
+                  <button onClick={() => setExcludedRows(new Set())} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">Select all</button>
+                  <button onClick={() => setExcludedRows(new Set(sourceActivities.map((a) => a.templateRowId)))} className="text-[10.5px] font-medium text-[var(--color-muted)] hover:underline">Clear</button>
                 </div>
               </div>
-              <p className="mb-2 text-[11px] text-[var(--color-muted)]">All activities are selected by default. Untick any you do not want to transfer.</p>
+              <p className="mb-2 text-[10.5px] text-[var(--color-muted)]">All activities are selected by default. Untick any you do not want to transfer.</p>
               <div className="space-y-3">
                 {activityGroups.map(([milestone, items]) => {
                   const ids = items.map((i) => i.templateRowId)
@@ -247,7 +247,7 @@ export function HistoryTransferPage() {
                         {items.map((a) => {
                           const on = !excludedRows.has(a.templateRowId)
                           return (
-                            <label key={a.templateRowId} className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] ${on ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[#1d4ed8]' : 'border-[var(--color-border)] bg-white text-[var(--color-muted)]'}`}>
+                            <label key={a.templateRowId} className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] ${on ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[#1d4ed8]' : 'border-[var(--color-border)] bg-white text-[var(--color-muted)]'}`}>
                               <input type="checkbox" checked={on} onChange={() => toggleActivity(a.templateRowId)} />
                               {a.name}
                             </label>
@@ -264,7 +264,7 @@ export function HistoryTransferPage() {
           {/* Step 3: targets */}
           <div>
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                 3 · Parts to receive the history {selectedCount > 0 && <span className="text-primary">· {selectedCount} selected</span>}
               </span>
               {source && <span className="text-[10px] text-[var(--color-muted)]">Only parts with vendor code <strong>{source.vendorCode}</strong> ({source.vendorName}) can receive this history.</span>}
@@ -281,24 +281,24 @@ export function HistoryTransferPage() {
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder="Search part no / name…"
                   aria-label="Filter target parts"
-                  className="h-9 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]"
+                  className="h-9 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] text-[#344054]"
                 />
-                <button onClick={() => setTargetIds(new Set(sameVendorParts.map((p) => p.partNo)))} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">Select all ({sameVendorParts.length})</button>
+                <button onClick={() => setTargetIds(new Set(sameVendorParts.map((p) => p.partNo)))} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">Select all ({sameVendorParts.length})</button>
                 {candidates.length > 0 && candidates.length !== sameVendorParts.length && (
-                  <button onClick={() => setTargetIds((prev) => new Set([...prev, ...candidates.map((p) => p.partNo)]))} className="text-[11px] font-medium text-[var(--color-accent)] hover:underline">Select shown ({candidates.length})</button>
+                  <button onClick={() => setTargetIds((prev) => new Set([...prev, ...candidates.map((p) => p.partNo)]))} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">Select shown ({candidates.length})</button>
                 )}
-                <button onClick={() => setTargetIds(new Set())} className="text-[11px] font-medium text-[var(--color-muted)] hover:underline">Clear</button>
+                <button onClick={() => setTargetIds(new Set())} className="text-[10.5px] font-medium text-[var(--color-muted)] hover:underline">Clear</button>
               </div>
             )}
             {!source ? (
-              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[12px] text-[var(--color-muted)]">Select a source part first.</p>
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[11.5px] text-[var(--color-muted)]">Select a source part first.</p>
             ) : sameVendorParts.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[12px] text-[var(--color-muted)]">No other parts with vendor code {source.vendorCode} to transfer into.</p>
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[11.5px] text-[var(--color-muted)]">No other parts with vendor code {source.vendorCode} to transfer into.</p>
             ) : candidates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[12px] text-[var(--color-muted)]">No parts match the filter.</p>
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] py-8 text-center text-[11.5px] text-[var(--color-muted)]">No parts match the filter.</p>
             ) : (
               <div className="table-scroll max-h-72 overflow-y-auto rounded-lg border border-[var(--color-border)]">
-                <table className="w-full text-[12px]">
+                <table className="w-full text-[11.5px]">
                   <thead>
                     <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-left text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
                       <th className="w-10 px-2 py-1.5 text-center">Pick</th>
@@ -331,26 +331,26 @@ export function HistoryTransferPage() {
 
           {/* Step 3: source disposition + reason */}
           <div>
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">4 · After the transfer</div>
+            <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">4 · After the transfer</div>
             <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-[12px] text-[#344054]">
+              <label className="flex items-center gap-2 text-[11.5px] text-[#344054]">
                 <input type="radio" name="disposition" checked={keepActive} onChange={() => setKeepActive(true)} />
                 Keep the source part <strong>{source?.partNo ?? ''}</strong> active (history is copied, both parts stay tracked)
               </label>
-              <label className="flex items-center gap-2 text-[12px] text-[#344054]">
+              <label className="flex items-center gap-2 text-[11.5px] text-[#344054]">
                 <input type="radio" name="disposition" checked={!keepActive} onChange={() => setKeepActive(false)} />
                 Make the source part inactive after the transfer (it drops out of tracking views)
               </label>
             </div>
             <label className="mt-3 block max-w-xl">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason / reference (optional)</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason / reference (optional)</span>
               <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. ECN-1234, second sourcing" className={inputCls} />
             </label>
           </div>
 
           {/* Summary + action */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4">
-            <p className="text-[12px] text-[var(--color-muted)]">
+            <p className="text-[11.5px] text-[var(--color-muted)]">
               {valid
                 ? <>Transfer <strong className="text-[#101828]">{selectedActivityCount}</strong> activit{selectedActivityCount === 1 ? 'y' : 'ies'} from <strong className="text-[#101828]">{source!.partNo}</strong> into <strong className="text-[#101828]">{selectedCount}</strong> part{selectedCount === 1 ? '' : 's'}; source will be <strong className="text-[#101828]">{keepActive ? 'kept active' : 'made inactive'}</strong>.</>
                 : 'Select a source part, at least one activity, and at least one target part.'}
@@ -359,12 +359,12 @@ export function HistoryTransferPage() {
               {isSic ? 'Transfer history' : 'Request transfer (SIC approval)'}
             </Button>
           </div>
-          {!isSic && <p className="text-[11px] text-[var(--color-muted)]">A PIC's transfer is applied only after the SIC approves it.</p>}
+          {!isSic && <p className="text-[10.5px] text-[var(--color-muted)]">A PIC's transfer is applied only after the SIC approves it.</p>}
         </div>
       </Card>
 
       {selected.length > 0 && source && (
-        <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+        <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
           Existing work on a target part is kept — only activities the target does not already have are copied from {source.partNo}.
         </p>
       )}
@@ -372,10 +372,10 @@ export function HistoryTransferPage() {
       {pendingRequests.length > 0 && (
         <Card flush className="mt-4 !overflow-visible">
           <div className="border-b border-[var(--color-border)] px-4 py-3">
-            <h3 className="m-0 text-[13px] font-semibold text-[var(--color-text)]">
+            <h3 className="m-0 text-[12px] font-semibold text-[var(--color-text)]">
               History transfers awaiting SIC approval ({pendingRequests.length})
             </h3>
-            <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+            <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
               {isSic ? 'Approve to run the transfer, or reject it.' : 'Raised by a PIC; the SIC approves or rejects.'}
             </p>
           </div>
@@ -384,18 +384,18 @@ export function HistoryTransferPage() {
               <div key={r.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[13px] font-medium text-[#101828]">
+                    <div className="text-[12px] font-medium text-[#101828]">
                       {r.fromPartNo} <span className="font-normal text-[var(--color-muted)]">{partName(r.fromPartNo)}</span>
                       <span className="mx-1 text-[var(--color-muted)]">→</span>
                       {r.toPartNos.length} part{r.toPartNos.length === 1 ? '' : 's'}
                     </div>
-                    <div className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+                    <div className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
                       Targets: {r.toPartNos.join(', ')}
                     </div>
-                    <div className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+                    <div className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
                       Activities: {r.templateRowIds.length === 0 ? 'all' : r.templateRowIds.map(activityNameOf).join(', ')}
                     </div>
-                    <div className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+                    <div className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
                       Source will be {r.keepSourceActive ? 'kept active' : 'made inactive'} · requested by {r.requestedByName} on {fmtDate(r.requestedAt.slice(0, 10))}{r.reason ? ` · "${r.reason}"` : ''}
                     </div>
                   </div>
@@ -405,7 +405,7 @@ export function HistoryTransferPage() {
                         value={decideComment[r.id] ?? ''}
                         onChange={(e) => setDecideComment((prev) => ({ ...prev, [r.id]: e.target.value }))}
                         placeholder="Comment (optional)"
-                        className="h-8 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]"
+                        className="h-8 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] text-[#344054]"
                       />
                       <div className="flex gap-2">
                         <Button variant="danger" size="sm" onClick={() => decide(r.id, 'Reject')}>Reject</Button>
@@ -422,7 +422,7 @@ export function HistoryTransferPage() {
 
       {recent.length > 0 && (
         <Card className="mt-4" title="Recent transfers">
-          <ul className="space-y-1.5 text-[12px] text-[#344054]">
+          <ul className="space-y-1.5 text-[11.5px] text-[#344054]">
             {recent.map((e) => (
               <li key={e.id} className="flex flex-wrap gap-x-2">
                 <span className="text-[var(--color-muted)]">{fmtDate(e.at.slice(0, 10))}</span>

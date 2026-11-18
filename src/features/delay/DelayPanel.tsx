@@ -26,10 +26,10 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
       className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
       style={props.active ? { boxShadow: `inset 0 0 0 2px ${props.color}` } : undefined}
     >
-      <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
+      <span className="flex w-full items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: props.color }}>
         <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
         {props.title}
-        <span className="ml-auto text-[20px] font-bold leading-none">{props.count}</span>
+        <span className="ml-auto text-[18px] font-bold leading-none">{props.count}</span>
       </span>
       <span className="mt-0.5 text-[10px] leading-tight text-[var(--color-muted)]">{props.sub}</span>
     </button>
@@ -115,14 +115,14 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
 
   if (!isVendor && !canDecide) return null
   if (rows.length === 0) {
-    return showEmpty ? <div className="epmp-card px-4 py-8 text-center text-[12px] text-[var(--color-muted)]">No delayed activities or reasons for your parts.</div> : null
+    return showEmpty ? <div className="epmp-card px-4 py-8 text-center text-[11.5px] text-[var(--color-muted)]">No delayed activities or reasons for your parts.</div> : null
   }
 
   return (
     <section className="mb-4" aria-label="Delay reasons">
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-[13px] font-semibold text-[var(--color-text)]">Delay reasons</h2>
-        <span className="text-[11px] text-[var(--color-muted)]">
+        <h2 className="text-[12px] font-semibold text-[var(--color-text)]">Delay reasons</h2>
+        <span className="text-[10.5px] text-[var(--color-muted)]">
           {isVendor
             ? 'Activities past their planned end need a reason. The PIC accepts it or sends it back.'
             : 'Vendors give a reason when an activity is late. Accept it or send it back.'}
@@ -146,8 +146,8 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
 
       <div className="epmp-card mt-3 overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
-          <span className="text-[12px] font-medium text-[var(--color-text)]">{shown.length} activit{shown.length === 1 ? 'y' : 'ies'}</span>
-          {notice && <span className="text-[11px] text-emerald-700" role="status">{notice}</span>}
+          <span className="text-[11.5px] font-medium text-[var(--color-text)]">{shown.length} activit{shown.length === 1 ? 'y' : 'ies'}</span>
+          {notice && <span className="text-[10.5px] text-emerald-700" role="status">{notice}</span>}
           <div className="ml-auto flex items-center gap-2">
             {isVendor && (
               <Button variant="primary" size="sm" disabled={pickedRows.length === 0} onClick={() => { setDialogItems(pickedRows.map((r) => r.item)); setDialog(true) }}>
@@ -167,10 +167,10 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
           </div>
         </div>
         {shown.length === 0 ? (
-          <p className="px-4 py-5 text-center text-[12px] text-[var(--color-muted)]">Nothing here.</p>
+          <p className="px-4 py-5 text-center text-[11.5px] text-[var(--color-muted)]">Nothing here.</p>
         ) : (
           <div className="max-h-[260px] overflow-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[11.5px]">
               <thead className="sticky top-0 bg-[var(--color-surface)]">
                 <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-muted)]">
                   <th className="w-8 px-3 py-2">
@@ -206,7 +206,7 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
                     <td className="px-3 py-2">
                       <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL[r.state].cls}`}>{PILL[r.state].label}</span>
                     </td>
-                    <td className="min-w-[280px] max-w-[420px] px-3 py-2 text-[11px] text-[var(--color-muted)]">
+                    <td className="min-w-[280px] max-w-[420px] px-3 py-2 text-[10.5px] text-[var(--color-muted)]">
                       {r.record ? (
                         <>
                           <strong className="text-[#344054]">{r.record.category}</strong>
@@ -239,9 +239,9 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
         }
       >
         <label className="block text-sm">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">What should the vendor fix? (required)</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">What should the vendor fix? (required)</span>
           <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px]" placeholder="e.g. Give the date the tool will be ready" />
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px]" placeholder="e.g. Give the date the tool will be ready" />
         </label>
       </Modal>
     </section>

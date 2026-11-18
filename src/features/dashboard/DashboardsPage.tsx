@@ -552,8 +552,8 @@ export function DashboardsPage() {
           <div className="epmp-card overflow-hidden" style={{ height: 'calc(100vh - 150px)' }}>
             <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-2.5">
               <div>
-                <h2 className="m-0 text-[15px] font-semibold leading-5 text-[var(--color-text)]">{activity?.name ?? 'Activity dashboard'}</h2>
-                <p className="text-[11px] text-[var(--color-muted)] mt-0.5">Client dashboard · interactive preview</p>
+                <h2 className="m-0 text-[14px] font-semibold leading-5 text-[var(--color-text)]">{activity?.name ?? 'Activity dashboard'}</h2>
+                <p className="text-[10.5px] text-[var(--color-muted)] mt-0.5">Client dashboard · interactive preview</p>
               </div>
               <button
                 type="button"
@@ -584,7 +584,7 @@ export function DashboardsPage() {
         {/* TOP TOOLBAR: View details + Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 epmp-card px-4 py-3">
           <div>
-            <h2 className="m-0 text-[20px] font-semibold leading-7 tracking-[-0.3px] text-[var(--color-text)]">
+            <h2 className="m-0 text-[18px] font-semibold leading-7 tracking-[-0.3px] text-[var(--color-text)]">
               {selectedActivityId === 'overview' ? 'Global Milestone Overview Dashboard' : 'Activity Performance Dashboard'}
             </h2>
             <p className="text-xs text-[var(--color-muted)] mt-0.5">

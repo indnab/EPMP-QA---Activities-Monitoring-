@@ -63,7 +63,7 @@ export function TimelineStep({ draft, onChange }: Props) {
   }
 
   const num = (v: string) => (v === '' ? undefined : Math.max(0, Math.round(Number(v))))
-  const numInput = 'h-8 w-16 rounded border border-[var(--color-border)] bg-white px-1.5 text-right text-[12px] text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] disabled:opacity-50'
+  const numInput = 'h-8 w-16 rounded border border-[var(--color-border)] bg-white px-1.5 text-right text-[11.5px] text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] disabled:opacity-50'
 
   return (
     <div className="space-y-5">
@@ -78,13 +78,13 @@ export function TimelineStep({ draft, onChange }: Props) {
       </div>
 
       <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-        <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Part categories</span>
+        <span className="mb-2 block text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Part categories</span>
         <div className="flex flex-wrap gap-2">
           {TECHNICAL_CATEGORIES.map((c) => {
             const on = selected.has(c.id)
             return (
               <button key={c.id} type="button" onClick={() => toggleCategory(c.id)}
-                className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${on ? 'border-[#bfdbfe] bg-secondary text-primary' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}>
+                className={`rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-colors ${on ? 'border-[#bfdbfe] bg-secondary text-primary' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}>
                 {on ? <FbIcon name="check" size={12} className="mr-1" /> : null}{c.label}
               </button>
             )
@@ -98,9 +98,9 @@ export function TimelineStep({ draft, onChange }: Props) {
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-white">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[11.5px]">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-left text-[11px] font-medium text-[#344054]">
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-left text-[10.5px] font-medium text-[#344054]">
                 <th className="px-4 py-2.5">Category</th>
                 <th className="px-4 py-2.5">Planned date</th>
                 <th className="px-4 py-2.5">Start</th>
@@ -121,19 +121,19 @@ export function TimelineStep({ draft, onChange }: Props) {
                         onChange={(e) => (e.target.value === '__none'
                           ? onChange({ timelineTemplate: template.map((t) => (t.category === entry.category ? { ...t, offsets: [] } : t)) })
                           : setOffset(entry.category, { subType: e.target.value }))}
-                        className={`h-8 min-w-[200px] rounded border bg-white px-2 text-[12px] ${stale ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}`}>
+                        className={`h-8 min-w-[200px] rounded border bg-white px-2 text-[11.5px] ${stale ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}`}>
                         <option value="__none">Select a planned date…</option>
                         {options.map((o) => <option key={o.typeId || '_own'} value={o.typeId}>{o.label}</option>)}
                         {stale && <option value={off!.subType}>{off!.subType} (removed from milestone)</option>}
                       </select>
                     </td>
-                    <td className="px-4 py-2 text-[11px] text-[var(--color-muted)]">
+                    <td className="px-4 py-2 text-[10.5px] text-[var(--color-muted)]">
                       <span className="inline-flex items-center gap-1.5">{label} −
                         <input type="number" min={0} disabled={!off} value={off?.minusDays ?? ''} aria-label={`${entry.category} start days`}
                           onChange={(e) => setOffset(entry.category, { minusDays: num(e.target.value) ?? 0 })} className={numInput} /> d
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-[11px] text-[var(--color-muted)]">
+                    <td className="px-4 py-2 text-[10.5px] text-[var(--color-muted)]">
                       <span className="inline-flex items-center gap-1.5">{label} −
                         <input type="number" min={0} disabled={!off} value={off?.endMinusDays ?? ''} placeholder="0" aria-label={`${entry.category} end days`}
                           onChange={(e) => setOffset(entry.category, { endMinusDays: num(e.target.value) })} className={numInput} /> d

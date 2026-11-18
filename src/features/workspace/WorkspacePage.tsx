@@ -338,7 +338,7 @@ export function WorkspacePage() {
   return (
     <div className="max-w-[1600px]">
       {/* Breadcrumb */}
-      <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
+      <nav className="mb-3 flex items-center gap-2 text-[10.5px] text-[#596579]" aria-label="Breadcrumb">
         <BackButton />
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>
@@ -361,7 +361,7 @@ export function WorkspacePage() {
               </span>
               <span className="text-xs text-[var(--color-muted)]">{fmtOffsetRange(row)}</span>
             </div>
-            <h1 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)] max-sm:text-[20px] max-sm:leading-7">
+            <h1 className="m-0 text-[21px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)] max-sm:text-[18px] max-sm:leading-7">
               {activity.name}
               {row.subType && <span className="ml-2 align-middle rounded bg-secondary px-2 py-0.5 text-xs font-semibold text-primary">{row.milestoneId} · {row.subType}</span>}
             </h1>

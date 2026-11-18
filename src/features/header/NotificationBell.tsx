@@ -80,11 +80,11 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-[46px] z-50 w-[360px] max-w-[92vw] rounded-2xl border border-[var(--color-border)] bg-white p-2 shadow-xl">
           <div className="flex items-center justify-between px-2 pb-1 pt-1">
-            <span className="text-[13px] font-semibold text-[var(--color-text)]">Needs your attention</span>
-            <Link to="/exceptions" onClick={() => setOpen(false)} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Exception Management ›</Link>
+            <span className="text-[12px] font-semibold text-[var(--color-text)]">Needs your attention</span>
+            <Link to="/exceptions" onClick={() => setOpen(false)} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Exception Management ›</Link>
           </div>
           {notes.length === 0 ? (
-            <p className="m-0 px-2 py-6 text-center text-[12px] text-[var(--color-muted)]">Nothing is waiting for you.</p>
+            <p className="m-0 px-2 py-6 text-center text-[11.5px] text-[var(--color-muted)]">Nothing is waiting for you.</p>
           ) : (
             <div className="max-h-[360px] overflow-auto">
               {notes.map((n) => (
@@ -96,7 +96,7 @@ export function NotificationBell() {
                 >
                   <span className={`whitespace-nowrap mt-0.5 flex-none rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${TAG_STYLE[n.tag] ?? 'bg-slate-100 text-slate-700'}`}>{n.tag}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] font-medium text-[var(--color-text)]">{n.title}</span>
+                    <span className="block truncate text-[11.5px] font-medium text-[var(--color-text)]">{n.title}</span>
                     <span className="block truncate text-[10.5px] text-[var(--color-muted)]">{n.sub}</span>
                   </span>
                 </Link>

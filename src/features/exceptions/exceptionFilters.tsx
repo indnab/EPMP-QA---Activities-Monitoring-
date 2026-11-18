@@ -108,7 +108,7 @@ export function ExceptionFilterBar({ value, onChange }: { value: PartFilters; on
           />
         ))}
         {hasPartFilters(value) && (
-          <button onClick={() => onChange(EMPTY_PART_FILTERS)} className="ml-auto text-[11px] font-medium text-[var(--color-primary)] hover:underline">
+          <button onClick={() => onChange(EMPTY_PART_FILTERS)} className="ml-auto text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">
             Clear all filters
           </button>
         )}

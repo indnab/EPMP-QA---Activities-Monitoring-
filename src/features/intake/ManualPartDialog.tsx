@@ -7,7 +7,7 @@ import type { IntakeField } from '../../mock/partIntakeFields'
 import type { PartRecord } from '../../domain'
 import { actorLabel } from '../excel/audit'
 
-const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]'
+const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]'
 const SOURCE_TAG: Record<string, string> = { Enovia: 'bg-sky-100 text-sky-800', SAP: 'bg-indigo-100 text-indigo-800' }
 /** Typed in by hand; Trial Status, Created and Changed fields are stamped by the system. */
 const FORM_FIELDS = INTAKE_FIELDS.filter((f) => !f.system)
@@ -120,7 +120,7 @@ export function ManualPartDialog({ onClose, sections }: { onClose: () => void; s
               <span className={`rounded px-1 py-px text-[9px] font-medium ${SOURCE_TAG[f.source] ?? 'bg-slate-100 text-slate-600'}`}>{f.source}</span>
             </span>
             <span className="mt-1 block">{control(f)}</span>
-            {f.key === 'part_number' && dup && <span className="mt-1 block text-[11px] text-red-600">A part with this number already exists.</span>}
+            {f.key === 'part_number' && dup && <span className="mt-1 block text-[10.5px] text-red-600">A part with this number already exists.</span>}
             {f.remarks && !f.options && <span className="mt-0.5 block text-[10px] font-normal text-[var(--color-muted)]">{f.remarks}</span>}
           </label>
         ))}

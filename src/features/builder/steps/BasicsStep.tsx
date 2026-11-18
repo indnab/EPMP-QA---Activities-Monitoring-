@@ -50,9 +50,9 @@ export function BasicsStep({ draft, onChange }: BasicsStepProps) {
       {/* Where this activity comes from (Governance → archetype WBS) */}
       {arc && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm">
-          <span><span className="text-[var(--color-muted)]">Archetype </span><strong className="text-[var(--color-text)]">{arc.name}</strong> <span className="font-mono text-[11px] text-[var(--color-muted)]">{arc.id}</span></span>
+          <span><span className="text-[var(--color-muted)]">Archetype </span><strong className="text-[var(--color-text)]">{arc.name}</strong> <span className="font-mono text-[10.5px] text-[var(--color-muted)]">{arc.id}</span></span>
           {trial && <span><span className="text-[var(--color-muted)]">Milestone </span><strong className="text-[var(--color-text)]">{trial}</strong></span>}
-          <Link to={`/governance/${arc.id}`} className="ml-auto text-[12px] font-semibold text-[var(--color-accent)] hover:underline">Edit in WBS →</Link>
+          <Link to={`/governance/${arc.id}`} className="ml-auto text-[11.5px] font-semibold text-[var(--color-accent)] hover:underline">Edit in WBS →</Link>
         </div>
       )}
       {/* Info banner about date assignment */}

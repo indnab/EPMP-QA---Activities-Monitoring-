@@ -9,7 +9,7 @@ import type { PartRecord } from '../../domain'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 
 const inputCls =
-  'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054] placeholder-[var(--color-muted)]'
+  'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]'
 const thCls = 'text-left px-4 py-3 font-medium text-[var(--color-muted)]'
 
 function fmtDateTime(ts: string): string {
@@ -148,12 +148,12 @@ export function PicsPage() {
               onChange={(e) => setSearch(e.target.value)}
               className={`${inputCls} w-64 max-w-full`}
             />
-            <label className="flex items-center gap-2 text-[11px] text-[#344054]">
+            <label className="flex items-center gap-2 text-[10.5px] text-[#344054]">
               <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
               Unassigned only
             </label>
             {!canAssign && (
-              <span className="text-[11px] text-[var(--color-muted)]">Read-only. SIC or Admin can assign a PIC.</span>
+              <span className="text-[10.5px] text-[var(--color-muted)]">Read-only. SIC or Admin can assign a PIC.</span>
             )}
           </section>
 
@@ -261,7 +261,7 @@ export function PicsPage() {
               className={`${inputCls} w-56 max-w-full`}
             />
             <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className={inputCls} />
-            <label className="flex items-center gap-2 text-[11px] text-[#344054]">
+            <label className="flex items-center gap-2 text-[10.5px] text-[#344054]">
               <input type="checkbox" checked={applicabilityOnly} onChange={(e) => setApplicabilityOnly(e.target.checked)} />
               Applicability changes only
             </label>
@@ -331,7 +331,7 @@ export function PicsPage() {
               The new PIC replaces the current one from the effective date forward. Work already done stays credited to the earlier PIC.
             </p>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">PIC name</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">PIC name</span>
               <input
                 list="known-pics"
                 value={pic}
@@ -346,16 +346,16 @@ export function PicsPage() {
               </datalist>
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Effective from</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Effective from</span>
               <input type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} className={`${inputCls} w-full`} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason (optional)</span>
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (optional)</span>
               <input value={reason} onChange={(e) => setReason(e.target.value)} className={`${inputCls} w-full`} />
             </label>
 
             <div>
-              <div className="mb-1 text-[11px] font-medium text-[var(--color-muted)]">Assignment history</div>
+              <div className="mb-1 text-[10.5px] font-medium text-[var(--color-muted)]">Assignment history</div>
               <ul className="space-y-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs">
                 <li>SAP: <strong>{target.pic || 'no PIC'}</strong></li>
                 {targetHistory.map((a) => (

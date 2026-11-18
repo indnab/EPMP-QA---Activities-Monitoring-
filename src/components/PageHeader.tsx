@@ -19,7 +19,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, section = 'Workspace', crumb, actions }: PageHeaderProps) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <nav className="flex items-center gap-2 text-[11px] text-[#596579]" aria-label="Breadcrumb">
+      <nav className="flex items-center gap-2 text-[10.5px] text-[#596579]" aria-label="Breadcrumb">
         <BackButton />
         <Link to="/" className="hover:underline">EPMP</Link>
         <span aria-hidden="true">›</span>

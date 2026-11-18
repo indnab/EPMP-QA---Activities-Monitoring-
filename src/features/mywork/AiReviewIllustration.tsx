@@ -117,7 +117,7 @@ function AiFilledFlagDemo() {
   const [aiFilled, setAiFilled] = useState(true)
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
-      <p className="mb-2 text-[11px] font-semibold text-[var(--color-text)]">In the grid, AI-filled cells are flagged until you review them</p>
+      <p className="mb-2 text-[10.5px] font-semibold text-[var(--color-text)]">In the grid, AI-filled cells are flagged until you review them</p>
       <div className="flex items-center gap-3">
         <input
           type="text"
@@ -127,7 +127,7 @@ function AiFilledFlagDemo() {
             setValue(e.target.value)
             setAiFilled(false)
           }}
-          className={`h-8 w-40 rounded-md border px-2 text-[11px] ${aiFilled ? 'border-[#c4b5fd] bg-[#f5f3ff]' : 'border-[var(--color-border)] bg-white'}`}
+          className={`h-8 w-40 rounded-md border px-2 text-[10.5px] ${aiFilled ? 'border-[#c4b5fd] bg-[#f5f3ff]' : 'border-[var(--color-border)] bg-white'}`}
         />
         {aiFilled ? (
           <span className="flex flex-col gap-0.5">
@@ -135,7 +135,7 @@ function AiFilledFlagDemo() {
             <span className="text-[10px] text-[var(--color-muted)]">Closest match to “ORVM LH drawing available”; allowed: Available · Not available</span>
           </span>
         ) : (
-          <span className="text-[11px] text-[var(--color-muted)]">Edited by you — flag removed and recorded in the history</span>
+          <span className="text-[10.5px] text-[var(--color-muted)]">Edited by you — flag removed and recorded in the history</span>
         )}
       </div>
       <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">Try changing the text: the flag clears when you edit.</p>
@@ -208,12 +208,12 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
       }
     >
       <div className="space-y-3">
-        <div className="rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[11px] text-[#92400e]">
+        <div className="rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[10.5px] text-[#92400e]">
           <strong>Illustration only.</strong> This shows how the review step is intended to work. The rows below are fixed samples
           for the file <span className="font-mono">{sample.fileName}</span>; no AI runs and no data changes.
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-[11px]">
+        <div className="flex flex-wrap items-center gap-3 text-[10.5px]">
           <label className="flex items-center gap-2">
             Accept everything at or above
             <input
@@ -242,7 +242,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
         )}
 
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
-          <table className="w-full border-collapse text-[11px]">
+          <table className="w-full border-collapse text-[10.5px]">
             <thead>
               <tr className="bg-[var(--color-surface)] text-left text-[10.5px] uppercase tracking-wide text-[var(--color-muted)]">
                 <th className="px-2 py-2 font-semibold">Source text</th>
@@ -275,7 +275,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
                             aria-label={`Choose value for ${p.field}`}
                             onChange={(e) => { edit(p.id, e.target.value); setEditing(null) }}
                             onBlur={() => setEditing(null)}
-                            className="h-7 w-32 rounded-md border border-[var(--color-border)] bg-white px-1 text-[11px]"
+                            className="h-7 w-32 rounded-md border border-[var(--color-border)] bg-white px-1 text-[10.5px]"
                           >
                             {p.match.allowed.map((o) => (
                               <option key={o} value={o}>{o}</option>
@@ -289,7 +289,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
                             aria-label={`Edit proposed value for ${p.field}`}
                             onChange={(e) => edit(p.id, e.target.value)}
                             onBlur={() => setEditing(null)}
-                            className="h-7 w-28 rounded-md border border-[var(--color-border)] px-2 text-[11px]"
+                            className="h-7 w-28 rounded-md border border-[var(--color-border)] px-2 text-[10.5px]"
                           />
                         )
                       ) : (
@@ -346,7 +346,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
         </div>
 
         {sample.failures.length > 0 && (
-          <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[11px]">
+          <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[10.5px]">
             <p className="mb-1 font-semibold text-[#991b1b]">
               Could not update ({failedOpen} of {sample.failures.length} still open)
             </p>
@@ -354,7 +354,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
               These were found in the file but could not be applied. Nothing was changed for them and they will not be submitted.
             </p>
             <div className="overflow-x-auto rounded-md border border-[#fecaca] bg-white">
-              <table className="w-full border-collapse text-[11px]">
+              <table className="w-full border-collapse text-[10.5px]">
                 <thead>
                   <tr className="bg-[#fff5f5] text-left text-[10.5px] uppercase tracking-wide text-[#991b1b]">
                     <th className="px-2 py-1.5 font-semibold">Source text</th>
@@ -386,7 +386,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
                               value=""
                               aria-label={`Pick a value for ${f.field}`}
                               onChange={(e) => e.target.value && setResolved((r) => ({ ...r, [f.id]: e.target.value }))}
-                              className="h-7 w-36 rounded-md border border-[var(--color-border)] bg-white px-1 text-[11px]"
+                              className="h-7 w-36 rounded-md border border-[var(--color-border)] bg-white px-1 text-[10.5px]"
                             >
                               <option value="">Choose…</option>
                               {f.allowed.map((o) => (
@@ -406,7 +406,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
           </div>
         )}
 
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[11px]">
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[10.5px]">
           <p className="mb-1 font-semibold text-[var(--color-text)]">Skipped by rule, not applied</p>
           <ul className="space-y-0.5 text-[var(--color-muted)]">
             {sample.skipped.map((s) => (
@@ -419,7 +419,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
 
         <AiFilledFlagDemo />
 
-        <label className="flex items-start gap-2 text-[11px] text-[var(--color-text)]">
+        <label className="flex items-start gap-2 text-[10.5px] text-[var(--color-text)]">
           <input type="checkbox" className="mt-0.5" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
           <span>
             I have reviewed the AI-filled values.
@@ -431,7 +431,7 @@ export function AiReviewIllustration({ open, onClose, role }: Props) {
         </label>
 
         {message && (
-          <p className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[11px] text-[var(--color-muted)]" role="status">
+          <p className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[10.5px] text-[var(--color-muted)]" role="status">
             {message}
           </p>
         )}

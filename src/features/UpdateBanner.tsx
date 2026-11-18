@@ -34,12 +34,12 @@ export function UpdateBanner() {
 
   if (!newer) return null
   return (
-    <div role="status" className="fixed bottom-4 left-1/2 z-[300] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-[#bfdbfe] bg-white px-4 py-2.5 text-[12px] text-[var(--color-text)] shadow-[0_10px_30px_rgba(2,6,23,.18)]">
+    <div role="status" className="fixed bottom-4 left-1/2 z-[300] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-[#bfdbfe] bg-white px-4 py-2.5 text-[11.5px] text-[var(--color-text)] shadow-[0_10px_30px_rgba(2,6,23,.18)]">
       <span>A newer version of the app is live.</span>
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white hover:brightness-105"
+        className="rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[10.5px] font-semibold text-white hover:brightness-105"
       >
         Reload
       </button>

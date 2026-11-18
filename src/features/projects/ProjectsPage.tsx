@@ -45,7 +45,7 @@ export function ProjectsPage() {
         actions={
           <>
             <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as 'all' | ProjectStatus)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All projects</option>
               <option value="InExecution">In Execution</option>
               <option value="Closed">Closed</option>
@@ -55,13 +55,13 @@ export function ProjectsPage() {
         }
       />
       {!canInitiate && (
-        <p className="mb-3 text-[11px] text-[var(--color-muted)]">Read-only · projects are initiated by the Division Model Coordinator.</p>
+        <p className="mb-3 text-[10.5px] text-[var(--color-muted)]">Read-only · projects are initiated by the Division Model Coordinator.</p>
       )}
       <Card flush className="!overflow-visible">
         <div className="table-scroll">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[11.5px]">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+              <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                 <th className="px-4 py-3">Project No.</th>
                 <th className="px-4 py-3">Project Name</th>
                 <th className="px-4 py-3">Archetype</th>
@@ -77,7 +77,7 @@ export function ProjectsPage() {
                 <tr><td colSpan={8} className="px-4 py-10 text-center text-[var(--color-muted)]">No projects yet.{canInitiate ? ' Click “+ Initiate Project”.' : ''}</td></tr>
               ) : rows.map((p) => (
                 <tr key={p.no} className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40" onClick={() => navigate(`/projects/${p.no}`)}>
-                  <td className="px-4 py-2.5"><Link to={`/projects/${p.no}`} onClick={(e) => e.stopPropagation()} className="font-mono text-[11px] font-semibold text-[var(--color-accent)] underline">{p.no}</Link></td>
+                  <td className="px-4 py-2.5"><Link to={`/projects/${p.no}`} onClick={(e) => e.stopPropagation()} className="font-mono text-[10.5px] font-semibold text-[var(--color-accent)] underline">{p.no}</Link></td>
                   <td className="px-4 py-2.5 font-medium text-[#101828]">{p.name}</td>
                   <td className="px-4 py-2.5 text-[#344054]">{archetypes.find((a) => a.id === p.archetypeId)?.name ?? p.archetypeId}</td>
                   <td className="px-4 py-2.5">{PROJECT_MASTER_LABEL[p.master]}</td>

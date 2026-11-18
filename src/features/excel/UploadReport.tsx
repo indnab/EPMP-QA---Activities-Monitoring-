@@ -18,7 +18,7 @@ export interface UploadSummary {
 export function UploadReport({ summary, onClose }: { summary: UploadSummary; onClose: () => void }) {
   const shown = summary.issues.slice(0, 60)
   return (
-    <div role="status" className="epmp-card mb-4 border-l-4 border-l-[#2266f5] px-4 py-3 text-[12px]">
+    <div role="status" className="epmp-card mb-4 border-l-4 border-l-[#2266f5] px-4 py-3 text-[11.5px]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-[var(--color-text)]">Excel loaded: {summary.fileName}</div>

@@ -7,7 +7,7 @@ import type { Deviation, DeviationStatus } from '../../domain'
 import { fmtDate, partInScope } from '../scope'
 import { useExcMatcher } from '../exceptions/exceptionFilters'
 
-const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] text-[#344054]'
+const filterCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] text-[#344054]'
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
 
 const STATUS_STYLE: Record<DeviationStatus, string> = {
@@ -112,7 +112,7 @@ export function DeviationsView() {
           <option value="Approved">Approved</option>
           <option value="Rejected">Rejected</option>
         </select>
-        <label className="flex items-center gap-2 text-[11px] text-[#344054]">
+        <label className="flex items-center gap-2 text-[10.5px] text-[#344054]">
           <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
           Awaiting my decision{myQueue > 0 ? ` (${myQueue})` : ''}
         </label>
@@ -146,15 +146,15 @@ export function DeviationsView() {
                   <tr key={d.id} className="border-b border-[var(--color-border)] last:border-0 align-top hover:bg-secondary/40">
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-[#101828]">{d.title}</div>
-                      {d.description && <div className="text-[11px] text-[var(--color-muted)]">{d.description}</div>}
+                      {d.description && <div className="text-[10.5px] text-[var(--color-muted)]">{d.description}</div>}
                       <div className="text-[10px] text-[var(--color-muted)]">raised by {d.raisedBy} · {fmtDate(d.raisedAt.slice(0, 10))}</div>
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="font-mono text-[11px]">{r.partNo}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">{r.partName} · {r.model}</div>
+                      <div className="font-mono text-[10.5px]">{r.partNo}</div>
+                      <div className="text-[10.5px] text-[var(--color-muted)]">{r.partName} · {r.model}</div>
                       <div className="text-[10px] text-[var(--color-muted)]">{r.vendorName}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-[12px]">
+                    <td className="px-3 py-2.5 text-[11.5px]">
                       {r.activityName}
                       <div className="text-[10px] text-[var(--color-muted)]">{r.milestoneId}</div>
                     </td>
@@ -175,18 +175,18 @@ export function DeviationsView() {
                         })}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-[12px]">{r.stageRole || '—'}</td>
+                    <td className="px-3 py-2.5 text-[11.5px]">{r.stageRole || '—'}</td>
                     <td className="px-3 py-2.5">
                       <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLE[d.status]}`}>{d.status}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-[11px] font-mono">{d.edocNumber || '—'}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-[var(--color-muted)]">{d.targetDate ? fmtDate(d.targetDate) : '—'}</td>
+                    <td className="px-3 py-2.5 text-[10.5px] font-mono">{d.edocNumber || '—'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-[10.5px] text-[var(--color-muted)]">{d.targetDate ? fmtDate(d.targetDate) : '—'}</td>
                     <td className="px-3 py-2.5 text-right">
                       {canActNow(r) ? (
                         <div className="flex justify-end gap-1.5">
                           <Button variant="primary" size="sm" onClick={() => setDecide({ row: r, action: 'Approve' })}>Approve</Button>
                           <Button variant="secondary" size="sm" onClick={() => setDecide({ row: r, action: 'Send back' })}>Send back</Button>
-                          <button onClick={() => setDecide({ row: r, action: 'Reject' })} className="text-[11px] font-medium text-[var(--color-destructive)] hover:underline">Reject</button>
+                          <button onClick={() => setDecide({ row: r, action: 'Reject' })} className="text-[10.5px] font-medium text-[var(--color-destructive)] hover:underline">Reject</button>
                         </div>
                       ) : (
                         <span className="text-[10px] text-[var(--color-muted)]">{isOpen(d) ? `with ${r.stageRole}` : '—'}</span>
@@ -227,8 +227,8 @@ export function DeviationsView() {
               {decide.action === 'Reject' && ' This ends the deviation as Rejected.'}
             </p>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Comment {decide.action !== 'Approve' ? '(recommended)' : '(optional)'}</span>
-              <input value={comment} onChange={(e) => setComment(e.target.value)} className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px]" />
+              <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Comment {decide.action !== 'Approve' ? '(recommended)' : '(optional)'}</span>
+              <input value={comment} onChange={(e) => setComment(e.target.value)} className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px]" />
             </label>
           </div>
         )}

@@ -29,13 +29,13 @@ function SummaryCard(props: { title: string; color: string; main: number; mainLa
       data-export-stat-value={props.main}
       className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
     >
-      <span className="flex w-full items-center gap-1.5 text-[11px] font-semibold" style={{ color: props.color }}>
+      <span className="flex w-full items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: props.color }}>
         <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
         {props.title}
-        <span className="ml-auto text-[20px] font-bold leading-none">{props.main}</span>
+        <span className="ml-auto text-[18px] font-bold leading-none">{props.main}</span>
       </span>
       <span className="mt-0.5 mb-1 text-[10px] leading-tight text-[var(--color-muted)]">{props.mainLabel}</span>
-      <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#344054]">
+      <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-[#344054]">
         {props.lines.map(([l, n]) => (
           <span key={l}><strong>{n}</strong> {l}</span>
         ))}
@@ -109,14 +109,14 @@ function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters
           </ExportSection>
           <ExportSection id="exc-attention-sec" label="Needs your attention"><section id="exc-attention" className="epmp-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
-              <h2 className="m-0 text-[13px] font-semibold text-[var(--color-text)]">Needs your attention</h2>
-              <span className="text-[11px] text-[var(--color-muted)]">{attention.length} item{attention.length === 1 ? '' : 's'}</span>
+              <h2 className="m-0 text-[12px] font-semibold text-[var(--color-text)]">Needs your attention</h2>
+              <span className="text-[10.5px] text-[var(--color-muted)]">{attention.length} item{attention.length === 1 ? '' : 's'}</span>
             </div>
             {attention.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[12px] text-[var(--color-muted)]">Nothing is waiting for you.</p>
+              <p className="px-4 py-8 text-center text-[11.5px] text-[var(--color-muted)]">Nothing is waiting for you.</p>
             ) : (
               <div className="max-h-[420px] overflow-auto">
-                <table className="w-full text-[12px]">
+                <table className="w-full text-[11.5px]">
                   <tbody>
                     {attention.slice(0, 60).map((a) => (
                       <tr key={a.type + a.key} className="border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40">
@@ -125,15 +125,15 @@ function ExceptionsBody({ filters, onFilters }: { filters: ExcFilters; onFilters
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="font-medium text-[#101828]">{a.title}</div>
-                          <div className="text-[11px] text-[var(--color-muted)]">{a.where}</div>
+                          <div className="text-[10.5px] text-[var(--color-muted)]">{a.where}</div>
                         </td>
-                        <td className="px-3 py-2.5 text-[11px] text-[#344054]">{a.note}</td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-[var(--color-muted)]">{a.due ? fmtDate(a.due) : ''}</td>
+                        <td className="px-3 py-2.5 text-[10.5px] text-[#344054]">{a.note}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-[10.5px] text-[var(--color-muted)]">{a.due ? fmtDate(a.due) : ''}</td>
                         <td className="px-4 py-2.5 text-right">
                           {a.type === 'NG' && a.rowId && a.partNo ? (
-                            <Link to={`/activities/${a.rowId}?part=${encodeURIComponent(a.partNo)}`} className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Open →</Link>
+                            <Link to={`/activities/${a.rowId}?part=${encodeURIComponent(a.partNo)}`} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Open →</Link>
                           ) : (
-                            <button onClick={() => go(a.tab)} className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Open →</button>
+                            <button onClick={() => go(a.tab)} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Open →</button>
                           )}
                         </td>
                       </tr>

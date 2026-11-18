@@ -43,7 +43,7 @@ export function UpcomingToggle({ className = '' }: { className?: string }) {
   const { upcomingOnly, setUpcomingOnly } = useUpcomingStore()
   if (persona !== 'PIC') return null
   return (
-    <label className={`inline-flex cursor-pointer items-center gap-2 text-[12px] text-[#344054] ${className}`}>
+    <label className={`inline-flex cursor-pointer items-center gap-2 text-[11.5px] text-[#344054] ${className}`}>
       <input type="checkbox" checked={upcomingOnly} onChange={(e) => setUpcomingOnly(e.target.checked)} />
       Show {UPCOMING_DAYS} days
     </label>

@@ -64,12 +64,12 @@ export function ProjectDetailsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[11px] text-[var(--color-muted)]">{project.no}</span>
+              <span className="font-mono text-[10.5px] text-[var(--color-muted)]">{project.no}</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${isOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>{PROJECT_STATUS_LABEL[project.status]}</span>
               <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{PROJECT_MASTER_LABEL[project.master]}</span>
             </div>
-            <h1 className="m-0 text-[20px] font-semibold text-[#101828]">{project.name}</h1>
-            <p className="mt-1 text-[12px] text-[var(--color-muted)]">
+            <h1 className="m-0 text-[18px] font-semibold text-[#101828]">{project.name}</h1>
+            <p className="mt-1 text-[11.5px] text-[var(--color-muted)]">
               Archetype <strong className="text-[#344054]">{archetype?.name ?? project.archetypeId}</strong> · initiated {fmtDate(project.initiatedAt.slice(0, 10))}
               {project.closedAt && <> · closed {fmtDate(project.closedAt.slice(0, 10))}</>}
             </p>
@@ -81,7 +81,7 @@ export function ProjectDetailsPage() {
                 // The last milestone's own date (e.g. SOP) as the headline date.
                 const last = milestoneRows(archetype).at(-1)
                 return (
-                  <div key={m} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-[11px]">
+                  <div key={m} className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-[10.5px]">
                     <div className="font-semibold text-[#101828]">{m}</div>
                     {last && <div className="text-[var(--color-muted)]">{last.name} {mr?.mrds[last.id] ? fmtDate(mr.mrds[last.id]) : '—'}</div>}
                   </div>
@@ -98,19 +98,19 @@ export function ProjectDetailsPage() {
       {tab === 'execution' && (
         <>
           {!isVehicle && (
-            <div className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[12px] text-primary">Tracked at project level — no parts.</div>
+            <div className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[11.5px] text-primary">Tracked at project level — no parts.</div>
           )}
           {!isOpen && (
-            <div className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-[12px] text-[var(--color-muted)]">This project is closed. Its activities are read-only.</div>
+            <div className="mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-[11.5px] text-[var(--color-muted)]">This project is closed. Its activities are read-only.</div>
           )}
           {!archetype ? (
             <Card><p className="py-8 text-center text-sm text-[var(--color-muted)]">Archetype not found.</p></Card>
           ) : (
             <Card flush className="!overflow-visible">
               <div className="table-scroll cta-pin">
-                <table className="w-full text-[12px]">
+                <table className="w-full text-[11.5px]">
                   <thead>
-                    <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+                    <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                       <th className="w-28 px-3 py-2.5">No.</th>
                       <th className="min-w-[260px] px-3 py-2.5">WBS Object</th>
                       <th className="px-3 py-2.5">Type</th>
@@ -128,36 +128,36 @@ export function ProjectDetailsPage() {
                   <tbody>
                     {rows.map((r) => (
                       <tr key={r.obj.id} className={`border-b border-[var(--color-border)] last:border-0 hover:bg-secondary/40 ${r.kind === 'milestone' ? 'bg-[#f8faff]' : ''}`}>
-                        <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[11px] text-[var(--color-muted)]">{r.code}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[10.5px] text-[var(--color-muted)]">{r.code}</td>
                         <td className={`px-3 py-2.5 text-[#101828] ${r.kind === 'milestone' ? 'font-semibold' : 'font-medium'}`}>
                           <span style={{ paddingLeft: r.depth * 16 }} className="inline-block">{r.obj.name}</span>
                         </td>
                         <td className="px-3 py-2.5 text-[#344054]">{r.typeLabel}</td>
-                        <td className="max-w-[240px] truncate px-3 py-2.5 text-[11px] text-[var(--color-muted)]" title={r.dependencyLabel}>{r.dependencyLabel || '—'}</td>
+                        <td className="max-w-[240px] truncate px-3 py-2.5 text-[10.5px] text-[var(--color-muted)]" title={r.dependencyLabel}>{r.dependencyLabel || '—'}</td>
                         {isVehicle && (r.kind !== 'other' ? <>
                           <td className="px-3 py-2.5 text-center tabular-nums">{r.kind === 'milestone' ? '' : r.partsInScope}</td>
                           <td className="px-3 py-2.5">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-16 rounded-full bg-[var(--color-surface)]"><div className="h-1.5 rounded-full bg-[#10b981]" style={{ width: `${r.completionPct}%` }} /></div>
-                              <span className="tabular-nums text-[11px]">{r.completionPct}%</span>
+                              <span className="tabular-nums text-[10.5px]">{r.completionPct}%</span>
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2.5 w-2.5 rounded-full ${RYG_CLS[r.ryg]}`} title={r.ryg} /></td>
                           <td className="px-3 py-2.5 text-center tabular-nums">{r.delayed || '—'}</td>
                           <td className="px-3 py-2.5 text-center tabular-nums">{r.ng || '—'}</td>
-                        </> : <td colSpan={5} className="px-3 py-2.5 text-center text-[11px] text-[var(--color-muted)]">Tracked outside QA</td>)}
+                        </> : <td colSpan={5} className="px-3 py-2.5 text-center text-[10.5px] text-[var(--color-muted)]">Tracked outside QA</td>)}
                         <td className="px-3 py-2.5 text-right">
                           {r.kind === 'qa' && r.links.length > 0 && isOpen ? (
                             <span className="inline-flex flex-wrap justify-end gap-1.5">
                               {r.links.map((l) => (
                                 <Link key={l.rowId} to={`/activities/${l.rowId}?project=${project.no}`} title={l.label}
-                                  className="inline-flex items-center rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white hover:brightness-105">
+                                  className="inline-flex items-center rounded-[10px] bg-[var(--color-primary)] px-3 py-1.5 text-[10.5px] font-semibold text-white hover:brightness-105">
                                   {r.links.length > 1 ? l.label : 'Open'}
                                 </Link>
                               ))}
                             </span>
                           ) : r.kind === 'qa' ? (
-                            <span className="text-[11px] text-[var(--color-muted)]">{!isOpen ? 'Closed' : !isVehicle ? 'Project level' : r.activity?.published === false ? 'Not built yet' : 'No parts'}</span>
+                            <span className="text-[10.5px] text-[var(--color-muted)]">{!isOpen ? 'Closed' : !isVehicle ? 'Project level' : r.activity?.published === false ? 'Not built yet' : 'No parts'}</span>
                           ) : null}
                         </td>
                       </tr>
@@ -175,11 +175,11 @@ export function ProjectDetailsPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {([['PICs', team.pics], ['Vendors', team.vendors], ['Sections', team.sections.map((s) => ({ name: s.section, parts: s.parts }))]] as const).map(([title, list]) => (
               <Card key={title} flush>
-                <div className="border-b border-[var(--color-border)] px-4 py-3 text-[13px] font-semibold text-[#101828]">{title} <span className="font-normal text-[var(--color-muted)]">({list.length})</span></div>
-                {list.length === 0 ? <p className="px-4 py-6 text-center text-[12px] text-[var(--color-muted)]">None</p> : (
+                <div className="border-b border-[var(--color-border)] px-4 py-3 text-[12px] font-semibold text-[#101828]">{title} <span className="font-normal text-[var(--color-muted)]">({list.length})</span></div>
+                {list.length === 0 ? <p className="px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">None</p> : (
                   <ul className="divide-y divide-[var(--color-border)]">
                     {list.map((x) => (
-                      <li key={x.name} className="flex items-center justify-between px-4 py-2 text-[12px]">
+                      <li key={x.name} className="flex items-center justify-between px-4 py-2 text-[11.5px]">
                         <span className="text-[#101828]">{x.name}</span>
                         <span className="tabular-nums text-[var(--color-muted)]">{x.parts} part{x.parts === 1 ? '' : 's'}</span>
                       </li>
@@ -188,7 +188,7 @@ export function ProjectDetailsPage() {
                 )}
               </Card>
             ))}
-            <p className="text-[11px] text-[var(--color-muted)] lg:col-span-3">Derived from the parts — PIC per part (incl. PIC Assignments), vendor and section. No manual tagging; SIC and DPM cover the sections listed.</p>
+            <p className="text-[10.5px] text-[var(--color-muted)] lg:col-span-3">Derived from the parts — PIC per part (incl. PIC Assignments), vendor and section. No manual tagging; SIC and DPM cover the sections listed.</p>
           </div>
         ) : (
           <Card><p className="py-8 text-center text-sm text-[var(--color-muted)]">A non-vehicle project has no parts, so no part-based team.</p></Card>

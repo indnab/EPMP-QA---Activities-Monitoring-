@@ -158,11 +158,11 @@ export function BuilderWizard() {
         <div>
           <button
             onClick={() => navigate(backTo)}
-            className="text-[11px] text-[#596579] hover:underline flex items-center gap-1 mb-1"
+            className="text-[10.5px] text-[#596579] hover:underline flex items-center gap-1 mb-1"
           >
             ← {backLabel}
           </button>
-          <h2 className="m-0 text-[23px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)]">
+          <h2 className="m-0 text-[21px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)]">
             {isNew ? 'New Activity' : `Edit: ${sourceActivity?.name ?? 'Activity'}`}
           </h2>
         </div>

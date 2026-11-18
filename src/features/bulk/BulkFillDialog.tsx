@@ -115,7 +115,7 @@ export function BulkFillDialog({
         title="Data already exists"
         footer={
           <div className="flex w-full flex-wrap items-center gap-2">
-            <span className="text-[11px] text-[var(--color-muted)]">{overwriting} to overwrite · {all.length - overwriting} to keep</span>
+            <span className="text-[10.5px] text-[var(--color-muted)]">{overwriting} to overwrite · {all.length - overwriting} to keep</span>
             <div className="ml-auto flex gap-2">
               <Button variant="secondary" size="md" onClick={() => setReview(null)}>Back</Button>
               <Button variant="primary" size="md" onClick={confirmReview}>{review.submit ? 'Confirm & submit' : 'Confirm & save'}</Button>
@@ -123,7 +123,7 @@ export function BulkFillDialog({
           </div>
         }
       >
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12px] text-[#92400e]">
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[11.5px] text-[#92400e]">
           <span className="min-w-0 flex-1">
             {all.length} value{all.length === 1 ? '' : 's'} on {new Set(all.map((c) => c.target.id)).size} item(s) already filled. Choose for each whether to overwrite it or keep what is there.
           </span>
@@ -131,8 +131,8 @@ export function BulkFillDialog({
           <Button variant="secondary" size="sm" onClick={() => setKeep(new Set(all.map((c) => c.k)))}>Ignore all</Button>
         </div>
         <div className="max-h-[420px] overflow-auto rounded-lg border border-[var(--color-border)]">
-          <table className="w-full text-[12px]">
-            <thead className="sticky top-0 bg-[var(--color-surface)] text-left text-[11px] font-medium text-[#344054]">
+          <table className="w-full text-[11.5px]">
+            <thead className="sticky top-0 bg-[var(--color-surface)] text-left text-[10.5px] font-medium text-[#344054]">
               <tr>
                 <th className="px-3 py-2">Item</th>
                 <th className="px-3 py-2">Field</th>
@@ -154,9 +154,9 @@ export function BulkFillDialog({
                     <td className="whitespace-nowrap px-3 py-2">
                       <div className="inline-flex rounded-md border border-[var(--color-border)] p-0.5" role="group" aria-label={`${c.target.label} ${c.field.label}`}>
                         <button type="button" onClick={() => set(false)} aria-pressed={!kept}
-                          className={`rounded px-2 py-0.5 text-[11px] font-semibold ${!kept ? 'bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>Overwrite</button>
+                          className={`rounded px-2 py-0.5 text-[10.5px] font-semibold ${!kept ? 'bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>Overwrite</button>
                         <button type="button" onClick={() => set(true)} aria-pressed={kept}
-                          className={`rounded px-2 py-0.5 text-[11px] font-semibold ${kept ? 'bg-[#475467] text-white' : 'text-[#344054]'}`}>Keep</button>
+                          className={`rounded px-2 py-0.5 text-[10.5px] font-semibold ${kept ? 'bg-[#475467] text-white' : 'text-[#344054]'}`}>Keep</button>
                       </div>
                     </td>
                   </tr>
@@ -176,7 +176,7 @@ export function BulkFillDialog({
       title={title}
       footer={
         <div className="flex w-full items-center gap-2">
-          <span className="text-[11px] text-[var(--color-muted)]">
+          <span className="text-[10.5px] text-[var(--color-muted)]">
             {filledCount === 0 ? 'Enter at least one field.' : `${filledCount} field${filledCount === 1 ? '' : 's'} → ${items}`}
           </span>
           <div className="ml-auto flex gap-2">
@@ -187,11 +187,11 @@ export function BulkFillDialog({
         </div>
       }
     >
-      <p className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-3 py-2 text-[12px] text-primary">
+      <p className="mb-3 rounded-lg border border-[#bfdbfe] bg-secondary px-3 py-2 text-[11.5px] text-primary">
         {note ? `${note} · ` : ''}The values below are written to {n === 1 ? '1 item' : `all ${items}`}. Fields left blank keep each one's current value.
       </p>
       {noFields ? (
-        <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">
+        <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)]">
           The selected items have no fields in common that you can fill.
         </p>
       ) : (
@@ -200,12 +200,12 @@ export function BulkFillDialog({
             <section key={b.id} className={multi ? 'rounded-lg border border-[var(--color-border)]' : ''}>
               {multi && (
                 <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
-                  <h3 className="m-0 text-[13px] font-semibold text-[#101828]">{b.title}</h3>
-                  {b.subtitle && <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">{b.subtitle}</p>}
+                  <h3 className="m-0 text-[12px] font-semibold text-[#101828]">{b.title}</h3>
+                  {b.subtitle && <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">{b.subtitle}</p>}
                 </div>
               )}
               {b.fields.length === 0 ? (
-                <p className="px-4 py-3 text-[11px] text-[var(--color-muted)]">Nothing you can fill here for the selected parts.</p>
+                <p className="px-4 py-3 text-[10.5px] text-[var(--color-muted)]">Nothing you can fill here for the selected parts.</p>
               ) : (
                 <div className={`grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2 ${multi ? 'p-4' : ''}`}>
                   {b.fields.map((field) => {
@@ -213,7 +213,7 @@ export function BulkFillDialog({
                     return (
                       <div key={field.key} className="min-w-0">
                         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="text-[12px] font-medium text-[#344054]">{field.label}</span>
+                          <span className="text-[11.5px] font-medium text-[#344054]">{field.label}</span>
                           {field.source && <SourceBadge source={field.source as SourceType} />}
                         </div>
                         {renderer.editor({ field, value: draft[b.id]?.[field.key], onChange: (v) => setField(b.id, field.key, v), currentPersona })}

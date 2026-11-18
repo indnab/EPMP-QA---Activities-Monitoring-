@@ -81,12 +81,12 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <>
             <select aria-label="Archetype" value={arcFilter} onChange={(e) => setArcFilter(e.target.value)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All archetypes</option>
               {groups.map((g) => <option key={g.key} value={g.key}>{g.title}</option>)}
             </select>
             <select aria-label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | Status)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All statuses</option>
               <option>Not configured</option>
               <option>Draft in progress</option>
@@ -102,12 +102,12 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
           actions={
           <>
             <select aria-label="Archetype" value={arcFilter} onChange={(e) => setArcFilter(e.target.value)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All archetypes</option>
               {groups.map((g) => <option key={g.key} value={g.key}>{g.title}</option>)}
             </select>
             <select aria-label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | Status)}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px] text-[#344054]">
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px] text-[#344054]">
               <option value="all">All statuses</option>
               <option>Not configured</option>
               <option>Draft in progress</option>
@@ -119,7 +119,7 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
         />
       )}
 
-      <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[12px] text-primary">
+      <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-secondary px-4 py-2.5 text-[11.5px] text-primary">
         Activities come from the Activity Builder objects in each archetype’s WBS template. Add or rename them in{' '}
         <Link to="/governance?tab=archetypes" className="font-semibold underline">Governance → Archetypes</Link>, then configure fields, flow and timeline here.
         {counts.todo > 0 && <strong> {counts.todo} of {counts.total} still need configuring.</strong>}
@@ -129,22 +129,22 @@ export function BuilderPage({ embedded }: { embedded?: boolean } = {}) {
         {shown.map((g) => (
           <Card flush key={g.key} className="!overflow-visible">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
-              <h3 className="m-0 text-[13px] font-semibold text-[#101828]">{g.title}</h3>
-              <span className="text-[11px] text-[var(--color-muted)]">{g.sub}</span>
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{g.rows.length}</span>
+              <h3 className="m-0 text-[12px] font-semibold text-[#101828]">{g.title}</h3>
+              <span className="text-[10.5px] text-[var(--color-muted)]">{g.sub}</span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10.5px] font-medium text-primary">{g.rows.length}</span>
               {g.key !== '_loose' && (
-                <Link to={`/governance/${g.key}`} className="ml-auto text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Edit WBS →</Link>
+                <Link to={`/governance/${g.key}`} className="ml-auto text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Edit WBS →</Link>
               )}
             </div>
             {g.rows.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[12px] text-[var(--color-muted)]">
+              <p className="px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
                 {statusFilter === 'all' ? 'No Activity Builder objects in this archetype yet.' : `No activities with status “${statusFilter}”.`}
               </p>
             ) : (
               <div className="table-scroll cta-pin">
-                <table className="w-full text-[12px]">
+                <table className="w-full text-[11.5px]">
                   <thead>
-                    <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[11px] font-medium text-[#344054]">
+                    <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                       <th className="px-4 py-2.5">Activity</th>
                       <th className="px-4 py-2.5">Trial</th>
                       <th className="px-4 py-2.5 text-center">Fields</th>

@@ -36,7 +36,7 @@ export function PersonaSwitcher() {
         aria-label={`Viewing as ${current.label}. Switch persona`}
       >
         <span
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-[13px] font-semibold text-white"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-[12px] font-semibold text-white"
           style={{ background: 'linear-gradient(120deg,#2266f5,#3c39cb)' }}
         >
           {initials(current.label)}
@@ -71,7 +71,7 @@ export function PersonaSwitcher() {
                 }`}
               >
                 <span
-                  className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[10.5px] font-semibold text-white"
                   style={{ backgroundColor: p.hex }}
                 >
                   {initials(p.label)}

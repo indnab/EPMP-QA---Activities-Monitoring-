@@ -63,15 +63,15 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
       <section className="epmp-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <button type="button" onClick={() => shift(-1)} aria-label={mode === 'week' ? 'Previous week' : 'Previous month'} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">‹</button>
-          <h3 className="m-0 min-w-[170px] text-center text-[14px] font-semibold text-[var(--color-text)]">{mode === 'week' ? weekLabel : monthLabel}</h3>
+          <h3 className="m-0 min-w-[170px] text-center text-[13px] font-semibold text-[var(--color-text)]">{mode === 'week' ? weekLabel : monthLabel}</h3>
           <button type="button" onClick={() => shift(1)} aria-label={mode === 'week' ? 'Next week' : 'Next month'} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface)]">›</button>
           <button type="button" onClick={() => { setAnchor(DEMO_TODAY); setDay(DEMO_TODAY) }}
-            className="ml-1 rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-[11px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">Today</button>
-          <span className="ml-auto text-[11px] text-[var(--color-muted)]">{viewCount} activit{viewCount === 1 ? 'y' : 'ies'} due this {mode}</span>
+            className="ml-1 rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-[10.5px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">Today</button>
+          <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">{viewCount} activit{viewCount === 1 ? 'y' : 'ies'} due this {mode}</span>
           <div className="inline-flex rounded-lg border border-[var(--color-border)] p-0.5" role="group" aria-label="Calendar view">
             {(['week', 'month'] as const).map((m) => (
               <button key={m} type="button" onClick={() => { setMode(m); if (day) setAnchor(day) }} aria-pressed={mode === m}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${mode === m ? 'bg-[var(--color-primary)] text-white' : 'text-[#344054] hover:bg-[var(--color-surface)]'}`}>
+                className={`rounded-md px-2.5 py-1 text-[10.5px] font-semibold ${mode === m ? 'bg-[var(--color-primary)] text-white' : 'text-[#344054] hover:bg-[var(--color-surface)]'}`}>
                 {m === 'week' ? 'Week' : 'Month'}
               </button>
             ))}
@@ -88,7 +88,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
                   <button type="button" onClick={() => setDay(date)} aria-label={`${date}: ${items.length} activities`}
                     className="flex items-center justify-between gap-1 border-b border-[var(--color-border)] px-2 py-1.5 text-left hover:bg-[var(--color-surface)]">
                     <span className="text-[10px] font-semibold uppercase text-[var(--color-muted)]">{fmtShort(date, { weekday: 'short' })}</span>
-                    <span className={`text-[12px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{Number(date.slice(8))}</span>
+                    <span className={`text-[11.5px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{Number(date.slice(8))}</span>
                   </button>
                   <div className="flex flex-col gap-1 p-1">
                     {items.slice(0, WEEK_ITEMS).map((i) => {
@@ -128,7 +128,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
             return (
               <button key={k} type="button" onClick={() => setDay(date)} aria-label={`${date}: ${items.length} activities`}
                 className={`flex min-h-[72px] flex-col items-stretch rounded-lg border p-1.5 text-left transition-colors ${isSel ? 'border-[var(--color-primary)] bg-secondary' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}>
-                <span className={`mb-1 text-[11px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center self-start rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{d}</span>
+                <span className={`mb-1 text-[10.5px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center self-start rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{d}</span>
                 <span className="flex flex-wrap gap-1">
                   {counts.map(([b, n]) => (
                     <span key={b} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
@@ -151,13 +151,13 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
       </section>
 
       <section className="epmp-card flex min-h-0 flex-col p-4">
-        <h3 className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-[var(--color-text)]">
+        <h3 className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-[var(--color-text)]">
           <FbIcon name="calendar-month" size={14} />
           {day ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Pick a day'}
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{dayItems.length}</span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10.5px] font-medium text-primary">{dayItems.length}</span>
         </h3>
         {dayItems.length === 0 ? (
-          <p className="py-8 text-center text-[12px] text-[var(--color-muted)]">No activities due on this day.</p>
+          <p className="py-8 text-center text-[11.5px] text-[var(--color-muted)]">No activities due on this day.</p>
         ) : (
           <div className="max-h-[520px] divide-y divide-[var(--color-border)] overflow-y-auto">
             {dayItems.map((i) => {
@@ -166,8 +166,8 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
                 <div key={`${i.row.id}-${i.part.partNo}`} className="flex items-center gap-3 py-2.5">
                   <span className="inline-block h-2.5 w-2.5 flex-none rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} title={b} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12px] font-medium text-[var(--color-text)]">{i.activity.name}</div>
-                    <div className="truncate text-[11px] text-[var(--color-muted)]">
+                    <div className="truncate text-[11.5px] font-medium text-[var(--color-text)]">{i.activity.name}</div>
+                    <div className="truncate text-[10.5px] text-[var(--color-muted)]">
                       <span className="font-mono">{i.part.partNo}</span> · {i.part.model} · {i.row.milestoneId} · {b}
                     </div>
                   </div>

@@ -93,20 +93,20 @@ export function DelayReasonBlock({ activity, row, partNo, partName, entry, plann
         )}
       </div>
       {latest && (
-        <div className="mt-1.5 text-[12px]">
+        <div className="mt-1.5 text-[11.5px]">
           <div>
             <strong>{latest.category}</strong>
             {latest.remark ? `: ${latest.remark}` : ''}
             {latest.revisedDate ? ` · new date ${fmtDate(latest.revisedDate)}` : ''}
           </div>
-          <div className="text-[11px] opacity-80">Given by {latest.by} on {fmtDate(latest.at.slice(0, 10))}</div>
+          <div className="text-[10.5px] opacity-80">Given by {latest.by} on {fmtDate(latest.at.slice(0, 10))}</div>
           {state === 'SentBack' && latest.decisionComment && (
-            <div className="mt-1 rounded bg-white/70 px-2 py-1 text-[11.5px]">PIC: “{latest.decisionComment}”</div>
+            <div className="mt-1 rounded bg-white/70 px-2 py-1 text-[11px]">PIC: “{latest.decisionComment}”</div>
           )}
-          {state === 'Accepted' && latest.decidedBy && <div className="text-[11px] opacity-80">Accepted by {latest.decidedBy}</div>}
+          {state === 'Accepted' && latest.decidedBy && <div className="text-[10.5px] opacity-80">Accepted by {latest.decidedBy}</div>}
         </div>
       )}
-      {!latest && !isVendor && <p className="mt-1 text-[12px]">The activity is past its planned end and the vendor has not yet given a reason.</p>}
+      {!latest && !isVendor && <p className="mt-1 text-[11.5px]">The activity is past its planned end and the vendor has not yet given a reason.</p>}
       {canDecide && state === 'Submitted' && latest && (
         <div className="mt-2 flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => { setComment(''); setSendBack(true) }}>
@@ -139,9 +139,9 @@ export function DelayReasonBlock({ activity, row, partNo, partName, entry, plann
         }
       >
         <label className="block text-sm">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">What should the vendor fix? (required)</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">What should the vendor fix? (required)</span>
           <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[12px]" placeholder="e.g. Give the date the tool will be ready" />
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px]" placeholder="e.g. Give the date the tool will be ready" />
         </label>
       </Modal>
     </div>

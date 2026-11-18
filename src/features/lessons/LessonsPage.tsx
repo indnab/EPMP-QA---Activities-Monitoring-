@@ -31,7 +31,7 @@ function HeatMapView({ map }: { map: HeatMap }) {
   }
   return (
     <div className="epmp-card overflow-auto p-0" style={{ maxHeight: '60vh' }}>
-      <table className="border-separate border-spacing-0 text-[11px]">
+      <table className="border-separate border-spacing-0 text-[10.5px]">
         <thead>
           <tr>
             <th className="sticky left-0 top-0 z-30 min-w-[150px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
@@ -54,7 +54,7 @@ function HeatMapView({ map }: { map: HeatMap }) {
                 return (
                   <td key={c.key} className="border-b border-r border-[var(--color-border)] p-0.5">
                     <div
-                      className="flex h-9 items-center justify-center rounded text-[11px] font-semibold"
+                      className="flex h-9 items-center justify-center rounded text-[10.5px] font-semibold"
                       style={{ backgroundColor: st.bg, color: st.text }}
                       title={`${v} · ${c.label}: ${cell.note}`}
                     >
@@ -74,7 +74,7 @@ function HeatMapView({ map }: { map: HeatMap }) {
 function Metric({ label, value, suffix }: { label: string; value: number | string; suffix?: string }) {
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2">
-      <div className="text-[18px] font-bold leading-tight text-[#101828]">{value}{suffix}</div>
+      <div className="text-[16px] font-bold leading-tight text-[#101828]">{value}{suffix}</div>
       <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">{label}</div>
     </div>
   )
@@ -87,8 +87,8 @@ function VendorCard({ s }: { s: VendorScore }) {
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="m-0 text-[14px] font-semibold text-[#101828]">{s.vendorName}</h3>
-        <span className="text-[11px] text-[var(--color-muted)]">{s.parts} parts · {s.activitiesTracked} activities</span>
+        <h3 className="m-0 text-[13px] font-semibold text-[#101828]">{s.vendorName}</h3>
+        <span className="text-[10.5px] text-[var(--color-muted)]">{s.parts} parts · {s.activitiesTracked} activities</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Metric label="First-time right" value={ftr} suffix="%" />
@@ -97,7 +97,7 @@ function VendorCard({ s }: { s: VendorScore }) {
         <Metric label="Non-OTOP" value={s.otop + s.nonOtop ? nonOtop : '—'} suffix={s.otop + s.nonOtop ? '%' : ''} />
       </div>
       {(s.topNgCategory || s.topDelayReason || s.deviations > 0) && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--color-muted)]">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] text-[var(--color-muted)]">
           {s.topNgCategory && <span>Top NG: <strong className="text-[#344054]">{s.topNgCategory}</strong></span>}
           {s.topDelayReason && <span>Top delay: <strong className="text-[#344054]">{s.topDelayReason}</strong></span>}
           {s.deviations > 0 && <span>Deviations: <strong className="text-[#344054]">{s.deviations}</strong> ({s.deviationsApproved} appr / {s.deviationsRejected} rej)</span>}
@@ -157,44 +157,44 @@ export function LessonsPage() {
 
       {/* One common filter for the whole page */}
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
           Vendor
           <select
             value={vendorFilter}
             onChange={(e) => setVendorFilter(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] font-normal normal-case text-[#344054]"
+            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]"
           >
             <option value="All">All vendors</option>
             {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
           Technical category
           <select
             value={catFilter}
             onChange={(e) => setCatFilter(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] font-normal normal-case text-[#344054]"
+            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]"
           >
             <option value="All">All categories</option>
             {TECHNICAL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </label>
-        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[12px] text-[#344054]" />
+        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]" />
         {(vendorFilter !== 'All' || catFilter !== 'All' || hasAttrValues(attrFilter)) && (
           <button
             onClick={() => { setVendorFilter('All'); setCatFilter('All'); setAttrFilter({}) }}
-            className="text-[11px] font-medium text-[var(--color-accent)] hover:underline"
+            className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline"
           >
             Clear
           </button>
         )}
-        <span className="ml-auto text-[11px] font-normal normal-case text-[var(--color-muted)]">
+        <span className="ml-auto text-[10.5px] font-normal normal-case text-[var(--color-muted)]">
           Filters apply to every section · insights are rule-based, not a trained model.
         </span>
       </section>
 
       {/* Insight cards */}
-      <h2 className="mb-2 text-[13px] font-semibold text-[#101828]">AI insights {shownInsights.length > 0 && `(${shownInsights.length})`}</h2>
+      <h2 className="mb-2 text-[12px] font-semibold text-[#101828]">AI insights {shownInsights.length > 0 && `(${shownInsights.length})`}</h2>
       {shownInsights.length === 0 ? (
         <Card className="mb-6"><p className="py-6 text-center text-sm text-[var(--color-muted)]">Not enough history yet to surface insights for this selection.</p></Card>
       ) : (
@@ -205,10 +205,10 @@ export function LessonsPage() {
               <div key={ins.id} className={`rounded-lg border p-3.5 ${st.card}`}>
                 <div className="mb-1 flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-full ${st.dot}`} />
-                  <span className="text-[13px] font-semibold text-[#101828]">{ins.title}</span>
+                  <span className="text-[12px] font-semibold text-[#101828]">{ins.title}</span>
                   <span className="ml-auto rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-0.5 text-[10px] font-medium text-[var(--color-muted)]">{st.label}</span>
                 </div>
-                <p className="m-0 text-[12px] text-[#344054]">{ins.detail}</p>
+                <p className="m-0 text-[11.5px] text-[#344054]">{ins.detail}</p>
               </div>
             )
           })}
@@ -216,13 +216,13 @@ export function LessonsPage() {
       )}
 
       {/* Forecast — at-risk parts */}
-      <h2 className="mb-2 text-[13px] font-semibold text-[#101828]">Forecast · at-risk parts {shownPredictions.length > 0 && `(${shownPredictions.length})`}</h2>
+      <h2 className="mb-2 text-[12px] font-semibold text-[#101828]">Forecast · at-risk parts {shownPredictions.length > 0 && `(${shownPredictions.length})`}</h2>
       {shownPredictions.length === 0 ? (
         <Card className="mb-6"><p className="py-6 text-center text-sm text-[var(--color-muted)]">No at-risk open activities projected for this selection.</p></Card>
       ) : (
         <Card flush className="mb-6">
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[11.5px]">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                   <th className="px-4 py-2.5">Risk</th>
@@ -246,8 +246,8 @@ export function LessonsPage() {
                       <td className="px-4 py-2.5"><div className="font-medium text-[#101828]">{p.partNo}</div><div className="text-[10px] text-[var(--color-muted)]">{p.vendorName}</div></td>
                       <td className="px-4 py-2.5">{p.activityName} <span className="text-[var(--color-muted)]">· {p.milestoneId}</span></td>
                       <td className="px-4 py-2.5 font-medium text-[#344054]">{p.outcome}</td>
-                      <td className="px-4 py-2.5 text-[11px] text-[var(--color-muted)]">{p.reasons.join('; ')}</td>
-                      <td className="px-4 py-2.5 text-[11px] text-[var(--color-muted)]">{p.confidence}</td>
+                      <td className="px-4 py-2.5 text-[10.5px] text-[var(--color-muted)]">{p.reasons.join('; ')}</td>
+                      <td className="px-4 py-2.5 text-[10.5px] text-[var(--color-muted)]">{p.confidence}</td>
                     </tr>
                   )
                 })}
@@ -259,7 +259,7 @@ export function LessonsPage() {
 
       {/* Heat map (honours the page filter above) */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="m-0 text-[13px] font-semibold text-[#101828]">
+        <h2 className="m-0 text-[12px] font-semibold text-[#101828]">
           {vendorFilter === 'All' ? 'Vendor heat map' : `${vendorFilter} — activity heat map`}
         </h2>
       </div>
@@ -274,7 +274,7 @@ export function LessonsPage() {
       </div>
 
       {/* Vendor scorecards */}
-      <h2 className="mb-2 text-[13px] font-semibold text-[#101828]">Vendor scorecards</h2>
+      <h2 className="mb-2 text-[12px] font-semibold text-[#101828]">Vendor scorecards</h2>
       {shownScores.length === 0 ? (
         <Card><p className="py-6 text-center text-sm text-[var(--color-muted)]">No vendor activity recorded yet.</p></Card>
       ) : (

@@ -62,8 +62,8 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
   return (
     <details open={defaultOpen} data-tour="ai-import" className="epmp-card mb-2 px-5 py-3">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
-        <span className="text-[13px] font-semibold text-[var(--color-text)]">Import with AI</span>
-        <span className="text-[11px] text-[var(--color-muted)]">Upload or paste what you already have instead of typing it in.</span>
+        <span className="text-[12px] font-semibold text-[var(--color-text)]">Import with AI</span>
+        <span className="text-[10.5px] text-[var(--color-muted)]">Upload or paste what you already have instead of typing it in.</span>
       </summary>
 
       <div className="mt-2 space-y-2">
@@ -77,7 +77,7 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
             onDrop={onDrop}
             className={`flex min-h-[80px] flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-4 py-2 text-center ${dragOver ? 'border-[var(--color-accent)] bg-secondary' : 'border-[var(--color-border)] bg-[var(--color-surface)]'}`}
           >
-            <p className="text-[11px] text-[var(--color-muted)]">Drop a file here — any type</p>
+            <p className="text-[10.5px] text-[var(--color-muted)]">Drop a file here — any type</p>
             <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
               Choose a file
             </Button>
@@ -94,7 +94,7 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
               }}
               rows={3}
               placeholder="Paste a table, an email, notes or a sentence…"
-              className="min-h-[60px] resize-y rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-normal normal-case tracking-normal text-[var(--color-text)]"
+              className="min-h-[60px] resize-y rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-normal normal-case tracking-normal text-[var(--color-text)]"
             />
           </label>
         </div>
@@ -111,17 +111,17 @@ export function AiImportPanel({ role, defaultOpen = true }: Props) {
               Clear
             </Button>
           )}
-          {picked && <span className="text-[11px] text-[var(--color-text)]">Selected: {picked.label}</span>}
+          {picked && <span className="text-[10.5px] text-[var(--color-text)]">Selected: {picked.label}</span>}
         </div>
 
         {tried && (
-          <div className="rounded-lg border border-[#ddd6fe] bg-[#f5f3ff] px-3 py-2 text-[11px] text-[#5b21b6]" role="status">
+          <div className="rounded-lg border border-[#ddd6fe] bg-[#f5f3ff] px-3 py-2 text-[10.5px] text-[#5b21b6]" role="status">
             AI mapping is not part of this prototype, so <strong>nothing was read and nothing changed</strong>. In the real system you
             would now see a review screen with the proposed values. Use “See how the review step works” for an illustration.
           </div>
         )}
 
-        <ul className="list-disc space-y-0.5 pl-5 text-[11px] text-[var(--color-muted)]">
+        <ul className="list-disc space-y-0.5 pl-5 text-[10.5px] text-[var(--color-muted)]">
           {RULES.map((r) => (
             <li key={r}>{r}</li>
           ))}

@@ -5,7 +5,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { rowInScope } from '../scope'
 import type { CrossActivityDashboard } from '../../domain'
 
-const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[12px] text-[#344054]'
+const inputCls = 'h-9 w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11.5px] text-[#344054]'
 
 type Draft = Omit<CrossActivityDashboard, 'id' | 'createdAt' | 'createdBy'>
 
@@ -80,12 +80,12 @@ export function CrossActivityCreator({
         </p>
 
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Dashboard name</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Dashboard name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="e.g. Key QA activities by model" />
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Compare across</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Compare across</span>
           <select
             value={commonality}
             onChange={(e) => setCommonality(e.target.value as 'model' | 'part')}
@@ -97,7 +97,7 @@ export function CrossActivityCreator({
         </label>
 
         <div>
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">
             Activities to compare <span className="text-[10px]">(pick 2 or more)</span>
           </span>
           <div className="max-h-52 overflow-y-auto rounded-lg border border-[var(--color-border)] p-1">
@@ -105,7 +105,7 @@ export function CrossActivityCreator({
               <p className="px-2 py-3 text-center text-xs text-[var(--color-muted)]">No activities available.</p>
             )}
             {selectableActivities.map((a) => (
-              <label key={a.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-[var(--color-surface)]">
+              <label key={a.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[11.5px] hover:bg-[var(--color-surface)]">
                 <input type="checkbox" checked={picked.has(a.id)} onChange={() => toggle(a.id)} />
                 <span className="truncate">{a.name}</span>
               </label>

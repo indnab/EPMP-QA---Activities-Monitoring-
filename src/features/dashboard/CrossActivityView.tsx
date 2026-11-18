@@ -17,7 +17,7 @@ import type { ActivityDefinition, CrossActivityDashboard, CrossWidget, CrossPlot
 import { DEMO_TODAY } from '../scope'
 
 const BRAND = ['#2153f5', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#14b8a6', '#6366f1']
-const selectCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11px] text-[#344054]'
+const selectCls = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[10.5px] text-[#344054]'
 
 const MEASURE_LABELS: Record<string, string> = {
   completionRate: 'Completion rate (%)',
@@ -46,7 +46,7 @@ function CrossWidgetChart({
 
   if (widget.display === 'table') {
     return (
-      <div className="h-full overflow-auto text-[11px]">
+      <div className="h-full overflow-auto text-[10.5px]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-[var(--color-muted)]">
@@ -158,7 +158,7 @@ export function CrossActivityView({ dashboard }: { dashboard: CrossActivityDashb
     <div>
       <div className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
         <div className="min-w-0">
-          <h2 className="m-0 text-[18px] font-semibold text-[var(--color-text)]">{dashboard.name}</h2>
+          <h2 className="m-0 text-[16px] font-semibold text-[var(--color-text)]">{dashboard.name}</h2>
           <p className="text-xs text-[var(--color-muted)]">
             Comparing {selectedActs.length} activit{selectedActs.length === 1 ? 'y' : 'ies'}
             {' · '}{points.length} activity×milestone point{points.length === 1 ? '' : 's'}
@@ -166,12 +166,12 @@ export function CrossActivityView({ dashboard }: { dashboard: CrossActivityDashb
         </div>
 
         {/* Live model/part selector — the template re-populates for the chosen value. */}
-        <label className="flex items-center gap-2 text-[11px] font-medium text-[var(--color-muted)]">
+        <label className="flex items-center gap-2 text-[10.5px] font-medium text-[var(--color-muted)]">
           {dashboard.commonality === 'model' ? 'Model' : 'Part'}
           <select
             value={activeValue}
             onChange={(e) => setSelectedValue(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[12px] text-[#344054]"
+            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2 text-[11.5px] text-[#344054]"
           >
             {options.length === 0 && <option value="">None available</option>}
             {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -211,7 +211,7 @@ export function CrossActivityView({ dashboard }: { dashboard: CrossActivityDashb
           {dashboard.widgets.map((w) => (
             <div key={w.id} className="epmp-card p-4" style={{ height: 320 }}>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-[var(--color-text)]">{w.title}</span>
+                <span className="text-[12px] font-semibold text-[var(--color-text)]">{w.title}</span>
                 <span className="flex items-center gap-2">
                   <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-primary">{DISPLAY_LABELS[w.display]}</span>
                   {canEdit && <button onClick={() => removeWidget(w.id)} className="text-[10px] text-[var(--color-destructive)] hover:underline">Remove</button>}
@@ -276,7 +276,7 @@ function WidgetBuilder({
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Plot (what to compare)</span>
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Plot (what to compare)</span>
             <select value={typeof choice === 'string' ? choice : ''} onChange={(e) => setChoice(e.target.value)} className={`${selectCls} w-full`}>
               <optgroup label="Measures">
                 {Object.entries(MEASURE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
@@ -294,7 +294,7 @@ function WidgetBuilder({
           </label>
 
           <div>
-            <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">
               Chart type <span className="text-[10px] text-[var(--color-muted)]">· suggested for this data</span>
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -302,7 +302,7 @@ function WidgetBuilder({
                 <button
                   key={d}
                   onClick={() => setDisplay(d)}
-                  className={`rounded-lg border px-2.5 py-1 text-[11px] ${
+                  className={`rounded-lg border px-2.5 py-1 text-[10.5px] ${
                     effectiveDisplay === d
                       ? 'border-[var(--color-primary)] bg-secondary text-primary font-medium'
                       : 'border-[var(--color-border)] bg-white text-[var(--color-text)]'

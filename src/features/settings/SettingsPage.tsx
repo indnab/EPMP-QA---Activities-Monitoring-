@@ -32,7 +32,7 @@ function InlineField({ label, value, placeholder, error, onChange }: InlineField
         className={`w-full rounded-lg border px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]
           ${error ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}`}
       />
-      {error && <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{error}</p>}
+      {error && <p className="mt-1 text-[10.5px] text-[var(--color-destructive)]">{error}</p>}
     </div>
   )
 }
@@ -125,14 +125,14 @@ function SectionsPanel() {
                   <button
                     type="button"
                     onClick={() => openEdit(s)}
-                    className="text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                    className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                   >
                     Rename
                   </button>
                   <button
                     type="button"
                     onClick={() => confirmDelete(s.id)}
-                    className="text-[11px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                    className="text-[10.5px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                   >
                     Delete
                   </button>
@@ -235,22 +235,22 @@ function MilestonesPanel() {
     <Card>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 className="m-0 text-[15px] font-semibold text-[var(--color-text)]">Milestones</h2>
+          <h2 className="m-0 text-[14px] font-semibold text-[var(--color-text)]">Milestones</h2>
           <p className="mt-0.5 text-xs text-[var(--color-muted)]">Milestones and their planned dates are defined per archetype in Governance.</p>
         </div>
-        <Link to="/governance" className="text-[12px] font-semibold text-[var(--color-accent)] hover:underline">Open Governance →</Link>
+        <Link to="/governance" className="text-[11.5px] font-semibold text-[var(--color-accent)] hover:underline">Open Governance →</Link>
       </div>
       <div className="space-y-3">
         {archetypes.map((a) => (
           <div key={a.id} className="rounded-lg border border-[var(--color-border)] p-3">
-            <div className="mb-2 text-[12px] font-semibold text-[#101828]">{a.name} <span className="font-mono text-[10px] font-normal text-[var(--color-muted)]">{a.id}</span></div>
+            <div className="mb-2 text-[11.5px] font-semibold text-[#101828]">{a.name} <span className="font-mono text-[10px] font-normal text-[var(--color-muted)]">{a.id}</span></div>
             <div className="flex flex-wrap gap-2">
               {milestoneRows(a).map((m) => (
-                <span key={m.id} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] text-primary" title={dateOptions(m).map((d) => d.label).join(', ')}>
+                <span key={m.id} className="rounded-full bg-secondary px-2.5 py-1 text-[10.5px] text-primary" title={dateOptions(m).map((d) => d.label).join(', ')}>
                   <strong>{m.name}</strong> · {dateOptions(m).length} planned date{dateOptions(m).length === 1 ? '' : 's'}
                 </span>
               ))}
-              {milestoneRows(a).length === 0 && <span className="text-[11px] text-[var(--color-muted)]">No milestones</span>}
+              {milestoneRows(a).length === 0 && <span className="text-[10.5px] text-[var(--color-muted)]">No milestones</span>}
             </div>
           </div>
         ))}

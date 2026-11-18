@@ -33,7 +33,7 @@ export function MultiSelect({ label, options, selected, onChange }: Props) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex h-9 min-w-[130px] items-center justify-between gap-2 rounded-lg border px-3 text-[11px] ${
+        className={`flex h-9 min-w-[130px] items-center justify-between gap-2 rounded-lg border px-3 text-[10.5px] ${
           selected.length ? 'border-[var(--color-accent)] bg-[#eef4ff] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-[#f9fafb] text-[#344054]'
         }`}
       >
@@ -45,22 +45,22 @@ export function MultiSelect({ label, options, selected, onChange }: Props) {
       </button>
       {open && (
         <div role="listbox" aria-multiselectable="true" className="absolute z-30 mt-1 max-h-64 min-w-[200px] overflow-auto rounded-lg border border-[var(--color-border)] bg-white p-1.5 shadow-lg">
-          {options.length === 0 && <div className="px-2 py-1.5 text-[11px] text-[var(--color-muted)]">No values</div>}
+          {options.length === 0 && <div className="px-2 py-1.5 text-[10.5px] text-[var(--color-muted)]">No values</div>}
           {options.length > 1 && (
-            <label className="mb-1 flex cursor-pointer items-center gap-2 rounded border-b border-[var(--color-border)] px-2 py-1 pb-1.5 text-[11px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+            <label className="mb-1 flex cursor-pointer items-center gap-2 rounded border-b border-[var(--color-border)] px-2 py-1 pb-1.5 text-[10.5px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
               <input ref={allRef} type="checkbox" checked={allOn} aria-label={allOn ? `Deselect all ${label}` : `Select all ${label}`}
                 onChange={() => onChange(allOn ? [] : values)} />
               <span>{allOn ? 'Deselect all' : 'Select all'}</span>
             </label>
           )}
           {options.map((o) => (
-            <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] hover:bg-[var(--color-surface)]">
+            <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[10.5px] hover:bg-[var(--color-surface)]">
               <input type="checkbox" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
               <span>{o.label ?? o.value}</span>
             </label>
           ))}
           {selected.length > 0 && (
-            <button type="button" onClick={() => onChange([])} className="mt-1 w-full rounded px-2 py-1 text-left text-[11px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+            <button type="button" onClick={() => onChange([])} className="mt-1 w-full rounded px-2 py-1 text-left text-[10.5px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
               Clear
             </button>
           )}

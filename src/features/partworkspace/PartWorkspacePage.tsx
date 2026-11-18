@@ -328,7 +328,7 @@ export function PartWorkspacePage() {
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <UpcomingToggle />
-            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
+            <Link to="/data-entry" className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]">
               ← Parts Data Entry
             </Link>
           </div>
@@ -361,7 +361,7 @@ export function PartWorkspacePage() {
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Trial</span>
             <button
               onClick={() => setTrialFilter('All')}
-              className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${trialFilter === 'All' ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}
+              className={`rounded-lg border px-3 py-1 text-[10.5px] font-medium ${trialFilter === 'All' ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}
             >
               All ({sections.length})
             </button>
@@ -371,7 +371,7 @@ export function PartWorkspacePage() {
                 <button
                   key={ms}
                   onClick={() => setTrialFilter(ms)}
-                  className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${trialFilter === ms ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}
+                  className={`rounded-lg border px-3 py-1 text-[10.5px] font-medium ${trialFilter === ms ? 'border-[var(--color-accent)] bg-[#eff6ff] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe]'}`}
                 >
                   {ms} ({n})
                 </button>
@@ -380,7 +380,7 @@ export function PartWorkspacePage() {
           </div>
         )}
         {targetPartNos.length > 1 && (
-          <p className="mt-2 text-[11px] text-[var(--color-accent)]">Showing {part?.partNo}; saving writes the same data to all {targetPartNos.length} selected parts.</p>
+          <p className="mt-2 text-[10.5px] text-[var(--color-accent)]">Showing {part?.partNo}; saving writes the same data to all {targetPartNos.length} selected parts.</p>
         )}
 
         {/* Contextual "lessons learnt" callout + rule-based forecast for this part's vendor. */}
@@ -388,13 +388,13 @@ export function PartWorkspacePage() {
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <div className="mb-1 flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" /><path d="M9 21h6" /></svg>
-              <span className="text-[11px] font-semibold text-[#92400e]">Lessons learnt · {part.vendorName}</span>
+              <span className="text-[10.5px] font-semibold text-[#92400e]">Lessons learnt · {part.vendorName}</span>
               <Link to="/lessons" className="ml-auto text-[10px] font-medium text-[var(--color-accent)] hover:underline">View all →</Link>
             </div>
             {partPredictions.length > 0 && (
               <ul className="mb-1 space-y-0.5">
                 {partPredictions.slice(0, 3).map((p) => (
-                  <li key={p.activityId} className="text-[11px] font-medium text-[#92400e]">
+                  <li key={p.activityId} className="text-[10.5px] font-medium text-[#92400e]">
                     <FbIcon name="exclamation-circle" size={14} className="mr-1 -mt-0.5" />Forecast · {p.activityName.split(' ').slice(0, 2).join(' ')}: {p.outcome} <span className="font-normal text-[var(--color-muted)]">({p.reasons[0]} · {p.confidence} confidence)</span>
                   </li>
                 ))}
@@ -402,7 +402,7 @@ export function PartWorkspacePage() {
             )}
             <ul className="space-y-0.5">
               {vendorCallout.slice(0, 2).map((ins) => (
-                <li key={ins.id} className="text-[11px] text-[#344054]">• {ins.detail}</li>
+                <li key={ins.id} className="text-[10.5px] text-[#344054]">• {ins.detail}</li>
               ))}
             </ul>
           </div>
@@ -425,7 +425,7 @@ export function PartWorkspacePage() {
             <div className="mb-3 flex items-center justify-between gap-3 max-sm:flex-nowrap sm:flex-wrap">
               {/* Completion scale: how many activities are complete out of the total */}
               <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
-                <span className="whitespace-nowrap text-[12px] font-semibold text-[#101828]">
+                <span className="whitespace-nowrap text-[11.5px] font-semibold text-[#101828]">
                   <span className="text-emerald-700">{completedCount}</span>
                   <span className="text-[var(--color-muted)]"> of {sections.length}<span className="max-sm:hidden"> activities</span> complete</span>
                 </span>
@@ -435,12 +435,12 @@ export function PartWorkspacePage() {
                     style={{ width: `${sections.length ? Math.round((completedCount / sections.length) * 100) : 0}%` }}
                   />
                 </div>
-                <span className="whitespace-nowrap text-[11px] font-medium text-[var(--color-muted)]">
+                <span className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">
                   {sections.length ? Math.round((completedCount / sections.length) * 100) : 0}%
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {toast && <span className="text-[11px] font-medium text-emerald-700">{toast}</span>}
+                {toast && <span className="text-[10.5px] font-medium text-emerald-700">{toast}</span>}
                 <Button variant="primary" size="sm" onClick={saveAll}>
                   Save all{targetPartNos.length > 1 ? ` (${targetPartNos.length} parts)` : ''}
                 </Button>
@@ -461,7 +461,7 @@ export function PartWorkspacePage() {
                       onClick={() => jumpTo(s.row.id)}
                       title={s.activity.name}
                       className={`flex-none min-w-[22vw] max-sm:max-w-[72vw] max-sm:whitespace-normal max-sm:leading-snug sm:min-w-[160px] sm:whitespace-nowrap
-                        rounded-lg border px-3 py-2 text-left text-[11px] font-medium transition-colors ${
+                        rounded-lg border px-3 py-2 text-left text-[10.5px] font-medium transition-colors ${
                           done
                             ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                             : 'border-[var(--color-border)] bg-white text-[#344054] hover:border-[#bfdbfe] hover:text-primary'
@@ -487,8 +487,8 @@ export function PartWorkspacePage() {
                 <div key={s.row.id}>
                   {showDivider && (
                     <div className="mb-2 flex items-center gap-2 pt-1">
-                      <span className="rounded bg-secondary px-2.5 py-1 text-[11px] font-semibold text-primary">{s.row.milestoneId}</span>
-                      <span className="whitespace-nowrap rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium text-[#475467]">{groupCount} activit{groupCount === 1 ? 'y' : 'ies'}</span>
+                      <span className="rounded bg-secondary px-2.5 py-1 text-[10.5px] font-semibold text-primary">{s.row.milestoneId}</span>
+                      <span className="whitespace-nowrap rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[10.5px] font-medium text-[#475467]">{groupCount} activit{groupCount === 1 ? 'y' : 'ies'}</span>
                       <span className="h-px flex-1 bg-[var(--color-border)]" />
                     </div>
                   )}
@@ -560,8 +560,8 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
       {/* Section header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:px-5">
         <div>
-          <h3 className="m-0 text-[15px] font-semibold text-[#101828]">{activity.name}</h3>
-          <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+          <h3 className="m-0 text-[14px] font-semibold text-[#101828]">{activity.name}</h3>
+          <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">
             {row.milestoneId} · {dateLabel}
           </p>
         </div>
@@ -571,7 +571,7 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
       {/* Fields */}
       <div className="px-4 py-4 sm:px-5">
         {isNa ? (
-          <p className="py-4 text-center text-[12px] text-[var(--color-muted)]">
+          <p className="py-4 text-center text-[11.5px] text-[var(--color-muted)]">
             Marked Not applicable{entry?.notApplicable?.reason ? ` — ${entry.notApplicable.reason}` : ''}.
           </p>
         ) : (
@@ -584,7 +584,7 @@ const ActivityCard = forwardRef<HTMLDivElement, ActivityCardProps>(function Acti
               return (
                 <div key={field.key} className="min-w-0">
                   <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[12px] font-medium text-[#344054]">
+                    <span className="text-[11.5px] font-medium text-[#344054]">
                       {field.label}
                       {mandatory && <span className="text-red-500"> *</span>}
                     </span>

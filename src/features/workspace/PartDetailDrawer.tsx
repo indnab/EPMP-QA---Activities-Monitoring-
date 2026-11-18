@@ -514,7 +514,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                 <span className="truncate">{activity.name}</span>
                 <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{row.milestoneId}</span>
               </h2>
-              <p className="mt-0.5 truncate text-[13px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
+              <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
                 {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
               </p>
             </div>
@@ -582,7 +582,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                     value={releaseComment}
                     onChange={(e) => setReleaseComment(e.target.value)}
                     placeholder="Reason for recall (optional)"
-                    className="h-8 rounded-lg border border-emerald-200 bg-white px-2 text-[11px] text-[#344054] placeholder-[var(--color-muted)]"
+                    className="h-8 rounded-lg border border-emerald-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
                   />
                   <Button variant="secondary" size="sm" onClick={() => handleRelease(false)}>
                     Recall
@@ -610,7 +610,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                     value={releaseComment}
                     onChange={(e) => setReleaseComment(e.target.value)}
                     placeholder="Note (optional) — e.g. vendor code verified"
-                    className="h-8 flex-1 rounded-lg border border-amber-200 bg-white px-2 text-[11px] text-[#344054] placeholder-[var(--color-muted)]"
+                    className="h-8 flex-1 rounded-lg border border-amber-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
                   />
                   <Button variant="primary" size="sm" onClick={() => handleRelease(true)}>
                     {rstate === 'Returned' ? 'Release again' : 'Release to vendor'}
@@ -627,7 +627,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
           {vtAllowed && (
             <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-[var(--color-text)]">Planned timeline</span>
+                <span className="text-[11.5px] font-semibold text-[var(--color-text)]">Planned timeline</span>
                 {canEditTimeline && !tlEditing && (
                   <Button variant="secondary" size="sm" onClick={openTimelineEditor}>
                     {vt ? 'Update timeline' : 'Set vendor timeline'}
@@ -674,12 +674,12 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                   <label className="block">
                     <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">Start</span>
                     <input type="date" value={tlStart} onChange={(e) => setTlStart(e.target.value)}
-                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px]" />
+                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">End</span>
                     <input type="date" value={tlEnd} onChange={(e) => setTlEnd(e.target.value)}
-                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px]" />
+                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
                   </label>
                   <Button variant="primary" size="sm" onClick={saveTimeline} disabled={!tlStart || !tlEnd || tlStart > tlEnd}>
                     Save
@@ -773,7 +773,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-[var(--color-text)]">{r.reason}</p>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-[var(--color-muted)]">
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[10.5px] text-[var(--color-muted)]">
                         <span>Marked by {r.byName} on {fmtDate(r.at.slice(0, 10))}</span>
                         {r.targetDate && <span>Next submission target: {fmtDate(r.targetDate)}</span>}
                         {r.resolvedAt && <span>Cleared on {fmtDate(r.resolvedAt.slice(0, 10))}</span>}
@@ -835,22 +835,22 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                     value={naTitle}
                     onChange={(e) => setNaTitle(e.target.value)}
                     placeholder="Action title (e.g. Submit revised drawing)"
-                    className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-white px-2 text-[12px]"
+                    className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11.5px]"
                   />
                   <textarea
                     value={naDesc}
                     onChange={(e) => setNaDesc(e.target.value)}
                     placeholder="Details (optional)"
                     rows={2}
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-[12px] resize-y"
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-[11.5px] resize-y"
                   />
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="block">
                       <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">Target date</span>
                       <input type="date" value={naTarget} onChange={(e) => setNaTarget(e.target.value)}
-                        className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px]" />
+                        className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
                     </label>
-                    <span className="text-[11px] text-[var(--color-muted)]">Assigned to <strong>Vendor</strong> ({part.vendorName})</span>
+                    <span className="text-[10.5px] text-[var(--color-muted)]">Assigned to <strong>Vendor</strong> ({part.vendorName})</span>
                     <div className="ml-auto flex gap-2">
                       <Button variant="secondary" size="sm" onClick={() => { setNewActionOpen(false); setNaTitle(''); setNaDesc(''); setNaTarget('') }}>Cancel</Button>
                       <Button variant="primary" size="sm" onClick={createAction} disabled={!naTitle.trim()}>Add</Button>
@@ -874,14 +874,14 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                           <RygDot status={ryg} size={10} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-[13px] font-medium text-[var(--color-text)]">{a.title}</span>
+                              <span className="text-[12px] font-medium text-[var(--color-text)]">{a.title}</span>
                               <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                                 a.status === 'Done' ? 'bg-emerald-100 text-emerald-800'
                                 : a.status === 'In progress' ? 'bg-amber-100 text-amber-800'
                                 : 'bg-slate-100 text-slate-600'}`}>{a.status}</span>
                             </div>
-                            {a.description && <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">{a.description}</p>}
-                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[var(--color-muted)]">
+                            {a.description && <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">{a.description}</p>}
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] text-[var(--color-muted)]">
                               <span>Assigned: <strong className="text-[var(--color-text)]">{a.assignedToName || a.assignedTo}</strong></span>
                               <span>
                                 Target:{' '}
@@ -937,13 +937,13 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
 
               {newDevOpen && (
                 <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 space-y-2">
-                  <input value={devTitle} onChange={(e) => setDevTitle(e.target.value)} placeholder="Deviation title" className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-white px-2 text-[12px]" />
-                  <textarea value={devDesc} onChange={(e) => setDevDesc(e.target.value)} placeholder="Details (optional)" rows={2} className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-[12px] resize-y" />
+                  <input value={devTitle} onChange={(e) => setDevTitle(e.target.value)} placeholder="Deviation title" className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11.5px]" />
+                  <textarea value={devDesc} onChange={(e) => setDevDesc(e.target.value)} placeholder="Details (optional)" rows={2} className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-[11.5px] resize-y" />
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="block"><span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">E-Doc no.</span>
-                      <input value={devEdoc} onChange={(e) => setDevEdoc(e.target.value)} className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px]" /></label>
+                      <input value={devEdoc} onChange={(e) => setDevEdoc(e.target.value)} className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" /></label>
                     <label className="block"><span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">Target date</span>
-                      <input type="date" value={devTarget} onChange={(e) => setDevTarget(e.target.value)} className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[11px]" /></label>
+                      <input type="date" value={devTarget} onChange={(e) => setDevTarget(e.target.value)} className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" /></label>
                     <div className="ml-auto flex gap-2">
                       <Button variant="secondary" size="sm" onClick={() => { setNewDevOpen(false); setDevTitle(''); setDevDesc(''); setDevEdoc(''); setDevTarget('') }}>Cancel</Button>
                       <Button variant="primary" size="sm" onClick={createDeviation} disabled={!devTitle.trim()}>Raise</Button>
@@ -969,10 +969,10 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                         <div className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-[13px] font-medium text-[var(--color-text)]">{d.title}</span>
+                              <span className="text-[12px] font-medium text-[var(--color-text)]">{d.title}</span>
                               <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusTone}`}>{d.status}</span>
                             </div>
-                            {d.description && <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">{d.description}</p>}
+                            {d.description && <p className="mt-0.5 text-[10.5px] text-[var(--color-muted)]">{d.description}</p>}
                             <div className="mt-1.5 flex items-center gap-1">
                               {d.flow.map((role, i) => {
                                 const done = d.status === 'Approved' ? true : i < d.currentStep
@@ -1036,7 +1036,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
             </div>
           )}
           {activity.trackNgRounds && openNgRound && entryState !== 'Approved' && !isNa && (
-            <p className="mb-2 rounded-md bg-[#fef2f2] px-2.5 py-1.5 text-[11px] text-[#b91c1c]">
+            <p className="mb-2 rounded-md bg-[#fef2f2] px-2.5 py-1.5 text-[10.5px] text-[#b91c1c]">
               NG round {openNgRound.round} open — vendor to resubmit{openNgRound.targetDate ? ` by ${fmtDate(openNgRound.targetDate)}` : ''}. “{openNgRound.reason}”
             </p>
           )}
@@ -1287,7 +1287,7 @@ function FormTab({
             </div>
 
             {isFetchedSource(field.source) && fs?.error && (
-              <p className="text-[11px] text-[var(--color-muted)] mt-0.5 italic">
+              <p className="text-[10.5px] text-[var(--color-muted)] mt-0.5 italic">
                 Not available in {field.source.toUpperCase()} — enter the target date manually if needed.
               </p>
             )}

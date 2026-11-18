@@ -110,7 +110,7 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
       >
         {/* Format picker */}
         <div className="mb-4">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Format</p>
+          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Format</p>
           <div className="grid grid-cols-3 gap-2">
             {FORMATS.map((f) => {
               const active = format === f.id
@@ -126,7 +126,7 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
                       : 'border-[var(--color-border)] hover:bg-[#fafafa]'
                   }`}
                 >
-                  <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text)]">
+                  <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--color-text)]">
                     <Icon name={f.icon as never} size={14} /> {f.label}
                   </span>
                   <span className="text-[10px] text-[var(--color-muted)]">{f.hint}</span>
@@ -139,14 +139,14 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
         {/* Section checklist */}
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
               Include ({selectedCount}/{rows.length})
             </p>
             {rows.length > 0 && (
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-[11px] font-medium text-[var(--color-primary)] hover:underline"
+                className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline"
               >
                 {allOn ? 'Clear all' : 'Select all'}
               </button>
@@ -154,7 +154,7 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
           </div>
 
           {rows.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-4 text-center text-[12px] text-[var(--color-muted)]">
+            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-4 text-center text-[11.5px] text-[var(--color-muted)]">
               Nothing on this page is marked for export yet.
             </p>
           ) : (
@@ -162,7 +162,7 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
               {rows.map((r, i) => (
                 <li
                   key={r.id}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-[12px] ${
+                  className={`flex items-center gap-2.5 px-3 py-2 text-[11.5px] ${
                     i > 0 ? 'border-t border-[var(--color-border)]' : ''
                   }`}
                 >
@@ -180,7 +180,7 @@ export function DownloadMenu({ title, size = 'sm', variant = 'secondary' }: Down
               ))}
             </ul>
           )}
-          {error && <p className="mt-2 text-[11px] text-[var(--color-ryg-red,#dc2626)]">{error}</p>}
+          {error && <p className="mt-2 text-[10.5px] text-[var(--color-ryg-red,#dc2626)]">{error}</p>}
         </div>
       </Modal>
     </>

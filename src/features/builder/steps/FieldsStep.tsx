@@ -515,7 +515,7 @@ function ValidationRulesEditor({ fields, rules, onChange }: { fields: FieldDefin
   const chips = (list: string[], set: (v: string[]) => void) => (
     <div className="flex flex-wrap items-center gap-1">
       {list.map((k, i) => (
-        <span key={k} className="inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 text-[11px] ring-1 ring-[var(--color-border)]">
+        <span key={k} className="inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 text-[10.5px] ring-1 ring-[var(--color-border)]">
           {i > 0 && <span className="text-[var(--color-muted)]">+</span>}
           {options.find((o) => o.key === k)?.label ?? k}
           <button type="button" onClick={() => set(list.filter((x) => x !== k))} aria-label="Remove" className="text-[var(--color-destructive)]"><FbIcon name="close" size={14} /></button>
@@ -530,10 +530,10 @@ function ValidationRulesEditor({ fields, rules, onChange }: { fields: FieldDefin
   return (
     <div className="mt-5 rounded-lg border border-[var(--color-border)] bg-white p-3.5" data-tour="validation-rules">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Validation rules ({rules.length})</h3>
+        <h3 className="text-[12px] font-semibold text-[var(--color-text)]">Validation rules ({rules.length})</h3>
         {!open && <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>+ Add rule</Button>}
       </div>
-      <p className="mb-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mb-2 text-[10.5px] text-[var(--color-muted)]">
         Make numbers add up, e.g. Agree + Disagree = Total. Users see the message while editing and cannot Save or Submit until it holds.
       </p>
       {rules.length === 0 && !open && <p className="text-xs italic text-[var(--color-muted)]">No rules yet.</p>}
@@ -644,7 +644,7 @@ function CountRowsEditor({ field, onUpdate, allFields }: { field: FieldDefinitio
             )}
           </div>
           {c?.tableField && c.column && (
-            <p className="text-[11px] text-[var(--color-muted)]">
+            <p className="text-[10.5px] text-[var(--color-muted)]">
               Count of rows in “{table?.label}” where “{col?.label}” is {c.equals ? `“${c.equals}”` : 'blank'}. Updates itself as the table changes.
             </p>
           )}
@@ -917,8 +917,8 @@ function DerivedRowsEditor({ field, onUpdate, allFields }: { field: FieldDefinit
         <div className="mt-2">
           {sample.length > 0 ? (
             <>
-              <div className="mb-1 text-[11px] text-[var(--color-muted)]">Check: if “{srcTable?.label}” has Category A = 2 and Category B = 1, this table gets {sample.length} rows —</div>
-              <table className="text-[11px]">
+              <div className="mb-1 text-[10.5px] text-[var(--color-muted)]">Check: if “{srcTable?.label}” has Category A = 2 and Category B = 1, this table gets {sample.length} rows —</div>
+              <table className="text-[10.5px]">
                 <thead>
                   <tr className="text-[var(--color-muted)]">
                     <th className="px-2 text-left">Sl.</th>
@@ -927,10 +927,10 @@ function DerivedRowsEditor({ field, onUpdate, allFields }: { field: FieldDefinit
                 </thead>
                 <tbody>{sample.map((r, i) => <tr key={i}><td className="px-2">{r._sl}</td><td className="px-2">{r[d.targetLabelColumn]}</td></tr>)}</tbody>
               </table>
-              <p className="mt-1 text-[11px] text-[var(--color-muted)]">Serial numbers (1.1, 1.2, 2.1…) are added by the system and follow the source rows. The linked column is read-only; the other columns are filled per row.</p>
+              <p className="mt-1 text-[10.5px] text-[var(--color-muted)]">Serial numbers (1.1, 1.2, 2.1…) are added by the system and follow the source rows. The linked column is read-only; the other columns are filled per row.</p>
             </>
           ) : (
-            <p className="text-[11px] text-[#b45309]">Pick all four settings above to see how the rows will be generated.</p>
+            <p className="text-[10.5px] text-[#b45309]">Pick all four settings above to see how the rows will be generated.</p>
           )}
         </div>
       )}
@@ -976,7 +976,7 @@ function TableColumnsEditor({ field, onUpdate, allFields }: { field: FieldDefini
         <span className="font-medium text-[var(--color-text)]">Table columns</span>
         <Button variant="secondary" size="sm" onClick={addCol}>+ Add column</Button>
       </div>
-      <p className="mb-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mb-2 text-[10.5px] text-[var(--color-muted)]">
         Each row the user adds has these columns. A column can be owned by a different persona than the field —
         e.g. the Vendor lists the rows while the PIC fills a “Reason for acceptance” column.
       </p>

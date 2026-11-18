@@ -44,7 +44,7 @@ export function SortMenu<K extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         title="Sort"
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11px] font-medium text-[#344054] hover:bg-[#fafafa]"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[10.5px] font-medium text-[#344054] hover:bg-[#fafafa]"
       >
         <FbIcon name="caret-sort" size={13} />
         <span className="whitespace-nowrap">Sort: {active?.label ?? '—'}</span>
@@ -61,7 +61,7 @@ export function SortMenu<K extends string>({
                 role="option"
                 aria-selected={isActive}
                 onClick={() => onChange(o.key, isActive ? (sortDir === 'asc' ? 'desc' : 'asc') : 'asc')}
-                className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-[var(--color-surface)] ${
+                className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-[10.5px] hover:bg-[var(--color-surface)] ${
                   isActive ? 'font-semibold text-[var(--color-accent)]' : 'text-[#344054]'
                 }`}
               >
@@ -74,7 +74,7 @@ export function SortMenu<K extends string>({
             <button
               type="button"
               onClick={() => onChange(sortKey, sortDir === 'asc' ? 'desc' : 'asc')}
-              className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[11px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)]"
+              className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[10.5px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)]"
             >
               <FbIcon name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'} size={13} />
               {sortDir === 'asc' ? 'Ascending' : 'Descending'} (toggle)

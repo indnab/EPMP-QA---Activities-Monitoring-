@@ -4,7 +4,7 @@ import type { FieldDefinition } from '../../domain'
 export type CellTone = 'none' | 'rule' | 'error'
 
 const base =
-  'h-8 w-full rounded-md border bg-white px-2 text-[11px] text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:bg-[var(--color-surface)] disabled:opacity-70'
+  'h-8 w-full rounded-md border bg-white px-2 text-[10.5px] text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:bg-[var(--color-surface)] disabled:opacity-70'
 
 function toneClass(tone: CellTone): string {
   if (tone === 'error') return 'border-[var(--color-ryg-red)] bg-[#fef2f2]'
@@ -81,7 +81,7 @@ export function CellEditor({ field, value, onChange, cellId, tone = 'none', labe
           </summary>
           <div className="absolute left-0 z-20 mt-1 min-w-[160px] rounded-lg border border-[var(--color-border)] bg-white p-2 shadow-lg">
             {field.options?.map((opt) => (
-              <label key={opt} className="flex items-center gap-2 py-0.5 text-[11px]">
+              <label key={opt} className="flex items-center gap-2 py-0.5 text-[10.5px]">
                 <input
                   type="checkbox"
                   checked={selected.includes(opt)}
@@ -96,7 +96,7 @@ export function CellEditor({ field, value, onChange, cellId, tone = 'none', labe
     }
     case 'flag':
       return (
-        <label className="flex h-8 items-center gap-1.5 text-[11px]">
+        <label className="flex h-8 items-center gap-1.5 text-[10.5px]">
           <input {...common} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
           {value ? 'Flagged' : 'Clear'}
         </label>

@@ -10,7 +10,7 @@ import { DownloadMenu } from '../export/DownloadMenu'
 import { ExportSection } from '../export/ExportSection'
 
 const inputCls =
-  'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11px] text-[#344054] placeholder-[var(--color-muted)]'
+  'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]'
 const thCls = 'px-3 py-3 text-left font-medium text-[var(--color-muted)] align-bottom'
 
 interface Column {
@@ -198,7 +198,7 @@ export function ApplicabilityMatrixPage() {
             Clear filters
           </button>
         )}
-        <span className="ml-auto text-[11px] text-[var(--color-muted)]">
+        <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">
           {allColumns.length} eligible {allColumns.length === 1 ? 'activity' : 'activities'} · {visibleParts.length} of {parts.length} parts · {totalNa} marked Not applicable
         </span>
       </section>
@@ -325,7 +325,7 @@ export function ApplicabilityMatrixPage() {
           </div>
         )}
       </Card></ExportSection>
-      <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+      <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
         Ticked = Not applicable. A "—" means the activity does not apply to that part's type or section. Highlighted cells are staged and not yet saved.
       </p>
 
@@ -347,7 +347,7 @@ export function ApplicabilityMatrixPage() {
             return (
               <li key={rowId} className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium">{col?.activity.name ?? rowId}</span>
-                <span className="text-[11px] text-[var(--color-muted)]">{col?.milestoneLabel}</span>
+                <span className="text-[10.5px] text-[var(--color-muted)]">{col?.milestoneLabel}</span>
                 {g.mark.length > 0 && <span>{g.mark.length} to Not applicable</span>}
                 {g.reverse.length > 0 && <span>{g.reverse.length} to applicable again</span>}
               </li>
@@ -355,7 +355,7 @@ export function ApplicabilityMatrixPage() {
           })}
         </ul>
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium text-[var(--color-muted)]">Reason (optional, applies to every change)</span>
+          <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (optional, applies to every change)</span>
           <input
             type="text"
             value={reason}
@@ -364,7 +364,7 @@ export function ApplicabilityMatrixPage() {
             className="w-full rounded border border-[var(--color-border)] px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
         </label>
-        <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+        <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
           Each change is logged with your name and the date in that part's history for that activity.
         </p>
       </Modal>

@@ -121,7 +121,7 @@ function RowForm({
           </select>
         )}
         {errors.activityId && (
-          <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors.activityId}</p>
+          <p className="mt-1 text-[10.5px] text-[var(--color-destructive)]">{errors.activityId}</p>
         )}
       </div>
 
@@ -148,7 +148,7 @@ function RowForm({
           </select>
         )}
         {errors.milestoneId && (
-          <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors.milestoneId}</p>
+          <p className="mt-1 text-[10.5px] text-[var(--color-destructive)]">{errors.milestoneId}</p>
         )}
       </div>
 
@@ -166,7 +166,7 @@ function RowForm({
               ${errors.startOffset ? 'border-[var(--color-destructive)]' : 'border-[var(--color-border)]'}`}
           />
           {errors.startOffset && (
-            <p className="mt-1 text-[11px] text-[var(--color-destructive)]">{errors.startOffset}</p>
+            <p className="mt-1 text-[10.5px] text-[var(--color-destructive)]">{errors.startOffset}</p>
           )}
         </div>
         <div>
@@ -182,12 +182,12 @@ function RowForm({
           />
         </div>
       </div>
-      <p className="mb-4 text-[11px] text-[var(--color-muted)]">
+      <p className="mb-4 text-[10.5px] text-[var(--color-muted)]">
         Negative = before MRD (e.g. −30 = 30 days before). Positive = after MRD. Start must not be after end.
       </p>
 
       {errors.duplicate && (
-        <div className="mb-4 rounded-lg border border-[var(--color-destructive)] bg-[#fff5f5] px-3.5 py-2.5 text-[11px] text-[var(--color-destructive)]">
+        <div className="mb-4 rounded-lg border border-[var(--color-destructive)] bg-[#fff5f5] px-3.5 py-2.5 text-[10.5px] text-[var(--color-destructive)]">
           {errors.duplicate}
         </div>
       )}
@@ -219,7 +219,7 @@ function PreviewTable({ rows, activities, milestones, models, selectedModel, onM
       <select
         value={selectedModel}
         onChange={(e) => onModelChange(e.target.value)}
-        className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+        className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[10.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
       >
         {models.length === 0 && <option value="">No models</option>}
         {models.map((m) => (
@@ -502,7 +502,7 @@ export function SectionTemplatePage() {
                           <button
                             type="button"
                             onClick={() => setEditRow(row)}
-                            className="text-[11px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                            className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                           >
                             Edit offsets
                           </button>
@@ -511,7 +511,7 @@ export function SectionTemplatePage() {
                             <button
                               type="button"
                               onClick={() => handleDuplicateRow(row)}
-                              className="text-[11px] font-medium text-[#0891b2] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                              className="text-[10.5px] font-medium text-[#0891b2] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                             >
                               Duplicate
                             </button>
@@ -519,7 +519,7 @@ export function SectionTemplatePage() {
                           <button
                             type="button"
                             onClick={() => setDeleteRowId(row.id)}
-                            className="text-[11px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
+                            className="text-[10.5px] font-medium text-[var(--color-destructive)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] rounded"
                           >
                             Remove
                           </button>
