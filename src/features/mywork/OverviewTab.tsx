@@ -28,13 +28,13 @@ export type OverviewGo = (
 function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; value: number; color: string; icon: string; onClick?: () => void; hint?: string }) {
   const body = (
     <>
-      <span className="flex min-w-0 items-center gap-1 text-[10px] font-medium leading-tight text-[var(--color-muted)]">
-        <FbIcon name={icon} size={11} style={{ color }} /> <span className="truncate">{title}</span>
+      <span className="flex min-w-0 items-start gap-1 text-[10px] font-medium leading-tight text-[var(--color-muted)]">
+        <FbIcon name={icon} size={11} style={{ color }} className="mt-px" /> <span className="line-clamp-2">{title}</span>
       </span>
       <span className="text-[16px] font-bold leading-none" style={{ color }}>{value}</span>
     </>
   )
-  const cls = 'flex min-w-0 flex-col gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-left'
+  const cls = 'flex min-w-0 flex-col justify-between gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-left'
   return onClick ? (
     <button type="button" onClick={onClick} title={hint ?? title} data-export-stat={title} data-export-stat-value={value}
       className={`${cls} transition-colors hover:border-[#bfdbfe] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]`}>
@@ -47,8 +47,8 @@ function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; 
 
 function Segment({ title, icon, children, className = '' }: { title: string; icon: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={className}>
-      <h3 className="mb-1 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]"><FbIcon name={icon} size={11} />{title}</h3>
+    <section className={`epmp-card p-3 ${className}`}>
+      <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#344054]"><FbIcon name={icon} size={12} />{title}</h3>
       {children}
     </section>
   )
@@ -114,18 +114,18 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   }, [stageOf])
 
   return (
-    <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="flex flex-col gap-2.5">
+    <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,3.6fr)_minmax(0,7fr)_minmax(140px,1.2fr)]">
       <Segment title="Parts" icon="list">
         <div className="grid grid-cols-3 gap-1.5">
-          <KpiCard title="Under development" value={partStats.under} color="#2153f5" icon="tools" hint="Parts of models before SOP" />
-          <KpiCard title="Developed (≤ SOP + 3 m)" value={partStats.developed} color="#10b981" icon="check" hint="Parts of models past SOP, up to SOP + 3 months" />
+          <KpiCard title="Under dev." value={partStats.under} color="#2153f5" icon="tools" hint="Under development: parts of models before SOP" />
+          <KpiCard title="Developed" value={partStats.developed} color="#10b981" icon="check" hint="Developed: parts of models past SOP, up to SOP + 3 months" />
           <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
           <KpiCard title="Awaiting vendor ack." value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} hint="Released, awaiting vendor acknowledgement" />
           <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
         </div>
       </Segment>
       <Segment title="Activities" icon="clipboard-list">
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 xl:grid-cols-5">
           <KpiCard title="Upcoming" value={totals.Upcoming} color={WORK_BUCKET_COLORS.Upcoming} icon="calendar-month" onClick={() => onGo('overview', { bucket: 'Upcoming' })} />
           <KpiCard title="Completed" value={totals.Completed} color={WORK_BUCKET_COLORS.Completed} icon="check-circle" onClick={() => onGo('overview', { bucket: 'Completed' })} />
           <KpiCard title="Delayed" value={totals.Delayed} color={WORK_BUCKET_COLORS.Delayed} icon="exclamation-circle" onClick={() => onGo('overview', { bucket: 'Delayed' })} />
@@ -138,9 +138,9 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
         </div>
       </Segment>
       <Segment title="Models" icon="grid">
-        <div className="grid grid-cols-3 gap-1.5">
-          <KpiCard title="Under development" value={modelStats.under} color="#2153f5" icon="tools" hint="Models before SOP" />
-          <KpiCard title="Developed (≤ SOP + 3 m)" value={modelStats.developed} color="#10b981" icon="check" hint="Models past SOP, up to SOP + 3 months" />
+        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
+          <KpiCard title="Under dev." value={modelStats.under} color="#2153f5" icon="tools" hint="Under development: models before SOP" />
+          <KpiCard title="Developed" value={modelStats.developed} color="#10b981" icon="check" hint="Developed: models past SOP, up to SOP + 3 months" />
         </div>
       </Segment>
     </ExportSection>
@@ -148,7 +148,7 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
 }
 
 /** Model-wise cards: priority models (delayed or NG activities, most first) face up; the rest behind "More models". */
-export function PriorityModels({ instances, parts }: { instances: FilteredInstance[]; parts: PartRecord[] }) {
+export function PriorityModels({ instances, parts, className = '' }: { instances: FilteredInstance[]; parts: PartRecord[]; className?: string }) {
   const navigate = useNavigate()
   const stageOf = useModelStages(parts)
   const [moreModels, setMoreModels] = useState(false)
@@ -174,25 +174,25 @@ export function PriorityModels({ instances, parts }: { instances: FilteredInstan
   const shown = moreModels ? [...cards.priority, ...cards.rest] : cards.priority
 
   return (
-    <ExportSection id="mw-ov-models" label="Overview – models">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority models</h3>
-        <span className="text-[11px] text-[var(--color-muted)]">Models with delayed or NG activities, most first. Click a model to choose its part, then the trial.</span>
+    <ExportSection id="mw-ov-models" label="Overview – models" className={`epmp-card flex min-h-0 flex-col p-4 ${className}`}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority Models</h3>
+        <span className="ml-auto text-[11px] text-[var(--color-muted)]" title="Click a model to choose its part, then the trial.">Models with delayed or NG activities, most first</span>
         {cards.rest.length > 0 && (
-          <button type="button" onClick={() => setMoreModels((v) => !v)} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+          <button type="button" onClick={() => setMoreModels((v) => !v)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
             <FbIcon name={moreModels ? 'chevron-up' : 'chevron-down'} size={13} />
             {moreModels ? 'Fewer models' : `More models (${cards.rest.length})`}
           </button>
         )}
       </div>
       {shown.length === 0 ? (
-        <p className="epmp-card mb-4 py-4 text-center text-[12px] text-[var(--color-muted)]">No model has delayed or NG activities.</p>
+        <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">No model has delayed or NG activities.</p>
       ) : (
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid min-h-0 grid-cols-2 content-start gap-2 overflow-y-auto sm:grid-cols-3">
           {shown.map((t) => (
             <button key={t.model} type="button" onClick={() => navigate(`/part-workspace?model=${encodeURIComponent(t.model)}`)}
               title={`Open ${t.model}'s parts`}
-              className={`epmp-card px-3 py-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${t.delayed + t.ng > 0 ? 'border-l-4 border-l-[#dc2626]' : ''}`}>
+              className={`rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${t.delayed + t.ng > 0 ? 'border-l-4 border-l-[#dc2626]' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-[12.5px] font-semibold text-[var(--color-text)]">{t.model}</span>
                 <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${t.stage === 'developed' ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-primary'}`}>

@@ -448,6 +448,8 @@ interface FilterBarProps {
   /** Status (work bucket) is an Insights concept; the Worklist hides it. */
   showStatus?: boolean
   hasFilters: boolean; clearFilters: () => void
+  /** Shown at the start of the bar (e.g. the Back button). */
+  leading?: React.ReactNode
 }
 
 /**
@@ -461,6 +463,7 @@ function CompactFilterBar(f: FilterBarProps) {
   return (
     <section className="epmp-card mb-3 px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
+        {f.leading}
         {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
         <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
         <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
@@ -779,7 +782,7 @@ function MyWorkPageInner() {
       {/* No page header here — the four-tab bar is the page's own heading. The 30-day toggle sits beside it. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-        <BackButton />
+        {effectiveView !== 'overview' && <BackButton />}
         <Tabs
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
@@ -810,6 +813,7 @@ function MyWorkPageInner() {
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
+          leading={<BackButton />}
           attrs={fAttrs} setAttrs={setFAttrs}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
@@ -844,9 +848,7 @@ function MyWorkPageInner() {
         </>
       ) : (
         <>
-          {/* Overview: compact KPI segments beside the "Workspace by" chart, then priority models and the list */}
-          <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <Card>
+          {/* Overview: Parts / Activities / Models in one row; the chart beside the priority models; then the list */}
             <OverviewKpis
               instances={instances}
               parts={overviewParts}
@@ -856,7 +858,7 @@ function MyWorkPageInner() {
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />
-          </Card>
+          <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
           {/* Graphical: stacked bars by the chosen dimension */}
           <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="h-full">
             <div className="mb-3 flex items-center gap-3">
@@ -895,8 +897,8 @@ function MyWorkPageInner() {
             )}
             <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>
           </Card></ExportSection>
+          <PriorityModels instances={instances} parts={overviewParts} className="xl:max-h-[420px]" />
           </div>
-          <PriorityModels instances={instances} parts={overviewParts} />
 
           {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
           <div id="mw-detail" />
