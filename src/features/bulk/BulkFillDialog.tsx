@@ -217,6 +217,7 @@ export function BulkFillDialog({
                           {field.source && <SourceBadge source={field.source as SourceType} />}
                         </div>
                         {renderer.editor({ field, value: draft[b.id]?.[field.key], onChange: (v) => setField(b.id, field.key, v), currentPersona })}
+                        <ExistingValues field={field} targets={(targets ?? []).filter((t) => (t.sectionId ?? SINGLE) === b.id)} />
                       </div>
                     )
                   })}
@@ -227,5 +228,46 @@ export function BulkFillDialog({
         </div>
       )}
     </Modal>
+  )
+}
+
+/** What the selected items already hold for one field: one value, "all the same", or a list per item. */
+function ExistingValues({ field, targets }: { field: FieldDefinition; targets: BulkTarget[] }) {
+  if (targets.length === 0) return null
+  const filled = targets
+    .map((t) => ({ t, v: t.values[field.key] }))
+    .filter(({ v }) => !isBlank(v))
+  const box = 'mt-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[10.5px] text-[#475467]'
+  if (filled.length === 0) {
+    return <p className={box}>Not filled on {targets.length === 1 ? 'this item' : `any of the ${targets.length} items`} yet.</p>
+  }
+  const shown = (v: unknown) => formatValue(field, v) || '—'
+  const values = new Set(filled.map(({ v }) => JSON.stringify(v)))
+  // One item, or every item holds the same value: a single line.
+  if (targets.length === 1 || (values.size === 1 && filled.length === targets.length)) {
+    return (
+      <p className={box}>
+        <span className="font-semibold text-[#344054]">Already filled{targets.length > 1 ? ` (all ${targets.length})` : ''}:</span> {shown(filled[0].v)}
+      </p>
+    )
+  }
+  return (
+    <details className={box} open={targets.length <= 5}>
+      <summary className="cursor-pointer select-none">
+        <span className="font-semibold text-[#344054]">Already filled on {filled.length} of {targets.length}</span>
+        <span className="text-[var(--color-muted)]"> · show values</span>
+      </summary>
+      <ul className="mt-1 max-h-32 space-y-0.5 overflow-y-auto">
+        {targets.map((t) => {
+          const v = t.values[field.key]
+          return (
+            <li key={t.id} className="flex gap-2">
+              <span className="min-w-0 flex-1 truncate text-[var(--color-muted)]" title={t.label}>{t.label}</span>
+              <span className={isBlank(v) ? 'italic text-[var(--color-muted)]' : 'font-medium text-[#101828]'}>{isBlank(v) ? 'empty' : shown(v)}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </details>
   )
 }
