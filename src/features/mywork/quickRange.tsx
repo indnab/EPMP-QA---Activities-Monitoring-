@@ -8,7 +8,6 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ModelRecord } from '../../domain'
 import type { FilteredInstance } from '../../engine'
-import { Icon } from '../../components/Icon'
 import { DEMO_TODAY } from '../scope'
 
 export type QuickRange = 'mrd30' | 'due30' | 'all'
@@ -46,10 +45,9 @@ const OPTIONS: { id: QuickRange; label: string }[] = [
   { id: 'all', label: 'All' },
 ]
 
-/** Segmented quick filter + "As of Today" chip. */
+/** Segmented quick filter. */
 export function QuickRangeControl() {
   const { range, setRange } = useQuickRange()
-  const today = new Date(`${DEMO_TODAY}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   return (
     <div className="flex flex-wrap items-center gap-2" data-export-ignore="true">
       <div className="inline-flex rounded-xl bg-[#eef0f4] p-1" role="group" aria-label="Quick date filter">
@@ -60,10 +58,6 @@ export function QuickRangeControl() {
           </button>
         ))}
       </div>
-      <span className="inline-flex items-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-white text-[12px]">
-        <span className="inline-flex items-center gap-1.5 bg-[#eef0f4] px-2.5 py-1.5 text-[#475467]"><Icon name="calendar-month" size={14} />As of</span>
-        <span className="px-2.5 py-1.5 font-medium text-[#101828]">Today · {today}</span>
-      </span>
     </div>
   )
 }
