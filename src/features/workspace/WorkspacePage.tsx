@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { PendingRoleChip } from '../pendency'
 import { BackButton } from '../../components/BackButton'
 import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { useState, useMemo } from 'react'
@@ -6,7 +7,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
-import { calculateRYG, resolveInstanceDates, resolveTrackedDates, completionPct, getMilestoneMrd, isWorkableByVendor } from '../../engine'
+import { calculateRYG, resolveInstanceDates, resolveTrackedDates, completionPct, getMilestoneMrd, isWorkableByVendor, pendencyOf } from '../../engine'
 import { Button, Card, RygDot, StatusPill, ApplicabilityDialog } from '../../components'
 import type { RygStatus } from '../../components/RygDot'
 import type { StatusValue } from '../../components/StatusPill'
@@ -27,7 +28,7 @@ export function WorkspacePage() {
   // The route param is the template row id (an activity under a milestone for a section).
   const { id } = useParams<{ id: string }>()
   const isMobile = useIsMobile()
-  const { activities, entries, templateRows, models: modelRecords, partReleases, partAcks, setNotApplicable, updateEntryValues, transitionEntryState, projects } = useQAStore()
+  const { activities, entries, templateRows, models: modelRecords, partReleases, partAcks, picAssignments, setNotApplicable, updateEntryValues, transitionEntryState, projects } = useQAStore()
   const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
 
@@ -572,6 +573,8 @@ export function WorkspacePage() {
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Part Name</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Status</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">RYG</th>
+                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)] whitespace-nowrap">Pending with</th>
+                  <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)] whitespace-nowrap">Pending with role</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Model</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Vendor</th>
                   <th className="text-left px-3 py-3 font-medium text-[var(--color-muted)]">Dept</th>
@@ -590,6 +593,10 @@ export function WorkspacePage() {
                   const isSelected = selected.has(part.partNo)
                   const naMark = entryMap.get(part.partNo)?.notApplicable
                   const isNa = !!naMark
+                  const pend = activity ? pendencyOf(
+                    { activity, entry: entryMap.get(part.partNo), part, status: entryMap.get(part.partNo)?.validationState ?? 'NotStarted', notApplicable: isNa },
+                    { picAssignments, releases: partReleases, acks: partAcks, today }
+                  ) : null
                   const extraTexts = listCellTexts(
                     activity, extraFields, entryMap.get(part.partNo), part,
                     getMilestoneMrd(modelRecords.find((m) => m.name === part.model), row.milestoneId)
@@ -627,6 +634,8 @@ export function WorkspacePage() {
                       <td className="px-3 py-2.5">
                         {isNa ? <span className="text-xs text-[var(--color-muted)]">—</span> : <RygDot status={ryg} size={10} />}
                       </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-[var(--color-text)]">{pend?.name ?? <span className="text-[var(--color-muted)]">—</span>}</td>
+                      <td className="px-3 py-2.5">{pend ? <PendingRoleChip role={pend.role} /> : <span className="text-xs text-[var(--color-muted)]">—</span>}</td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)]">{part.model}</td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)] max-w-[140px] truncate">{part.vendorName}</td>
                       <td className="px-3 py-2.5 text-[var(--color-muted)]">{part.department}</td>

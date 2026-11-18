@@ -12,8 +12,9 @@ import { PageHeader, Card, Tabs, Button, Modal, BackButton } from '../../compone
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
 import { usePersonaStore } from '../../store/personaStore'
+import { PERSONA_LABEL, PendingRoleChip } from '../pendency'
 import {
-  getFilteredData, isWorkableByVendor, getPicOn, getReleaseState,
+  getFilteredData, isWorkableByVendor, getPicOn, getReleaseState, pendencyOf,
   workBucket, workspaceGroups,
   WORK_BUCKETS, WORK_BUCKET_COLORS
 } from '../../engine'
@@ -42,7 +43,7 @@ const filterCls =
 const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] whitespace-nowrap'
 
 // Detail-table columns: sortable + per-column filterable.
-type TableColKey = 'status' | 'partNo' | 'partName' | 'model' | 'department' | 'vendorName' | 'milestoneId' | 'activity' | 'planned'
+type TableColKey = 'status' | 'partNo' | 'partName' | 'model' | 'department' | 'vendorName' | 'milestoneId' | 'activity' | 'planned' | 'pendingName' | 'pendingRole'
 const TABLE_COLS: { key: TableColKey; label: string }[] = [
   { key: 'status', label: 'Status' },
   { key: 'partNo', label: 'Part code' },
@@ -52,7 +53,9 @@ const TABLE_COLS: { key: TableColKey; label: string }[] = [
   { key: 'vendorName', label: 'Vendor' },
   { key: 'milestoneId', label: 'Trial' },
   { key: 'activity', label: 'Activity' },
-  { key: 'planned', label: 'Planned' }
+  { key: 'planned', label: 'Planned' },
+  { key: 'pendingName', label: 'Pending with' },
+  { key: 'pendingRole', label: 'Pending with role' }
 ]
 
 
@@ -564,7 +567,7 @@ export function MyWorkPage() {
   const [sortKey, setSortKey] = useState<TableColKey>('partNo')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [colFilters, setColFilters] = useState<Record<TableColKey, string>>({
-    status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: ''
+    status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: ''
   })
 
   // Every in-scope instance (before filters).
@@ -651,6 +654,13 @@ export function MyWorkPage() {
   // Value shown/sorted/filtered for a given column of an instance.
   const plannedText = (i: typeof allInstances[number]) =>
     i.dates.status === 'resolved' ? `${fmtDate(i.dates.start)} → ${fmtDate(i.dates.end)}` : 'Awaiting MRD'
+  // Where each item is pending now (who has to act next), cached per item.
+  const pendCache = useMemo(() => new Map<string, ReturnType<typeof pendencyOf>>(), [allInstances, picAssignments, partReleases, partAcks]) // eslint-disable-line react-hooks/exhaustive-deps
+  const pendOf = (i: FilteredInstance) => {
+    const k = `${i.row.id}|${i.part.partNo}`
+    if (!pendCache.has(k)) pendCache.set(k, pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY }))
+    return pendCache.get(k)!
+  }
   const cellValue = (i: typeof allInstances[number], key: TableColKey): string => {
     switch (key) {
       case 'status': return workBucket(i) ?? ''
@@ -662,6 +672,8 @@ export function MyWorkPage() {
       case 'milestoneId': return i.row.milestoneId
       case 'activity': return i.activity.name
       case 'planned': return i.dates.status === 'resolved' ? i.dates.end : 'zzzz' // sort by end date; awaiting MRD last
+      case 'pendingName': return pendOf(i)?.name ?? ''
+      case 'pendingRole': return pendOf(i) ? PERSONA_LABEL[pendOf(i)!.role] : ''
     }
   }
 
@@ -894,7 +906,7 @@ export function MyWorkPage() {
               </h3>
               <div className="ml-auto flex items-center gap-3">
                 {anyColFilter && detailView === 'table' && (
-                  <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '' })}
+                  <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: '' })}
                     className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
                 )}
                 {(selectedBucket || selectedGroup) && (
@@ -951,6 +963,7 @@ export function MyWorkPage() {
                           <span>Dept <span className="text-[var(--color-text)]">{i.part.department}</span></span>
                           <span>Vendor <span className="text-[var(--color-text)]">{i.part.vendorName}</span></span>
                           <span className="col-span-2">Planned <span className="text-[var(--color-text)]">{planned}</span></span>
+                          <span className="col-span-2">Pending with {pendOf(i) ? <><span className="text-[var(--color-text)]">{pendOf(i)!.name}</span> <PendingRoleChip role={pendOf(i)!.role} /></> : <span className="text-[var(--color-text)]">—</span>}</span>
                         </div>
                       </div>
                       <Button variant="primary" size="sm" className="mt-auto self-start" onClick={() => setOpenInstance(i)}>Open form</Button>
@@ -1039,6 +1052,12 @@ export function MyWorkPage() {
                           ),
                           planned: (
                         <td className="px-3 py-2.5 whitespace-nowrap text-[11px] text-[var(--color-muted)]">{planned}</td>
+                          ),
+                          pendingName: (
+                        <td className="px-3 py-2.5 whitespace-nowrap text-[12px] text-[var(--color-text)]">{pendOf(i)?.name ?? <span className="text-[var(--color-muted)]">—</span>}</td>
+                          ),
+                          pendingRole: (
+                        <td className="px-3 py-2.5 whitespace-nowrap">{pendOf(i) ? <PendingRoleChip role={pendOf(i)!.role} /> : <span className="text-[11px] text-[var(--color-muted)]">—</span>}</td>
                           ),
                         } as Record<TableColKey, React.ReactNode>)[c.key]}</Fragment>)}
                         <td className="px-3 py-2.5 text-right">

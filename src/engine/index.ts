@@ -1,3 +1,4 @@
+import type { PersonaId } from '../store/personaStore'
 import { makeEntryId } from '../domain'
 import { subTypeMrdKey, deriveTechnicalCategory } from '../domain/timelineCatalog'
 import type {
@@ -2182,4 +2183,45 @@ export function workspaceGroups(
     r.total += 1
   }
   return Array.from(map.values()).sort((a, b) => b.total - a.total || a.key.localeCompare(b.key))
+}
+
+/** Where an activity item is pending right now: the role that must act next and that person's name. */
+export interface Pendency {
+  role: PersonaId
+  name: string
+}
+
+/**
+ * Current pendency of one part × activity item. Approved or not-applicable items are pending with nobody (null).
+ *  - Submitted: the flow step it is waiting at (e.g. PIC validation, then DPM).
+ *  - Not started / draft / sent back: the flow's first step (who enters it). If that is the Vendor but the part is
+ *    not yet with the vendor, it is pending with the PIC to release it (or with the Vendor to acknowledge it).
+ * Names: PIC from the part (PIC Assignments win), Vendor = vendor name, DPM = the part's DPM; otherwise the role.
+ */
+export function pendencyOf(
+  args: {
+    activity: ActivityDefinition
+    entry?: ActivityEntry
+    part: PartRecord
+    status: string
+    notApplicable?: boolean
+  },
+  ctx: { picAssignments: PicAssignment[]; releases: PartRelease[]; acks: PartAck[]; today: string }
+): Pendency | null {
+  const { activity, entry, part, status, notApplicable } = args
+  if (notApplicable || status === 'Approved') return null
+  const steps = activity.flow.steps
+  let role: PersonaId | undefined =
+    status === 'Submitted' ? steps[entry?.currentStepIndex ?? 0]?.role ?? steps[steps.length - 1]?.role : steps[0]?.role
+  if (!role) return null
+  if (role === 'Vendor') {
+    const rs = getReleaseState(part.partNo, ctx.releases, ctx.acks)
+    if (rs === 'Pending' || rs === 'Returned') role = 'PIC' // PIC still has to release it to the vendor
+  }
+  const name =
+    role === 'PIC' ? getPicOn(part, ctx.picAssignments, ctx.today).name || 'Unassigned'
+    : role === 'Vendor' ? part.vendorName
+    : role === 'DPM' ? part.attrs?.dpm_name || 'DPM'
+    : role
+  return { role, name }
 }
