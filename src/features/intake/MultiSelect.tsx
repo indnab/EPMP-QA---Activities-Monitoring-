@@ -20,6 +20,12 @@ export function MultiSelect({ label, options, selected, onChange }: Props) {
     return () => document.removeEventListener('mousedown', close)
   }, [])
   const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v])
+  // Select all / deselect all: ticks every value, or clears them (cleared = no filter).
+  const values = options.map((o) => o.value)
+  const allOn = values.length > 0 && values.every((v) => selected.includes(v))
+  const someOn = !allOn && values.some((v) => selected.includes(v))
+  const allRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (allRef.current) allRef.current.indeterminate = someOn }, [someOn, open])
   return (
     <div ref={ref} className="relative">
       <button
@@ -40,6 +46,13 @@ export function MultiSelect({ label, options, selected, onChange }: Props) {
       {open && (
         <div role="listbox" aria-multiselectable="true" className="absolute z-30 mt-1 max-h-64 min-w-[200px] overflow-auto rounded-lg border border-[var(--color-border)] bg-white p-1.5 shadow-lg">
           {options.length === 0 && <div className="px-2 py-1.5 text-[11px] text-[var(--color-muted)]">No values</div>}
+          {options.length > 1 && (
+            <label className="mb-1 flex cursor-pointer items-center gap-2 rounded border-b border-[var(--color-border)] px-2 py-1 pb-1.5 text-[11px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+              <input ref={allRef} type="checkbox" checked={allOn} aria-label={allOn ? `Deselect all ${label}` : `Select all ${label}`}
+                onChange={() => onChange(allOn ? [] : values)} />
+              <span>{allOn ? 'Deselect all' : 'Select all'}</span>
+            </label>
+          )}
           {options.map((o) => (
             <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] hover:bg-[var(--color-surface)]">
               <input type="checkbox" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
