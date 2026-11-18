@@ -442,6 +442,8 @@ interface FilterBarProps {
   vendorCode: string[]; setVendorCode: (v: string[]) => void; vendorOptions: LabeledOption[]
   milestone: string[]; setMilestone: (v: string[]) => void; milestoneOptions: string[]
   pic: string[]; setPic: (v: string[]) => void; picOptions: LabeledOption[]
+  /** The PIC filter is hidden for the PIC, who picks whose work to see with the View dropdown at the top. */
+  showPic?: boolean
   partNo: string[]; setPartNo: (v: string[]) => void; partOptions: LabeledOption[]
   activity: string[]; setActivity: (v: string[]) => void; activityOptions: string[]
   status: string[]; setStatus: (v: string[]) => void; statusOptions: string[]
@@ -484,7 +486,7 @@ function CompactFilterBar(f: FilterBarProps) {
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
           <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
           <MultiSelect label="Activity" options={plain(f.activityOptions)} selected={f.activity} onChange={f.setActivity} />
-          <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />
+          {f.showPic && <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />}
           <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         </div>
       )}
@@ -813,7 +815,7 @@ function MyWorkPageInner() {
           dept={fDept} setDept={setFDept} deptOptions={deptOptions}
           vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
           milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
-          pic={fPic} setPic={setFPic} picOptions={picOptions}
+          pic={fPic} setPic={setFPic} picOptions={picOptions} showPic={currentPersona !== 'PIC'}
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
@@ -833,7 +835,7 @@ function MyWorkPageInner() {
               dept={fDept} setDept={setFDept} deptOptions={deptOptions}
               vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
               milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
-              pic={fPic} setPic={setFPic} picOptions={picOptions}
+              pic={fPic} setPic={setFPic} picOptions={picOptions} showPic={currentPersona !== 'PIC'}
               partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
               activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
               status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]}
