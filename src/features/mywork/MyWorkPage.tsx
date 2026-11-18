@@ -657,10 +657,10 @@ function MyWorkPageInner() {
   const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
 
   // Apply the filters.
-  const instances = useMemo(
+  // Every filter except Model: the priority model cards use this, so all models stay visible while one is picked.
+  const instancesAllModels = useMemo(
     () =>
       allInstances.filter((i) => {
-        if (!inSel(fModel, i.part.model)) return false
         if (!inSel(fDept, i.part.department || 'Other')) return false
         if (!inSel(fMilestone, i.row.milestoneId)) return false
         if (!inSel(fVendorCode, i.part.vendorCode)) return false
@@ -671,18 +671,20 @@ function MyWorkPageInner() {
         if (!matchPartAttrs(i.part, fAttrs)) return false
         return true
       }),
-    [allInstances, fModel, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, picAssignments]
+    [allInstances, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, picAssignments]
   )
+  const instances = useMemo(() => instancesAllModels.filter((i) => inSel(fModel, i.part.model)), [instancesAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Overview: the role's parts (not superseded, in scope).
-  const overviewParts = useMemo(
+  const partsAllModels = useMemo(
     () => parts.filter((p) =>
       !p.supersededBy && partInScope(p, currentPersona) && inView(p) && partInRange(p) &&
-      inSel(fModel, p.model) && inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
+      inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
       inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments, inView, rangePartNos, range, models]
+    [parts, currentPersona, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments, inView, rangePartNos, range, models]
   )
+  const overviewParts = useMemo(() => partsAllModels.filter((p) => inSel(fModel, p.model)), [partsAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
   // Workspace rollups.
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
 
@@ -906,7 +908,12 @@ function MyWorkPageInner() {
               onGo={goFromOverview}
             />
           {/* Models above the chart */}
-          <PriorityModels instances={instances} parts={overviewParts} className="mb-3" />
+          <PriorityModels instances={instancesAllModels} parts={partsAllModels} className="mb-3" selected={fModel}
+            onPick={(m) => {
+              // Same page: the card filters the list below by model (click again to clear).
+              setFModel((cur) => (cur.length === 1 && cur[0] === m ? [] : [m]))
+              setTimeout(() => document.getElementById('mw-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+            }} />
           {/* Graphical: stacked bars by the chosen dimension */}
           <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="mb-3">
             <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>

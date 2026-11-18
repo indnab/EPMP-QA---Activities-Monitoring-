@@ -9,13 +9,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { useNavigate } from 'react-router-dom'
 import { Icon as FbIcon } from '../../components/Icon'
 import type { PartRecord } from '../../domain'
 import { projectOfModel } from '../../domain/projects'
 import { milestoneRows } from '../../domain/wbsTree'
 import { bucketTotals, pendencyOf, workBucket, WORK_BUCKET_COLORS } from '../../engine'
-import { useApprovalRows } from './approvalRows'
 import { isReturnedToPicBySic, isReturnedToVendor, returnedTo } from './workQueue'
 import { usePersonaStore } from '../../store/personaStore'
 import { CollapseButton, useCollapsed } from '../collapse'
@@ -181,7 +179,6 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   delayReviews: number
   onGo: OverviewGo
 }) {
-  const approvalRows = useApprovalRows()
   const { currentPersona } = usePersonaStore()
   const { picAssignments, partReleases, partAcks } = useQAStore()
   const stageOf = useModelStages(parts)
@@ -193,9 +190,6 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
     developed: parts.filter((p) => stageOf.get(p.model) === 'developed').length,
   }), [parts, stageOf])
   const act = useMemo(() => {
-    const enter = approvalRows.filter((r) => r.mode === 'enter')
-    // Activities waiting on the vendor: not submitted / approved, and the vendor does the flow's first step.
-    const vendor = counted.filter((i) => i.status !== 'Approved' && i.status !== 'Submitted' && i.activity.flow.steps[0]?.role === 'Vendor').length
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
     const pendingAt: Record<PendRole, number> = { PIC: 0, SIC: 0, Vendor: 0, DPM: 0 }
@@ -212,12 +206,8 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
       returnedToVendor: toVendor.length,
       returnedToVendorBy: { PIC: toVendor.filter((i) => returnedTo(i)?.by === 'PIC').length, SIC: toVendor.filter((i) => returnedTo(i)?.by === 'SIC').length },
       returnedToPic: counted.filter(isReturnedToPicBySic).length,
-      approve: approvalRows.filter((r) => r.mode === 'approve').length,
-      sentBack: enter.filter((r) => r.statusLabel === 'Sent back').length,
-      input: enter.length,
-      vendor,
     }
-  }, [approvalRows, counted, picAssignments, partReleases, partAcks])
+  }, [counted, picAssignments, partReleases, partAcks])
   const modelStats = useMemo(() => {
     const vals = [...stageOf.values()]
     return { under: vals.filter((v) => v === 'under').length, developed: vals.filter((v) => v === 'developed').length }
@@ -225,13 +215,6 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
 
   return (
     <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 flex flex-wrap items-stretch gap-3">
-      <Segment id="ov-mine" title="My Pending Activities" icon="exclamation-circle" className="min-w-[280px] flex-[5_1_480px]" tiles={[
-        { id: 'mine.picUpdate', title: 'Activities awaiting PIC update', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },
-        { id: 'mine.vendorUpdate', title: 'Activities awaiting Vendor update', value: act.mine.vendorUpdate, color: '#f97316', icon: 'clipboard', onClick: () => onGo('overview', { mine: 'vendorUpdate' }), hint: 'Open activities the vendor has to fill, acknowledge or redo' },
-        { id: 'mine.review', title: 'Activities MSIL review / approval', value: act.mine.review, color: '#0891b2', icon: 'check-circle', onClick: () => onGo('overview', { mine: 'review' }), hint: 'Submitted, waiting for MSIL (PIC / SIC / DPM) to review or approve' },
-        { id: 'mine.overdue', title: 'Overdue activities', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }) },
-        { id: 'mine.ng', title: 'NG concerns', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }) },
-      ]} />
       <Segment id="ov-parts" title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]" tiles={[
         { id: 'parts.under', title: 'Under dev.', value: partStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: parts of models before SOP' },
         { id: 'parts.developed', title: 'Developed', value: partStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: parts of models past SOP, up to SOP + 3 months' },
@@ -240,22 +223,19 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
         { id: 'parts.returned', title: 'Returned by vendor', value: returned, color: '#dc2626', icon: 'undo', onClick: () => onGo('actions', { focus: 'release' }) },
       ]} />
       <Segment id="ov-activities" title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]" tiles={[
+        // Status
         { id: 'act.upcoming', title: 'Upcoming', value: totals.Upcoming, color: WORK_BUCKET_COLORS.Upcoming, icon: 'calendar-month', onClick: () => onGo('overview', { bucket: 'Upcoming' }) },
         { id: 'act.completed', title: 'Completed', value: totals.Completed, color: WORK_BUCKET_COLORS.Completed, icon: 'check-circle', onClick: () => onGo('overview', { bucket: 'Completed' }) },
-        { id: 'act.delayed', title: 'Delayed', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }) },
-        { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }) },
-        { id: 'act.approve', title: 'Awaiting my approval', value: act.approve, color: '#0891b2', icon: 'check', onClick: () => onGo('worklist', { seg: 'approve' }), hint: 'Submitted items for you to approve or send back' },
-        { id: 'act.sentBack', title: 'Sent back', value: act.sentBack, color: '#dc2626', icon: 'undo', onClick: () => onGo('worklist', { seg: 'sentback' }), hint: 'Your entries sent back for correction' },
-        // Role-specific: the PIC sees what went back to the vendor; the SIC sees what it sent back to the PIC.
+        { id: 'act.delayed', title: 'Overdue', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }), hint: 'Past the planned end and not approved' },
+        { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }), hint: 'Sent back for rework (NG concerns)' },
+        // Who has to act next (these three together are every open activity)
+        { id: 'act.picUpdate', title: 'Awaiting PIC update', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },
+        { id: 'act.vendorUpdate', title: 'Awaiting Vendor update', value: act.mine.vendorUpdate, color: '#f97316', icon: 'clipboard', onClick: () => onGo('overview', { mine: 'vendorUpdate' }), hint: 'Open activities the vendor has to fill, acknowledge or redo' },
+        { id: 'act.review', title: 'MSIL review / approval', value: act.mine.review, color: '#0891b2', icon: 'check', onClick: () => onGo('overview', { mine: 'review' }), hint: `Submitted, waiting for MSIL to review or approve (PIC ${act.pendingAt.PIC - act.mine.picUpdate}, SIC ${act.pendingAt.SIC}, DPM ${act.pendingAt.DPM})` },
+        // Returned / exceptions
         ...(currentPersona === 'PIC' ? [{ id: 'act.returnedToVendor', title: 'Returned to vendor', value: act.returnedToVendor, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'vendor' }), hint: `Activities returned to the vendor (by PIC ${act.returnedToVendorBy.PIC}, by SIC ${act.returnedToVendorBy.SIC})` }] : []),
         ...(currentPersona === 'SIC' ? [{ id: 'act.returnedToPic', title: 'Returned to PIC', value: act.returnedToPic, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'pic' }), hint: 'Activities you (SIC) returned to the PIC' }] : []),
-        { id: 'act.pendPIC', title: 'Pending at PIC', value: act.pendingAt.PIC, color: '#6d28d9', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'PIC' }), hint: 'Open activities waiting for the PIC (to enter, release or validate)' },
-        { id: 'act.pendSIC', title: 'Pending at SIC', value: act.pendingAt.SIC, color: '#8b5cf6', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'SIC' }), hint: 'Open activities waiting for the SIC' },
-        { id: 'act.pendVendor', title: 'Pending at Vendor', value: act.pendingAt.Vendor, color: '#f97316', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'Vendor' }), hint: 'Open activities waiting for the vendor (to enter or acknowledge)' },
-        { id: 'act.pendDPM', title: 'Pending at DPM', value: act.pendingAt.DPM, color: '#6366f1', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'DPM' }), hint: 'Open activities waiting for the DPM' },
-        { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('actions', { focus: 'delay' }) },
-        { id: 'act.input', title: 'Awaiting my input', value: act.input, color: '#2153f5', icon: 'pen', onClick: () => onGo('worklist', { seg: 'enter' }), hint: 'Activities open for you to fill (not started, draft or sent back)' },
-        { id: 'act.vendor', title: 'Awaiting vendor input', value: act.vendor, color: '#7c3aed', icon: 'clipboard', onClick: () => onGo('overview'), hint: 'Activities the vendor fills that are not yet submitted' },
+        { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('actions', { focus: 'delay' }), hint: 'Vendor delay reasons waiting for review' },
       ]} />
       <Segment id="ov-models" title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]" tiles={[
         { id: 'models.under', title: 'Under dev.', value: modelStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: models before SOP' },
@@ -271,8 +251,15 @@ const PAGE_SIZES = [3, 6, 9] as const
  * Model-wise cards: priority models (delayed or NG activities, most first), then the rest. One line (3 cards) shows
  * first; "More models" switches to pages of 3, 6 or 9 cards.
  */
-export function PriorityModels({ instances, parts, className = '' }: { instances: FilteredInstance[]; parts: PartRecord[]; className?: string }) {
-  const navigate = useNavigate()
+export function PriorityModels({ instances, parts, className = '', selected = [], onPick }: {
+  instances: FilteredInstance[]
+  parts: PartRecord[]
+  className?: string
+  /** Models currently filtering the page (highlighted). */
+  selected?: string[]
+  /** Click on a card: filter the page's list to that model (click again to clear). */
+  onPick: (model: string) => void
+}) {
   const stageOf = useModelStages(parts)
   const [collapsed, toggle] = useCollapsed('ov-priority-models')
   const [paged, setPaged] = useState(false)
@@ -308,7 +295,7 @@ export function PriorityModels({ instances, parts, className = '' }: { instances
       <div className={`flex flex-wrap items-center gap-2 ${collapsed ? '' : 'mb-3'}`}>
         <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority Models</h3>
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{cards.priority.length} of {all.length}</span>
-        <span className="text-[11px] text-[var(--color-muted)]" title="Click a model to choose its part, then the trial.">Delayed or NG activities first</span>
+        <span className="text-[11px] text-[var(--color-muted)]" title="Click a model to filter the list below.">Delayed or NG activities first · click a model to filter</span>
         <span className="ml-auto flex items-center gap-2">
           {!collapsed && paged && (
             <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
@@ -333,9 +320,9 @@ export function PriorityModels({ instances, parts, className = '' }: { instances
       ) : (<>
         <div className="grid grid-cols-1 content-start gap-2 sm:grid-cols-3">
           {shown.map((t) => (
-            <button key={t.model} type="button" onClick={() => navigate(`/part-workspace?model=${encodeURIComponent(t.model)}`)}
-              title={`Open ${t.model}'s parts`}
-              className={`rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${t.delayed + t.ng > 0 ? 'border-l-4 border-l-[#dc2626]' : ''}`}>
+            <button key={t.model} type="button" onClick={() => onPick(t.model)} aria-pressed={selected.includes(t.model)}
+              title={selected.includes(t.model) ? `Showing ${t.model} below · click to clear` : `Show ${t.model}'s activities below`}
+              className={`rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${t.delayed + t.ng > 0 ? 'border-l-4 border-l-[#dc2626]' : ''} ${selected.includes(t.model) ? 'ring-2 ring-[var(--color-primary)]' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-[12.5px] font-semibold text-[var(--color-text)]">{t.model}</span>
                 <span className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${t.stage === 'developed' ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-primary'}`}>
