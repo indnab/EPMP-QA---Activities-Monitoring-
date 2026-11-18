@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { ActivityUpdatePage } from './features/activityupdate/ActivityUpdatePage'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './features/AppLayout'
 import { HomePage } from './features/home/HomePage'
@@ -55,6 +56,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="data-entry" element={<DataEntryLandingPage />} />
+          <Route path="activity-update" element={<ActivityUpdatePage />} />
           <Route path="mywork" element={<MyWorkPage />} />
           <Route path="mywork/:activityId/:milestoneId" element={<MyWorkGridPage />} />
           <Route path="part-workspace" element={<PartWorkspacePage />} />

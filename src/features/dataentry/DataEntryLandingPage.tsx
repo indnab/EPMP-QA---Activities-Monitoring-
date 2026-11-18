@@ -21,6 +21,13 @@ const tile = (d: React.ReactNode) => (
 
 const DESTS: Dest[] = [
   {
+    to: '/activity-update',
+    title: 'Activity Update',
+    desc: 'Model → Trial → Part → Activity. Pick several models and parts and update an activity for all of them at once.',
+    roles: ['PIC', 'Vendor', 'SIC', 'DPM'],
+    icon: tile(<><rect x="3" y="4" width="8" height="16" rx="2" /><rect x="13" y="4" width="8" height="16" rx="2" /><path d="M15.5 12l1.5 1.5 3-3" /></>)
+  },
+  {
     to: '/activities',
     title: 'Activities',
     desc: 'Every activity by milestone, with parts, planned dates and completion. Open one to work on its parts.',
