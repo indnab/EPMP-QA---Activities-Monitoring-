@@ -6,7 +6,9 @@
  * Development stage of a model, from its SOP date (its archetype's last milestone date): before SOP = under
  * development; SOP to SOP + 3 months = developed; after SOP + 3 months it drops out of these counts.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { useNavigate } from 'react-router-dom'
 import { Icon as FbIcon } from '../../components/Icon'
 import type { PartRecord } from '../../domain'
@@ -47,15 +49,81 @@ function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; 
   )
 }
 
-function Segment({ id, title, icon, children, className = '' }: { id: string; title: string; icon: string; children: React.ReactNode; className?: string }) {
+interface Tile {
+  id: string
+  title: string
+  value: number
+  color: string
+  icon: string
+  onClick?: () => void
+  hint?: string
+}
+
+/** Which KPI tiles are hidden (remembered on this screen as the default). */
+const useHiddenTiles = create<{ hidden: string[]; set: (ids: string[]) => void }>()(
+  persist((set) => ({ hidden: [], set: (hidden) => set({ hidden }) }), { name: 'qa-tracker-hidden-tiles', version: 1 })
+)
+
+/** Gear menu listing a card's tiles with a tick each; unticked tiles are hidden. */
+function TilePicker({ title, tiles }: { title: string; tiles: Tile[] }) {
+  const { hidden, set } = useHiddenTiles()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+  const ids = tiles.map((t) => t.id)
+  const shownCount = ids.filter((id) => !hidden.includes(id)).length
+  const toggle = (id: string) => set(hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id])
+  return (
+    <div ref={ref} className="relative" data-export-ignore="true">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-haspopup="true" aria-expanded={open} aria-label={`Choose ${title} tiles`}
+        title="Choose which tiles to show"
+        className={`inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold normal-case tracking-normal hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe] ${shownCount < ids.length ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'}`}>
+        <FbIcon name="cog" size={13} />{shownCount < ids.length && <span>{shownCount}/{ids.length}</span>}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-[var(--color-border)] bg-white p-1.5 text-[11px] font-normal normal-case tracking-normal text-[#344054] shadow-lg">
+          <div className="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Show {title} tiles</div>
+          {tiles.map((t) => (
+            <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-[var(--color-surface)]">
+              <input type="checkbox" checked={!hidden.includes(t.id)} onChange={() => toggle(t.id)} />
+              <FbIcon name={t.icon} size={11} style={{ color: t.color }} />
+              <span>{t.title}</span>
+            </label>
+          ))}
+          <div className="mt-1 flex gap-1 border-t border-[var(--color-border)] pt-1">
+            <button type="button" onClick={() => set(hidden.filter((x) => !ids.includes(x)))} className="flex-1 rounded px-2 py-1 text-left font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)]">Show all</button>
+            <button type="button" onClick={() => set([...new Set([...hidden, ...ids])])} className="flex-1 rounded px-2 py-1 text-right font-medium text-[var(--color-muted)] hover:bg-[var(--color-surface)]">Hide all</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Segment({ id, title, icon, tiles, className = '' }: { id: string; title: string; icon: string; tiles: Tile[]; className?: string }) {
   const [collapsed, toggle] = useCollapsed(id)
+  const hidden = useHiddenTiles((s) => s.hidden)
+  const visible = tiles.filter((t) => !hidden.includes(t.id))
   return (
     <section className={`epmp-card p-3 ${collapsed ? 'self-start' : ''} ${className}`}>
       <h3 className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#344054] ${collapsed ? '' : 'mb-2'}`}>
         <FbIcon name={icon} size={12} />{title}
-        <span className="ml-auto"><CollapseButton collapsed={collapsed} onToggle={toggle} label={title} /></span>
+        <span className="ml-auto flex items-center gap-0.5">
+          <TilePicker title={title} tiles={tiles} />
+          <CollapseButton collapsed={collapsed} onToggle={toggle} label={title} />
+        </span>
       </h3>
-      {!collapsed && children}
+      {!collapsed && (visible.length === 0 ? (
+        <p className="py-2 text-[11px] text-[var(--color-muted)]">All tiles hidden. Use <FbIcon name="cog" size={11} /> to show them.</p>
+      ) : (
+        <div className={TILE_GRID}>
+          {visible.map(({ id: tid, ...t }) => <KpiCard key={tid} {...t} />)}
+        </div>
+      ))}
     </section>
   )
 }
@@ -124,34 +192,28 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
 
   return (
     <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 flex flex-wrap items-stretch gap-3">
-      <Segment id="ov-parts" title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]">
-        <div className={TILE_GRID}>
-          <KpiCard title="Under dev." value={partStats.under} color="#2153f5" icon="tools" hint="Under development: parts of models before SOP" />
-          <KpiCard title="Developed" value={partStats.developed} color="#10b981" icon="check" hint="Developed: parts of models past SOP, up to SOP + 3 months" />
-          <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
-          <KpiCard title="Awaiting vendor ack." value={awaitingAck} color="#2563eb" icon="clipboard" onClick={() => onGo('actions', { focus: 'release' })} hint="Released, awaiting vendor acknowledgement" />
-          <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
-        </div>
-      </Segment>
-      <Segment id="ov-activities" title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]">
-        <div className={TILE_GRID}>
-          <KpiCard title="Upcoming" value={totals.Upcoming} color={WORK_BUCKET_COLORS.Upcoming} icon="calendar-month" onClick={() => onGo('overview', { bucket: 'Upcoming' })} />
-          <KpiCard title="Completed" value={totals.Completed} color={WORK_BUCKET_COLORS.Completed} icon="check-circle" onClick={() => onGo('overview', { bucket: 'Completed' })} />
-          <KpiCard title="Delayed" value={totals.Delayed} color={WORK_BUCKET_COLORS.Delayed} icon="exclamation-circle" onClick={() => onGo('overview', { bucket: 'Delayed' })} />
-          <KpiCard title="NG / Rework" value={totals.NG} color={WORK_BUCKET_COLORS.NG} icon="close-circle" onClick={() => onGo('overview', { bucket: 'NG' })} />
-          <KpiCard title="Awaiting my approval" value={act.approve} color="#0891b2" icon="check" onClick={() => onGo('worklist', { seg: 'approve' })} hint="Submitted items for you to approve or send back" />
-          <KpiCard title="Sent back" value={act.sentBack} color="#dc2626" icon="undo" onClick={() => onGo('worklist', { seg: 'sentback' })} hint="Your entries sent back for correction" />
-          <KpiCard title="Delay reviews" value={delayReviews} color="#2563eb" icon="calendar-month" onClick={() => onGo('actions', { focus: 'delay' })} />
-          <KpiCard title="Awaiting my input" value={act.input} color="#2153f5" icon="pen" onClick={() => onGo('worklist', { seg: 'enter' })} hint="Activities open for you to fill (not started, draft or sent back)" />
-          <KpiCard title="Awaiting vendor input" value={act.vendor} color="#7c3aed" icon="clipboard" onClick={() => onGo('overview')} hint="Activities the vendor fills that are not yet submitted" />
-        </div>
-      </Segment>
-      <Segment id="ov-models" title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]">
-        <div className={TILE_GRID}>
-          <KpiCard title="Under dev." value={modelStats.under} color="#2153f5" icon="tools" hint="Under development: models before SOP" />
-          <KpiCard title="Developed" value={modelStats.developed} color="#10b981" icon="check" hint="Developed: models past SOP, up to SOP + 3 months" />
-        </div>
-      </Segment>
+      <Segment id="ov-parts" title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]" tiles={[
+        { id: 'parts.under', title: 'Under dev.', value: partStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: parts of models before SOP' },
+        { id: 'parts.developed', title: 'Developed', value: partStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: parts of models past SOP, up to SOP + 3 months' },
+        { id: 'parts.pendingRelease', title: 'Pending release', value: pendingRelease, color: '#d97706', icon: 'reply', onClick: () => onGo('actions', { focus: 'release' }) },
+        { id: 'parts.awaitingAck', title: 'Awaiting vendor ack.', value: awaitingAck, color: '#2563eb', icon: 'clipboard', onClick: () => onGo('actions', { focus: 'release' }), hint: 'Released, awaiting vendor acknowledgement' },
+        { id: 'parts.returned', title: 'Returned by vendor', value: returned, color: '#dc2626', icon: 'undo', onClick: () => onGo('actions', { focus: 'release' }) },
+      ]} />
+      <Segment id="ov-activities" title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]" tiles={[
+        { id: 'act.upcoming', title: 'Upcoming', value: totals.Upcoming, color: WORK_BUCKET_COLORS.Upcoming, icon: 'calendar-month', onClick: () => onGo('overview', { bucket: 'Upcoming' }) },
+        { id: 'act.completed', title: 'Completed', value: totals.Completed, color: WORK_BUCKET_COLORS.Completed, icon: 'check-circle', onClick: () => onGo('overview', { bucket: 'Completed' }) },
+        { id: 'act.delayed', title: 'Delayed', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }) },
+        { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }) },
+        { id: 'act.approve', title: 'Awaiting my approval', value: act.approve, color: '#0891b2', icon: 'check', onClick: () => onGo('worklist', { seg: 'approve' }), hint: 'Submitted items for you to approve or send back' },
+        { id: 'act.sentBack', title: 'Sent back', value: act.sentBack, color: '#dc2626', icon: 'undo', onClick: () => onGo('worklist', { seg: 'sentback' }), hint: 'Your entries sent back for correction' },
+        { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('actions', { focus: 'delay' }) },
+        { id: 'act.input', title: 'Awaiting my input', value: act.input, color: '#2153f5', icon: 'pen', onClick: () => onGo('worklist', { seg: 'enter' }), hint: 'Activities open for you to fill (not started, draft or sent back)' },
+        { id: 'act.vendor', title: 'Awaiting vendor input', value: act.vendor, color: '#7c3aed', icon: 'clipboard', onClick: () => onGo('overview'), hint: 'Activities the vendor fills that are not yet submitted' },
+      ]} />
+      <Segment id="ov-models" title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]" tiles={[
+        { id: 'models.under', title: 'Under dev.', value: modelStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: models before SOP' },
+        { id: 'models.developed', title: 'Developed', value: modelStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: models past SOP, up to SOP + 3 months' },
+      ]} />
     </ExportSection>
   )
 }
