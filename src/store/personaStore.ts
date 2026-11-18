@@ -32,6 +32,8 @@ export const PERSONAS: PersonaMeta[] = [
 /** Role-only identity: fixed section / vendor per persona (no named users). */
 export const FIXED_SECTION = 'NP1'
 export const FIXED_VENDOR_NAME = 'Minda Industries'
+/** The person the PIC persona stands for (a PIC of section NP1 in the sample data). */
+export const FIXED_PIC_NAME = 'Rahul Verma'
 
 export interface PersonaScope {
   /** Restrict to parts in this Section.id */

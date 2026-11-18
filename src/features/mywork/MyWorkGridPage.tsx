@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { PART_ATTR_FIELDS } from '../partAttrFilters'
 import { useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
@@ -53,10 +54,15 @@ function statusFor(inst: FilteredInstance): StatusValue {
 }
 
 export function MyWorkGridPage() {
+  return <PicViewProvider><MyWorkGridPageInner /></PicViewProvider>
+}
+
+function MyWorkGridPageInner() {
   const { activityId = '', milestoneId = '' } = useParams()
   const [searchParams] = useSearchParams()
   const { activities, entries, templateRows, models, partReleases, partAcks, delayReasons, submitDelayReasons, updateEntryValues, transitionEntryState, logAudit } = useQAStore()
   const parts = useWorkParts()
+  const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
   const mode: GridMode = searchParams.get('mode') === 'validate' ? 'validate' : 'enter'
   const validating = mode === 'validate'
@@ -97,12 +103,12 @@ export function MyWorkGridPage() {
       activityId,
       DEMO_TODAY
     )
-      .filter((i) => partInScope(i.part, role))
+      .filter((i) => partInScope(i.part, role) && inView(i.part))
       // Release gate: the vendor works only on parts it has acknowledged after the PIC released them.
       .filter((i) => role !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
       .filter((i) => (validating ? isWaitingForRole(i, role) : true))
       .sort((a, b) => a.row.section.localeCompare(b.row.section) || a.part.partNo.localeCompare(b.part.partNo))
-  }, [activity, entries, activities, parts, templateRows, models, partReleases, partAcks, milestoneId, activityId, role, validating])
+  }, [activity, entries, activities, parts, templateRows, models, partReleases, partAcks, milestoneId, activityId, role, validating, inView])
 
   const rowModels = useMemo(
     () => instances.map((inst) => buildRowModel(inst, role, edits[`${inst.row.id}|${inst.part.partNo}`] ?? {}, mode)),
@@ -427,12 +433,15 @@ export function MyWorkGridPage() {
             : 'One row per part, combined across sections. Type or fill values, then save drafts or submit the rows that are complete. The same rules as the part form apply.'
         }
         actions={
+          <>
+          <PicViewSelect />
           <Link
             to="/mywork"
             className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]"
           >
             ← My Work
           </Link>
+          </>
         }
       />
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { usePicViewMatch } from './picView'
 import { makeEntryId } from '../../domain'
 import type { PartRecord } from '../../domain'
 import { getFilteredData, getPicOn } from '../../engine'
@@ -62,7 +63,10 @@ function latestSubmit(history: { timestamp: string; persona: string; actorName?:
  */
 export function useApprovalRows(): ApprovalRow[] {
   const { entries, activities, templateRows, models, partReleases, partAcks, picAssignments } = useQAStore()
-  const parts = useWorkParts()
+  const allParts = useWorkParts()
+  // PIC view (me / my department / another PIC): only those parts' items.
+  const inView = usePicViewMatch()
+  const parts = useMemo(() => allParts.filter(inView), [allParts, inView])
   const { currentPersona } = usePersonaStore()
   const delays = useDelayRows()
   const { devRows, actions } = useExceptionData()

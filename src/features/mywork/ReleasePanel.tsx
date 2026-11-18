@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { usePicViewMatch } from './picView'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
@@ -53,16 +54,17 @@ export function ReleasePanel() {
   const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
+  const inView = usePicViewMatch()
   const canReleaseParts = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'
 
   const rows = useMemo(
     () =>
       parts
-        .filter((p) => !p.supersededBy && partInScope(p, currentPersona))
+        .filter((p) => !p.supersededBy && partInScope(p, currentPersona) && inView(p))
         .map((p) => ({ part: p, state: getReleaseState(p.partNo, partReleases, partAcks) }))
         // The vendor never sees parts the PIC has not released.
         .filter((r) => !isVendor || r.state !== 'Pending'),
-    [parts, partReleases, partAcks, currentPersona, isVendor]
+    [parts, partReleases, partAcks, currentPersona, isVendor, inView]
   )
   const n = (states: ReleaseState[]) => rows.filter((r) => states.includes(r.state)).length
   const counts = {

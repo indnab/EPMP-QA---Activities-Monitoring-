@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels } from './OverviewTab'
 import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
@@ -489,9 +490,15 @@ function CompactFilterBar(f: FilterBarProps) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
+/** The PIC view (me / my department / a PIC) also narrows the shared delay, NG and deviation lists used below. */
 export function MyWorkPage() {
+  return <PicViewProvider><MyWorkPageInner /></PicViewProvider>
+}
+
+function MyWorkPageInner() {
   const { activities, entries, templateRows, models, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
   const parts = useWorkParts()
+  const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
   const upcomingOnly = useUpcomingOnly()
 
@@ -524,14 +531,14 @@ export function MyWorkPage() {
   const releaseCounts = useMemo(() => {
     let pending = 0, returned = 0, awaitingAck = 0
     for (const p of parts) {
-      if (p.supersededBy || !partInScope(p, currentPersona)) continue
+      if (p.supersededBy || !partInScope(p, currentPersona) || !inView(p)) continue
       const st = getReleaseState(p.partNo, partReleases, partAcks)
       if (st === 'Pending') pending++
       else if (st === 'Returned') returned++
       else if (st === 'Released') awaitingAck++ // released to the vendor, not yet acknowledged
     }
     return { pending, returned, awaitingAck }
-  }, [parts, currentPersona, partReleases, partAcks])
+  }, [parts, currentPersona, partReleases, partAcks, inView])
 
   // Filters (the client's set). Multi-select: empty array = All. Vendor/Part/PIC are "code: name" pickers.
   const [fModel, setFModel] = useState<string[]>([])
@@ -578,12 +585,12 @@ export function MyWorkPage() {
         { milestone: 'All', section: 'All', model: 'All', vendor: 'All', type: 'All' },
         'overview', DEMO_TODAY
       )
-        .filter((i) => partInScope(i.part, currentPersona))
+        .filter((i) => partInScope(i.part, currentPersona) && inView(i.part))
         .filter((i) => currentPersona !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
         .filter((i) => !i.notApplicable)
         // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
         .filter((i) => !upcomingOnly || isUpcoming(i.dates)),
-    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, upcomingOnly]
+    [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, upcomingOnly, inView]
   )
 
   // Filter option lists (stable across selections).
@@ -642,11 +649,11 @@ export function MyWorkPage() {
   // Overview: the role's parts (not superseded, in scope).
   const overviewParts = useMemo(
     () => parts.filter((p) =>
-      !p.supersededBy && partInScope(p, currentPersona) &&
+      !p.supersededBy && partInScope(p, currentPersona) && inView(p) &&
       inSel(fModel, p.model) && inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
       inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments]
+    [parts, currentPersona, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, picAssignments, inView]
   )
   // Workspace rollups.
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
@@ -785,6 +792,7 @@ export function MyWorkPage() {
         />
         </div>
         <div className="flex items-center gap-2">
+          <PicViewSelect />
           <UpcomingToggle />
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
