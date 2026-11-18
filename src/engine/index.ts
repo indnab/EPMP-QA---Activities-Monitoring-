@@ -2228,3 +2228,34 @@ export function pendencyOf(
     : role
   return { role, name }
 }
+
+/**
+ * The latest task still to be done on an activity, from its flow: e.g. "PIC Release", "Vendor Acknowledge",
+ * "Vendor Submit", "Vendor Resubmit", "PIC Data Entry", "PIC Review", "PIC Approve", "SIC Approve", "DPM Approve".
+ * A submitted item waits at its current flow step: "Review" when more steps follow, "Approve" at the last step.
+ * Null when approved or not applicable.
+ */
+export function taskOf(
+  inst: { activity: ActivityDefinition; entry?: ActivityEntry; part: PartRecord; status: string; notApplicable?: boolean },
+  ctx: { releases: PartRelease[]; acks: PartAck[] }
+): string | null {
+  const { activity, entry, part, status, notApplicable } = inst
+  if (notApplicable || status === 'Approved') return null
+  const steps = activity.flow.steps
+  if (status === 'Submitted') {
+    const idx = entry?.currentStepIndex ?? 0
+    const step = steps[idx] ?? steps[steps.length - 1]
+    if (!step) return null
+    return `${step.role} ${idx >= steps.length - 1 ? 'Approve' : 'Review'}`
+  }
+  const first = steps[0]
+  if (!first) return null
+  if (first.role === 'Vendor') {
+    const rs = getReleaseState(part.partNo, ctx.releases, ctx.acks)
+    if (rs === 'Pending' || rs === 'Returned') return 'PIC Release'
+    if (rs === 'Released') return 'Vendor Acknowledge'
+    return status === 'Sent back' ? 'Vendor Resubmit' : 'Vendor Submit'
+  }
+  // The first step is MSIL's own entry (e.g. PIC confirmation).
+  return status === 'Sent back' ? `${first.role} Rework` : `${first.role} Data Entry`
+}
