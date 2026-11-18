@@ -28,13 +28,14 @@ export type OverviewGo = (
 function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; value: number; color: string; icon: string; onClick?: () => void; hint?: string }) {
   const body = (
     <>
-      <span className="flex min-w-0 items-start gap-1 text-[10px] font-medium leading-tight text-[var(--color-muted)]">
-        <FbIcon name={icon} size={11} style={{ color }} className="mt-px" /> <span className="line-clamp-2">{title}</span>
+      <span className="flex min-w-0 items-start gap-1.5 text-[11px] font-medium leading-[14px] text-[#475467]">
+        <FbIcon name={icon} size={12} style={{ color }} className="mt-px flex-none" />
+        <span className="min-w-0 break-words">{title}</span>
       </span>
-      <span className="text-[16px] font-bold leading-none" style={{ color }}>{value}</span>
+      <span className="pl-[18px] text-[18px] font-bold leading-none tabular-nums" style={{ color }}>{value}</span>
     </>
   )
-  const cls = 'flex min-w-0 flex-col justify-between gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-left'
+  const cls = 'flex min-h-[58px] min-w-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-2 text-left'
   return onClick ? (
     <button type="button" onClick={onClick} title={hint ?? title} data-export-stat={title} data-export-stat-value={value}
       className={`${cls} transition-colors hover:border-[#bfdbfe] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]`}>
@@ -53,6 +54,9 @@ function Segment({ title, icon, children, className = '' }: { title: string; ico
     </section>
   )
 }
+
+/** Tiles flow into as many columns as fit, never narrower than 120px, so labels are never clipped. */
+const TILE_GRID = 'grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]'
 
 const addMonths = (d: string, n: number) => {
   const x = new Date(`${d}T00:00:00Z`)
@@ -114,9 +118,9 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   }, [stageOf])
 
   return (
-    <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,3.6fr)_minmax(0,7fr)_minmax(140px,1.2fr)]">
-      <Segment title="Parts" icon="list">
-        <div className="grid grid-cols-3 gap-1.5">
+    <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 flex flex-wrap items-stretch gap-3">
+      <Segment title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]">
+        <div className={TILE_GRID}>
           <KpiCard title="Under dev." value={partStats.under} color="#2153f5" icon="tools" hint="Under development: parts of models before SOP" />
           <KpiCard title="Developed" value={partStats.developed} color="#10b981" icon="check" hint="Developed: parts of models past SOP, up to SOP + 3 months" />
           <KpiCard title="Pending release" value={pendingRelease} color="#d97706" icon="reply" onClick={() => onGo('actions', { focus: 'release' })} />
@@ -124,8 +128,8 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
           <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
         </div>
       </Segment>
-      <Segment title="Activities" icon="clipboard-list">
-        <div className="grid grid-cols-3 gap-1.5 xl:grid-cols-5">
+      <Segment title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]">
+        <div className={TILE_GRID}>
           <KpiCard title="Upcoming" value={totals.Upcoming} color={WORK_BUCKET_COLORS.Upcoming} icon="calendar-month" onClick={() => onGo('overview', { bucket: 'Upcoming' })} />
           <KpiCard title="Completed" value={totals.Completed} color={WORK_BUCKET_COLORS.Completed} icon="check-circle" onClick={() => onGo('overview', { bucket: 'Completed' })} />
           <KpiCard title="Delayed" value={totals.Delayed} color={WORK_BUCKET_COLORS.Delayed} icon="exclamation-circle" onClick={() => onGo('overview', { bucket: 'Delayed' })} />
@@ -137,8 +141,8 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
           <KpiCard title="Awaiting vendor input" value={act.vendor} color="#7c3aed" icon="clipboard" onClick={() => onGo('overview')} hint="Activities the vendor fills that are not yet submitted" />
         </div>
       </Segment>
-      <Segment title="Models" icon="grid">
-        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
+      <Segment title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]">
+        <div className={TILE_GRID}>
           <KpiCard title="Under dev." value={modelStats.under} color="#2153f5" icon="tools" hint="Under development: models before SOP" />
           <KpiCard title="Developed" value={modelStats.developed} color="#10b981" icon="check" hint="Developed: models past SOP, up to SOP + 3 months" />
         </div>
