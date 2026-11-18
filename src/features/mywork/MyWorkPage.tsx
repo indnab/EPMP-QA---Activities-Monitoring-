@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels } from './OverviewTab'
 import { CalendarTab } from './CalendarTab'
@@ -566,6 +567,9 @@ function MyWorkPageInner() {
       return n
     }, { replace: true })
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+  // Collapsible Overview sections (remembered).
+  const [chartClosed, toggleChart] = useCollapsed('ov-chart')
+  const [listClosed, toggleList] = useCollapsed('ov-list')
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
@@ -858,19 +862,23 @@ function MyWorkPageInner() {
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />
-          <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {/* Models above the chart */}
+          <PriorityModels instances={instances} parts={overviewParts} className="mb-3" />
           {/* Graphical: stacked bars by the chosen dimension */}
-          <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="h-full">
-            <div className="mb-3 flex items-center gap-3">
+          <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="mb-3">
+            <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>
               <h3 className="flex-none whitespace-nowrap text-[13px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
+              {!chartClosed && (
               <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
                 <option value="model">By Model</option>
                 <option value="vendor">By Vendor</option>
                 <option value="department">By Department</option>
                 <option value="milestone">By Trial status</option>
               </select>
+              )}
+              <span className={chartClosed ? 'ml-auto' : ''}><CollapseButton collapsed={chartClosed} onToggle={toggleChart} label="chart" /></span>
             </div>
-            {groups.length === 0 ? (
+            {chartClosed ? null : groups.length === 0 ? (
               <p className="py-10 text-center text-sm text-[var(--color-muted)]">No parts match the current filters.</p>
             ) : (
               <div style={{ height: Math.max(180, groups.length * 34 + 60) }}>
@@ -895,10 +903,9 @@ function MyWorkPageInner() {
                 </ResponsiveContainer>
               </div>
             )}
-            <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>
+            {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
           </Card></ExportSection>
-          <PriorityModels instances={instances} parts={overviewParts} className="xl:max-h-[420px]" />
-          </div>
+
 
           {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
           <div id="mw-detail" />
@@ -923,9 +930,11 @@ function MyWorkPageInner() {
                   <button onClick={() => { setSelectedBucket(null); setSelectedGroup(null) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
                 <SortMenu options={TABLE_COLS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
-                <ViewModeToggle value={detailView} onChange={setDetailView} />
+                {!listClosed && <ViewModeToggle value={detailView} onChange={setDetailView} />}
+                <CollapseButton collapsed={listClosed} onToggle={toggleList} label="activity list" />
               </div>
             </div>
+            {!listClosed && <>
             {/* Bulk bar: appears when rows are ticked; fills the fields they share for all of them at once. */}
             {(insSelected.length > 0 || insNotice) && (
               <div data-export-ignore="true" className="flex flex-wrap items-center gap-3 border-b border-[#bfdbfe] bg-secondary px-4 py-2 text-sm">
@@ -1084,6 +1093,7 @@ function MyWorkPageInner() {
               </table>
             </div>
             )}
+          </>}
           </Card></ExportSection>
         </>
       )}

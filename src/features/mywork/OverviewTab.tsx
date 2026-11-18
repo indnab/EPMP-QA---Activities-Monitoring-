@@ -14,6 +14,7 @@ import { projectOfModel } from '../../domain/projects'
 import { milestoneRows } from '../../domain/wbsTree'
 import { bucketTotals, workBucket, WORK_BUCKET_COLORS } from '../../engine'
 import { useApprovalRows } from './approvalRows'
+import { CollapseButton, useCollapsed } from '../collapse'
 import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY } from '../scope'
@@ -46,11 +47,15 @@ function KpiCard({ title, value, color, icon, onClick, hint }: { title: string; 
   )
 }
 
-function Segment({ title, icon, children, className = '' }: { title: string; icon: string; children: React.ReactNode; className?: string }) {
+function Segment({ id, title, icon, children, className = '' }: { id: string; title: string; icon: string; children: React.ReactNode; className?: string }) {
+  const [collapsed, toggle] = useCollapsed(id)
   return (
-    <section className={`epmp-card p-3 ${className}`}>
-      <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#344054]"><FbIcon name={icon} size={12} />{title}</h3>
-      {children}
+    <section className={`epmp-card p-3 ${collapsed ? 'self-start' : ''} ${className}`}>
+      <h3 className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#344054] ${collapsed ? '' : 'mb-2'}`}>
+        <FbIcon name={icon} size={12} />{title}
+        <span className="ml-auto"><CollapseButton collapsed={collapsed} onToggle={toggle} label={title} /></span>
+      </h3>
+      {!collapsed && children}
     </section>
   )
 }
@@ -119,7 +124,7 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
 
   return (
     <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models" className="mb-3 flex flex-wrap items-stretch gap-3">
-      <Segment title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]">
+      <Segment id="ov-parts" title="Parts" icon="list" className="min-w-[280px] flex-[3_1_380px]">
         <div className={TILE_GRID}>
           <KpiCard title="Under dev." value={partStats.under} color="#2153f5" icon="tools" hint="Under development: parts of models before SOP" />
           <KpiCard title="Developed" value={partStats.developed} color="#10b981" icon="check" hint="Developed: parts of models past SOP, up to SOP + 3 months" />
@@ -128,7 +133,7 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
           <KpiCard title="Returned by vendor" value={returned} color="#dc2626" icon="undo" onClick={() => onGo('actions', { focus: 'release' })} />
         </div>
       </Segment>
-      <Segment title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]">
+      <Segment id="ov-activities" title="Activities" icon="clipboard-list" className="min-w-[280px] flex-[6_1_560px]">
         <div className={TILE_GRID}>
           <KpiCard title="Upcoming" value={totals.Upcoming} color={WORK_BUCKET_COLORS.Upcoming} icon="calendar-month" onClick={() => onGo('overview', { bucket: 'Upcoming' })} />
           <KpiCard title="Completed" value={totals.Completed} color={WORK_BUCKET_COLORS.Completed} icon="check-circle" onClick={() => onGo('overview', { bucket: 'Completed' })} />
@@ -141,7 +146,7 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
           <KpiCard title="Awaiting vendor input" value={act.vendor} color="#7c3aed" icon="clipboard" onClick={() => onGo('overview')} hint="Activities the vendor fills that are not yet submitted" />
         </div>
       </Segment>
-      <Segment title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]">
+      <Segment id="ov-models" title="Models" icon="grid" className="min-w-[150px] flex-[1_1_150px]">
         <div className={TILE_GRID}>
           <KpiCard title="Under dev." value={modelStats.under} color="#2153f5" icon="tools" hint="Under development: models before SOP" />
           <KpiCard title="Developed" value={modelStats.developed} color="#10b981" icon="check" hint="Developed: models past SOP, up to SOP + 3 months" />
@@ -151,11 +156,19 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   )
 }
 
-/** Model-wise cards: priority models (delayed or NG activities, most first) face up; the rest behind "More models". */
+const PAGE_SIZES = [3, 6, 9] as const
+
+/**
+ * Model-wise cards: priority models (delayed or NG activities, most first), then the rest. One line (3 cards) shows
+ * first; "More models" switches to pages of 3, 6 or 9 cards.
+ */
 export function PriorityModels({ instances, parts, className = '' }: { instances: FilteredInstance[]; parts: PartRecord[]; className?: string }) {
   const navigate = useNavigate()
   const stageOf = useModelStages(parts)
-  const [moreModels, setMoreModels] = useState(false)
+  const [collapsed, toggle] = useCollapsed('ov-priority-models')
+  const [paged, setPaged] = useState(false)
+  const [pageSize, setPageSize] = useState<number>(6)
+  const [page, setPage] = useState(0)
   const cards = useMemo(() => {
     const byModel = new Map<string, { parts: Set<string>; Upcoming: number; Completed: number; Delayed: number; NG: number }>()
     for (const p of parts) {
@@ -175,24 +188,41 @@ export function PriorityModels({ instances, parts, className = '' }: { instances
     const rest = all.filter((c) => c.delayed + c.ng === 0).sort((a, b) => b.parts - a.parts || a.model.localeCompare(b.model))
     return { priority, rest }
   }, [parts, instances, stageOf])
-  const shown = moreModels ? [...cards.priority, ...cards.rest] : cards.priority
+  const all = [...cards.priority, ...cards.rest]
+  const size = paged ? pageSize : 3
+  const pages = Math.max(1, Math.ceil(all.length / size))
+  const cur = Math.min(page, pages - 1)
+  const shown = all.slice(cur * size, cur * size + size)
 
   return (
     <ExportSection id="mw-ov-models" label="Overview – models" className={`epmp-card flex min-h-0 flex-col p-4 ${className}`}>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className={`flex flex-wrap items-center gap-2 ${collapsed ? '' : 'mb-3'}`}>
         <h3 className="text-[13px] font-semibold text-[var(--color-text)]">Priority Models</h3>
-        <span className="ml-auto text-[11px] text-[var(--color-muted)]" title="Click a model to choose its part, then the trial.">Models with delayed or NG activities, most first</span>
-        {cards.rest.length > 0 && (
-          <button type="button" onClick={() => setMoreModels((v) => !v)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
-            <FbIcon name={moreModels ? 'chevron-up' : 'chevron-down'} size={13} />
-            {moreModels ? 'Fewer models' : `More models (${cards.rest.length})`}
-          </button>
-        )}
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">{cards.priority.length} of {all.length}</span>
+        <span className="text-[11px] text-[var(--color-muted)]" title="Click a model to choose its part, then the trial.">Delayed or NG activities first</span>
+        <span className="ml-auto flex items-center gap-2">
+          {!collapsed && paged && (
+            <label className="flex items-center gap-1.5 text-[11px] text-[#344054]">
+              Per page
+              <select value={pageSize} aria-label="Models per page" onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0) }}
+                className="h-7 rounded-md border border-[var(--color-border)] px-1.5 text-[11px]">
+                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+          )}
+          {!collapsed && all.length > 3 && (
+            <button type="button" onClick={() => { setPaged((v) => !v); setPage(0) }} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+              <FbIcon name={paged ? 'chevron-up' : 'chevron-down'} size={13} />
+              {paged ? 'Show one line' : `More models (${all.length - 3})`}
+            </button>
+          )}
+          <CollapseButton collapsed={collapsed} onToggle={toggle} label="Priority Models" />
+        </span>
       </div>
-      {shown.length === 0 ? (
-        <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">No model has delayed or NG activities.</p>
-      ) : (
-        <div className="grid min-h-0 grid-cols-2 content-start gap-2 overflow-y-auto sm:grid-cols-3">
+      {collapsed ? null : shown.length === 0 ? (
+        <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">No models in this view.</p>
+      ) : (<>
+        <div className="grid grid-cols-1 content-start gap-2 sm:grid-cols-3">
           {shown.map((t) => (
             <button key={t.model} type="button" onClick={() => navigate(`/part-workspace?model=${encodeURIComponent(t.model)}`)}
               title={`Open ${t.model}'s parts`}
@@ -212,7 +242,22 @@ export function PriorityModels({ instances, parts, className = '' }: { instances
             </button>
           ))}
         </div>
-      )}
+        {paged && pages > 1 && (
+          <div className="mt-3 flex items-center justify-end gap-2 text-[11px] text-[#344054]">
+            <span className="mr-1 text-[var(--color-muted)]">{cur * size + 1}–{Math.min(all.length, cur * size + size)} of {all.length}</span>
+            <button type="button" disabled={cur === 0} onClick={() => setPage(cur - 1)} aria-label="Previous models"
+              className="inline-flex h-7 items-center rounded-md border border-[var(--color-border)] bg-white px-2 font-semibold disabled:opacity-40">‹ Prev</button>
+            {Array.from({ length: pages }, (_, k) => (
+              <button key={k} type="button" onClick={() => setPage(k)} aria-current={k === cur ? 'page' : undefined}
+                className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-2 font-semibold ${k === cur ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}>
+                {k + 1}
+              </button>
+            ))}
+            <button type="button" disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)} aria-label="Next models"
+              className="inline-flex h-7 items-center rounded-md border border-[var(--color-border)] bg-white px-2 font-semibold disabled:opacity-40">Next ›</button>
+          </div>
+        )}
+      </>)}
     </ExportSection>
   )
 }
