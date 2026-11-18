@@ -5,7 +5,10 @@ import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket } from './OverviewTab'
 import type { PendRole, MineKey } from './OverviewTab'
-const MINE_LABEL: Record<MineKey, string> = { picUpdate: 'Awaiting PIC update', vendorUpdate: 'Awaiting Vendor update', review: 'MSIL review / approval' }
+const MINE_LABEL: Record<MineKey, string> = {
+  picUpdate: 'PIC data entry pending', vendorUpdate: 'Awaiting Vendor update',
+  approvePIC: 'Awaiting PIC approval', approveSIC: 'Awaiting SIC approval', approveDPM: 'Awaiting DPM approval',
+}
 import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'

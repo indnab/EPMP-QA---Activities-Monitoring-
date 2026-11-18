@@ -27,12 +27,15 @@ export const PEND_ROLES = ['PIC', 'SIC', 'Vendor', 'DPM'] as const
 export type PendRole = (typeof PEND_ROLES)[number]
 
 /** "My Pending Activities" buckets: who has to act next on an open activity. */
-export const MINE_KEYS = ['picUpdate', 'vendorUpdate', 'review'] as const
+export const MINE_KEYS = ['picUpdate', 'vendorUpdate', 'approvePIC', 'approveSIC', 'approveDPM'] as const
 export type MineKey = (typeof MINE_KEYS)[number]
-/** Which "My Pending Activities" bucket an activity is in (overdue / NG are the Delayed / NG statuses). */
+/**
+ * Who has to act next on an open activity: data entry by the PIC or the Vendor, or an MSIL approval (a submitted
+ * activity waiting at the PIC, SIC or DPM step of its flow). Together they are every open activity.
+ */
 export function mineBucket(p: { role: string } | null, status: string): MineKey | null {
   if (!p) return null
-  if (status === 'Submitted') return 'review' // MSIL (PIC / SIC / DPM) to review or approve
+  if (status === 'Submitted') return p.role === 'SIC' ? 'approveSIC' : p.role === 'DPM' ? 'approveDPM' : 'approvePIC'
   return p.role === 'Vendor' ? 'vendorUpdate' : p.role === 'PIC' ? 'picUpdate' : null
 }
 
@@ -192,16 +195,13 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   const act = useMemo(() => {
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
-    const pendingAt: Record<PendRole, number> = { PIC: 0, SIC: 0, Vendor: 0, DPM: 0 }
-    const mine: Record<MineKey, number> = { picUpdate: 0, vendorUpdate: 0, review: 0 }
+    const mine: Record<MineKey, number> = { picUpdate: 0, vendorUpdate: 0, approvePIC: 0, approveSIC: 0, approveDPM: 0 }
     for (const i of counted) {
       const pend = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })
-      if (pend && pend.role in pendingAt) pendingAt[pend.role as PendRole] += 1
       const m = mineBucket(pend, i.status)
       if (m) mine[m] += 1
     }
     return {
-      pendingAt,
       mine,
       returnedToVendor: toVendor.length,
       returnedToVendorBy: { PIC: toVendor.filter((i) => returnedTo(i)?.by === 'PIC').length, SIC: toVendor.filter((i) => returnedTo(i)?.by === 'SIC').length },
@@ -229,9 +229,12 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
         { id: 'act.delayed', title: 'Overdue', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }), hint: 'Past the planned end and not approved' },
         { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }), hint: 'Sent back for rework (NG concerns)' },
         // Who has to act next (these three together are every open activity)
-        { id: 'act.picUpdate', title: 'Awaiting PIC update', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },
+        { id: 'act.picUpdate', title: 'PIC data entry pending', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },
         { id: 'act.vendorUpdate', title: 'Awaiting Vendor update', value: act.mine.vendorUpdate, color: '#f97316', icon: 'clipboard', onClick: () => onGo('overview', { mine: 'vendorUpdate' }), hint: 'Open activities the vendor has to fill, acknowledge or redo' },
-        { id: 'act.review', title: 'MSIL review / approval', value: act.mine.review, color: '#0891b2', icon: 'check', onClick: () => onGo('overview', { mine: 'review' }), hint: `Submitted, waiting for MSIL to review or approve (PIC ${act.pendingAt.PIC - act.mine.picUpdate}, SIC ${act.pendingAt.SIC}, DPM ${act.pendingAt.DPM})` },
+        // MSIL approval: submitted activities, by the step they wait at
+        { id: 'act.approvePIC', title: 'Awaiting PIC approval', value: act.mine.approvePIC, color: '#0891b2', icon: 'check', onClick: () => onGo('overview', { mine: 'approvePIC' }), hint: 'MSIL approval: submitted, waiting at the PIC step' },
+        { id: 'act.approveSIC', title: 'Awaiting SIC approval', value: act.mine.approveSIC, color: '#8b5cf6', icon: 'check', onClick: () => onGo('overview', { mine: 'approveSIC' }), hint: 'MSIL approval: submitted, waiting at the SIC step' },
+        { id: 'act.approveDPM', title: 'Awaiting DPM approval', value: act.mine.approveDPM, color: '#6366f1', icon: 'check', onClick: () => onGo('overview', { mine: 'approveDPM' }), hint: 'MSIL approval: submitted, waiting at the DPM step' },
         // Returned / exceptions
         ...(currentPersona === 'PIC' ? [{ id: 'act.returnedToVendor', title: 'Returned to vendor', value: act.returnedToVendor, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'vendor' }), hint: `Activities returned to the vendor (by PIC ${act.returnedToVendorBy.PIC}, by SIC ${act.returnedToVendorBy.SIC})` }] : []),
         ...(currentPersona === 'SIC' ? [{ id: 'act.returnedToPic', title: 'Returned to PIC', value: act.returnedToPic, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'pic' }), hint: 'Activities you (SIC) returned to the PIC' }] : []),
