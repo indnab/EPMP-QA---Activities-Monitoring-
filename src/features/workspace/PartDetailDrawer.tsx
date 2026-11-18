@@ -508,8 +508,14 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                 />}
                 <span className="text-xs text-[var(--color-muted)]">{part.type === 'NewPart' ? 'New Part' : 'ECN'}</span>
               </div>
-              <h2 className="text-base font-semibold text-[var(--color-text)] truncate">{part.partName}</h2>
-              <p className="text-xs text-[var(--color-muted)] mt-0.5 font-mono">{part.partNo}</p>
+              {/* The activity this form is for, then the part. */}
+              <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={activity.name}>
+                <span className="truncate">{activity.name}</span>
+                <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{row.milestoneId}</span>
+              </h2>
+              <p className="mt-0.5 truncate text-[13px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
+                {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
+              </p>
             </div>
             <button
               onClick={onClose}
