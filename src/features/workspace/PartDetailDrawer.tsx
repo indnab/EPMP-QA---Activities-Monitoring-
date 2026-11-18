@@ -14,6 +14,7 @@ import {
   getMilestoneMrd,
   getPicOn,
   getReleaseState,
+  taskOf,
   latestReturn,
   actionRyg,
   calculateRYG,
@@ -508,6 +509,18 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
                   size="sm"
                 />}
                 <span className="text-xs text-[var(--color-muted)]">{part.type === 'NewPart' ? 'New Part' : 'ECN'}</span>
+                {/* The next step from the activity's flow (same as the Task column in My Work). */}
+                {(() => {
+                  const task = taskOf(
+                    { activity, entry, part, status: entry ? entry.validationState : 'NotStarted', notApplicable: isNa },
+                    { releases: partReleases, acks: partAcks }
+                  )
+                  return task ? (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-[#bfdbfe] bg-secondary px-2 py-0.5 text-[10.5px] text-primary" title="Next step in this activity's flow">
+                      <span className="text-[var(--color-muted)]">Task</span> <strong className="font-semibold">{task}</strong>
+                    </span>
+                  ) : null
+                })()}
               </div>
               {/* The activity this form is for, then the part. */}
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={activity.name}>
