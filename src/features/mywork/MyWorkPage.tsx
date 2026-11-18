@@ -1,7 +1,8 @@
 import { Icon as FbIcon } from '../../components/Icon'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
-import { OverviewKpis, PriorityModels } from './OverviewTab'
+import { OverviewKpis, PriorityModels, PEND_ROLES } from './OverviewTab'
+import type { PendRole } from './OverviewTab'
 import { CalendarTab } from './CalendarTab'
 import { EMPTY_ATTR_SEL, PartAttrFilters, hasAttrSel, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'
@@ -25,7 +26,7 @@ import { DEMO_TODAY, fmtDate, partInScope, canPersonaEdit } from '../scope'
 import { makeEntryId } from '../../domain'
 import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { isUpcoming, useUpcomingOnly, UpcomingToggle } from '../upcoming'
-import { hasMyWork } from './workQueue'
+import { hasMyWork, isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { ReleasePanel } from './ReleasePanel'
 import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -558,13 +559,19 @@ function MyWorkPageInner() {
   const [fAttrs, setFAttrs] = useState<PartAttrSel>(EMPTY_ATTR_SEL) // Part Category / Fuel Type
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
+  // ?ret= vendor | pic: the list shows only activities returned to the vendor (PIC) / to the PIC by the SIC.
+  const retParam = searchParams.get('ret')
+  const returnedFilter: 'vendor' | 'pic' | null = retParam === 'vendor' || retParam === 'pic' ? retParam : null
+  // ?pend= PIC | SIC | Vendor | DPM: only activities pending at that role.
+  const pendParam = searchParams.get('pend')
+  const pendFilter: PendRole | null = (PEND_ROLES as readonly string[]).includes(pendParam ?? '') ? (pendParam as PendRole) : null
   const bucketParam = searchParams.get('bucket') as WorkBucket | null
   const selectedBucket: WorkBucket | null = bucketParam && (WORK_BUCKETS as readonly string[]).includes(bucketParam) ? bucketParam : null
   // Picking a status inside Insights replaces the URL (no extra Back step per chart click).
   const setSelectedBucket = (b: WorkBucket | null) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev)
-      if (b) n.set('bucket', b)
+      if (b) { n.set('bucket', b); n.delete('ret'); n.delete('pend') }
       else n.delete('bucket')
       return n
     }, { replace: true })
@@ -701,6 +708,8 @@ function MyWorkPageInner() {
   const tableRows = useMemo(() => {
     let rows = instances
     if (selectedBucket) rows = rows.filter((i) => workBucket(i) === selectedBucket)
+    if (returnedFilter) rows = rows.filter(returnedFilter === 'vendor' ? isReturnedToVendor : isReturnedToPicBySic)
+    if (pendFilter) rows = rows.filter((i) => pendOf(i)?.role === pendFilter)
     if (selectedGroup) {
       rows = rows.filter((i) => {
         const k = groupDim === 'model' ? i.part.model
@@ -727,7 +736,7 @@ function MyWorkPageInner() {
       return (cmp || a.part.partNo.localeCompare(b.part.partNo)) * dir
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instances, selectedBucket, selectedGroup, groupDim, colFilters, sortKey, sortDir])
+  }, [instances, selectedBucket, returnedFilter, pendFilter, selectedGroup, groupDim, colFilters, sortKey, sortDir])
 
   // ── Insights bulk fill ──
   const insKey = (i: FilteredInstance) => `${i.row.id}|${i.part.partNo}`
@@ -768,13 +777,23 @@ function MyWorkPageInner() {
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
-  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback' }) => {
+  const goFromOverview = (tab: MwTab, payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole }) => {
     if (payload?.group) { setGroupDim('model'); setSelectedGroup(payload.group) }
     else if (payload?.bucket) setSelectedGroup(null)
     // Overview and the old Workspace are one page now: a status click filters the list below in place.
-    if (tab === 'overview' || tab === 'insights') setSelectedBucket(payload?.bucket ?? null)
+    if (tab === 'overview' || tab === 'insights') {
+      // One URL update for both the status and the "returned" filter.
+      setSearchParams((prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('bucket'); n.delete('ret'); n.delete('pend')
+        if (payload?.bucket) n.set('bucket', payload.bucket)
+        if (payload?.ret) n.set('ret', payload.ret)
+        if (payload?.pend) n.set('pend', payload.pend)
+        return n
+      }, { replace: true })
+    }
     else setView(tab, payload?.bucket, payload?.seg)
-    const anchor = payload?.bucket || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
+    const anchor = payload?.bucket || payload?.ret || payload?.pend || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.
       setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
@@ -919,7 +938,7 @@ function MyWorkPageInner() {
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[selectedBucket] }} />
                     {selectedBucket} parts
                   </span>
-                ) : 'All parts'}
+                ) : returnedFilter ? (returnedFilter === 'vendor' ? 'Returned to vendor' : 'Returned to PIC') : pendFilter ? `Pending at ${PERSONA_LABEL[pendFilter] ?? pendFilter}` : 'All parts'}
                 {selectedGroup ? <span className="text-[var(--color-muted)]"> · {selectedGroup}</span> : ''}
                 <span className="ml-2 inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 align-middle text-[11px] font-medium text-primary">{tableRows.length} row{tableRows.length === 1 ? '' : 's'}</span>
               </h3>
@@ -928,8 +947,8 @@ function MyWorkPageInner() {
                   <button onClick={() => setColFilters({ status: '', partNo: '', partName: '', model: '', department: '', vendorName: '', milestoneId: '', activity: '', planned: '', pendingName: '', pendingRole: '' })}
                     className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Clear column filters</button>
                 )}
-                {(selectedBucket || selectedGroup) && (
-                  <button onClick={() => { setSelectedBucket(null); setSelectedGroup(null) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
+                {(selectedBucket || selectedGroup || returnedFilter || pendFilter) && (
+                  <button onClick={() => { setSelectedGroup(null); setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('bucket'); n.delete('ret'); n.delete('pend'); return n }, { replace: true }) }} className="text-[11px] font-medium text-[var(--color-primary)] hover:underline">Show all</button>
                 )}
                 <SortMenu options={TABLE_COLS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
                 {!listClosed && <ViewModeToggle value={detailView} onChange={setDetailView} />}

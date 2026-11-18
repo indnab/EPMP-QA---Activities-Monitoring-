@@ -175,3 +175,26 @@ export function countWork(instances: FilteredInstance[], role: PersonaId): WorkC
     toValidate: instances.filter((i) => isWaitingForRole(i, role)).length
   }
 }
+
+/**
+ * An activity that was sent back and is waiting to be redone: whom it went back to (the role that enters it first,
+ * e.g. the Vendor) and who sent it back (from the entry history). Null when it is not currently sent back.
+ */
+export function returnedTo(inst: FilteredInstance): { to: PersonaId; by: PersonaId | 'System' } | null {
+  if (inst.notApplicable || inst.status !== 'Sent back' || !inst.entry) return null
+  const to = inst.activity.flow.steps[0]?.role
+  if (!to) return null
+  const last = [...inst.entry.history].reverse().find((h) => h.action === 'Sent back')
+  return { to, by: last?.persona ?? 'System' }
+}
+
+/** PIC screen: returned to the Vendor by the PIC or SIC. */
+export const isReturnedToVendor = (inst: FilteredInstance) => {
+  const r = returnedTo(inst)
+  return !!r && r.to === 'Vendor' && (r.by === 'PIC' || r.by === 'SIC')
+}
+/** SIC screen: returned to the PIC by the SIC. */
+export const isReturnedToPicBySic = (inst: FilteredInstance) => {
+  const r = returnedTo(inst)
+  return !!r && r.to === 'PIC' && r.by === 'SIC'
+}

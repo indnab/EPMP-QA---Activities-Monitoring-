@@ -14,17 +14,23 @@ import { Icon as FbIcon } from '../../components/Icon'
 import type { PartRecord } from '../../domain'
 import { projectOfModel } from '../../domain/projects'
 import { milestoneRows } from '../../domain/wbsTree'
-import { bucketTotals, workBucket, WORK_BUCKET_COLORS } from '../../engine'
+import { bucketTotals, pendencyOf, workBucket, WORK_BUCKET_COLORS } from '../../engine'
 import { useApprovalRows } from './approvalRows'
+import { isReturnedToPicBySic, isReturnedToVendor, returnedTo } from './workQueue'
+import { usePersonaStore } from '../../store/personaStore'
 import { CollapseButton, useCollapsed } from '../collapse'
 import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY } from '../scope'
 import { ExportSection } from '../export/ExportSection'
 
+/** Roles an activity can be pending at (see engine.pendencyOf). */
+export const PEND_ROLES = ['PIC', 'SIC', 'Vendor', 'DPM'] as const
+export type PendRole = (typeof PEND_ROLES)[number]
+
 export type OverviewGo = (
   t: 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar',
-  payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback' }
+  payload?: { bucket?: WorkBucket; focus?: string; group?: string; seg?: 'enter' | 'approve' | 'sentback'; ret?: 'vendor' | 'pic'; pend?: PendRole }
 ) => void
 
 /** Compact KPI tile: label on top, number below. */
@@ -166,6 +172,8 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   onGo: OverviewGo
 }) {
   const approvalRows = useApprovalRows()
+  const { currentPersona } = usePersonaStore()
+  const { picAssignments, partReleases, partAcks } = useQAStore()
   const stageOf = useModelStages(parts)
   // Parts and activities are counted up to SOP + 3 months.
   const counted = useMemo(() => instances.filter((i) => stageOf.get(i.part.model) !== 'past'), [instances, stageOf])
@@ -178,13 +186,24 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
     const enter = approvalRows.filter((r) => r.mode === 'enter')
     // Activities waiting on the vendor: not submitted / approved, and the vendor does the flow's first step.
     const vendor = counted.filter((i) => i.status !== 'Approved' && i.status !== 'Submitted' && i.activity.flow.steps[0]?.role === 'Vendor').length
+    const toVendor = counted.filter(isReturnedToVendor)
+    // Where each open activity is pending right now.
+    const pendingAt: Record<PendRole, number> = { PIC: 0, SIC: 0, Vendor: 0, DPM: 0 }
+    for (const i of counted) {
+      const r = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })?.role
+      if (r && r in pendingAt) pendingAt[r as PendRole] += 1
+    }
     return {
+      pendingAt,
+      returnedToVendor: toVendor.length,
+      returnedToVendorBy: { PIC: toVendor.filter((i) => returnedTo(i)?.by === 'PIC').length, SIC: toVendor.filter((i) => returnedTo(i)?.by === 'SIC').length },
+      returnedToPic: counted.filter(isReturnedToPicBySic).length,
       approve: approvalRows.filter((r) => r.mode === 'approve').length,
       sentBack: enter.filter((r) => r.statusLabel === 'Sent back').length,
       input: enter.length,
       vendor,
     }
-  }, [approvalRows, counted])
+  }, [approvalRows, counted, picAssignments, partReleases, partAcks])
   const modelStats = useMemo(() => {
     const vals = [...stageOf.values()]
     return { under: vals.filter((v) => v === 'under').length, developed: vals.filter((v) => v === 'developed').length }
@@ -206,6 +225,13 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
         { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }) },
         { id: 'act.approve', title: 'Awaiting my approval', value: act.approve, color: '#0891b2', icon: 'check', onClick: () => onGo('worklist', { seg: 'approve' }), hint: 'Submitted items for you to approve or send back' },
         { id: 'act.sentBack', title: 'Sent back', value: act.sentBack, color: '#dc2626', icon: 'undo', onClick: () => onGo('worklist', { seg: 'sentback' }), hint: 'Your entries sent back for correction' },
+        // Role-specific: the PIC sees what went back to the vendor; the SIC sees what it sent back to the PIC.
+        ...(currentPersona === 'PIC' ? [{ id: 'act.returnedToVendor', title: 'Returned to vendor', value: act.returnedToVendor, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'vendor' }), hint: `Activities returned to the vendor (by PIC ${act.returnedToVendorBy.PIC}, by SIC ${act.returnedToVendorBy.SIC})` }] : []),
+        ...(currentPersona === 'SIC' ? [{ id: 'act.returnedToPic', title: 'Returned to PIC', value: act.returnedToPic, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'pic' }), hint: 'Activities you (SIC) returned to the PIC' }] : []),
+        { id: 'act.pendPIC', title: 'Pending at PIC', value: act.pendingAt.PIC, color: '#6d28d9', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'PIC' }), hint: 'Open activities waiting for the PIC (to enter, release or validate)' },
+        { id: 'act.pendSIC', title: 'Pending at SIC', value: act.pendingAt.SIC, color: '#8b5cf6', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'SIC' }), hint: 'Open activities waiting for the SIC' },
+        { id: 'act.pendVendor', title: 'Pending at Vendor', value: act.pendingAt.Vendor, color: '#f97316', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'Vendor' }), hint: 'Open activities waiting for the vendor (to enter or acknowledge)' },
+        { id: 'act.pendDPM', title: 'Pending at DPM', value: act.pendingAt.DPM, color: '#6366f1', icon: 'clipboard-list', onClick: () => onGo('overview', { pend: 'DPM' }), hint: 'Open activities waiting for the DPM' },
         { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('actions', { focus: 'delay' }) },
         { id: 'act.input', title: 'Awaiting my input', value: act.input, color: '#2153f5', icon: 'pen', onClick: () => onGo('worklist', { seg: 'enter' }), hint: 'Activities open for you to fill (not started, draft or sent back)' },
         { id: 'act.vendor', title: 'Awaiting vendor input', value: act.vendor, color: '#7c3aed', icon: 'clipboard', onClick: () => onGo('overview'), hint: 'Activities the vendor fills that are not yet submitted' },

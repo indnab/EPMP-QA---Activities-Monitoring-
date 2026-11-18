@@ -229,7 +229,16 @@ export function buildDemoData(
         } else if (scenario === 2 && vendorFlow) {
           validationState = 'Sent back'
           history.push({ timestamp: '2026-10-12T10:00:00Z', persona: 'Vendor', action: 'Submitted' })
-          history.push({ timestamp: '2026-10-13T10:00:00Z', persona: 'PIC', actorName: part.pic, action: 'Sent back', comment: 'Please re-check the values and resubmit.' })
+          // Mostly the PIC sends back; every fourth one the SIC does (shows on the PIC's "Returned to vendor" by SIC).
+          history.push(ri % 4 === 0
+            ? { timestamp: '2026-10-13T10:00:00Z', persona: 'SIC', action: 'Sent back', comment: 'Evidence missing, please resubmit with the report.' }
+            : { timestamp: '2026-10-13T10:00:00Z', persona: 'PIC', actorName: part.pic, action: 'Sent back', comment: 'Please re-check the values and resubmit.' })
+        } else if (scenario === 2 && pi % 2 === 0) {
+          // PIC-only activity the SIC returned to the PIC for correction (the SIC's "Returned to PIC").
+          validationState = 'Sent back'
+          step = 0
+          history.push({ timestamp: '2026-10-11T10:00:00Z', persona: 'PIC', actorName: part.pic, action: 'Submitted' })
+          history.push({ timestamp: '2026-10-12T15:00:00Z', persona: 'SIC', action: 'Sent back', comment: 'Please correct and confirm again.' })
         } else if (scenario === 1 || scenario === 2) {
           // PIC-only activity: show it as approved so the list stays varied
           validationState = 'Approved'
