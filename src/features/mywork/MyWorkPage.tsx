@@ -846,7 +846,7 @@ function MyWorkPageInner() {
           onChange={(id) => setView(id as MwTab)}
           items={[
             { id: 'overview', label: 'My Work' },
-            { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
+            { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
             { id: 'calendar', label: 'My Calendar' }
           ]}
@@ -857,7 +857,7 @@ function MyWorkPageInner() {
             <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
               className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
           )}
-          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Actions', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar' }[effectiveView]}`} />
+          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Parts', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar' }[effectiveView]}`} />
         </div>
       </div>
 
