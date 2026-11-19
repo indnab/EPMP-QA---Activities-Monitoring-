@@ -474,15 +474,10 @@ function CompactFilterBar(f: FilterBarProps) {
   const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
   return (
     <section className="epmp-card mb-3 px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {f.leading}
-        {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
-        <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
-        <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
-        <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
-        <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
-        <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
-        <PartAttrFilters value={f.attrs} onChange={f.setAttrs} />
+      {/* Date quick filter and whose work to show: part of the filters, for the whole page. */}
+      <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-2">
+        <QuickRangeControl />
+        <PicViewSelect />
         <button
           onClick={() => setMore((v) => !v)}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
@@ -492,6 +487,16 @@ function CompactFilterBar(f: FilterBarProps) {
         {f.hasFilters && (
           <button onClick={f.clearFilters} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
         )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {f.leading}
+        {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
+        <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
+        <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
+        <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
+        <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
+        <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
+        <PartAttrFilters value={f.attrs} onChange={f.setAttrs} />
       </div>
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
@@ -859,8 +864,6 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <QuickRangeControl />
-          <PicViewSelect />
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
       </div>
