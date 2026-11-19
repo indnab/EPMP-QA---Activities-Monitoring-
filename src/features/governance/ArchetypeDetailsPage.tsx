@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader, Card, Button, Modal } from '../../components'
 import { Icon } from '../../components/Icon'
+import { toast } from '../../components/Toast'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { DependencyType, MilestoneDateType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsLevel, WbsObject, WbsObjectType } from '../../domain'
@@ -119,7 +120,14 @@ export function ArchetypeDetailsPage() {
   /** Validate and save the archetype (buildable rows are synced into activities). Returns false if something is missing. */
   const persist = (): boolean => {
     setTouched(true)
-    if (invalid) return false
+    if (invalid) {
+      // Say what is missing and bring it into view (the archetype is saved before anything else happens).
+      const what = errors.name ? 'the archetype name' : errors.description ? 'the archetype description' : errors.objects ? 'at least one named milestone' : 'a name for every row that has rows under it'
+      toast(`Can't save the archetype yet: enter ${what}.`)
+      const target = errors.name || errors.description ? 'arc-details' : 'arc-wbs-errors'
+      setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+      return false
+    }
     // Blank rows are dropped; a dependency must point at a kept row.
     const keep = new Set(named.map((o) => o.id))
     saveArchetype({
@@ -162,7 +170,7 @@ export function ArchetypeDetailsPage() {
 
       <Card className="mb-4">
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="m-0 text-[14px] font-semibold text-[#101828]">Archetype Details</h2>
+          <h2 id="arc-details" className="m-0 text-[14px] font-semibold text-[#101828]">Archetype Details</h2>
           <span className="font-mono text-[10.5px] text-[var(--color-muted)]">{arc.id}</span>
         </div>
         {!isAdmin && <p className="mb-3 text-[10.5px] text-[var(--color-muted)]">Read-only · only Admin can edit archetypes.</p>}
@@ -319,7 +327,7 @@ export function ArchetypeDetailsPage() {
           </div>
         )}
         {touched && (errors.objects || errors.blankParent) && (
-          <p className="border-t border-[var(--color-border)] px-4 py-2 text-[10.5px] text-red-600">
+          <p id="arc-wbs-errors" className="border-t border-[var(--color-border)] px-4 py-2 text-[10.5px] text-red-600">
             {errors.objects ? 'Add at least one named milestone.' : 'Name every row that has rows under it.'}
           </p>
         )}
