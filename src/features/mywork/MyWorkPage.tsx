@@ -478,6 +478,8 @@ function CompactFilterBar(f: FilterBarProps) {
         {f.leading}
         {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
         <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
+        <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
+        <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
         <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
         <PartAttrFilters value={f.attrs} onChange={f.setAttrs} />
@@ -493,10 +495,8 @@ function CompactFilterBar(f: FilterBarProps) {
       </div>
       {more && (
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
-          <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
           <MultiSelect label="Activity" options={plain(f.activityOptions)} selected={f.activity} onChange={f.setActivity} />
           {f.showPic && <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />}
-          <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         </div>
       )}
     </section>
@@ -640,9 +640,11 @@ function MyWorkPageInner() {
     () => uniqBy(allInstances, (i) => i.part.vendorCode).map((i) => ({ value: i.part.vendorCode, label: `${i.part.vendorCode}: ${i.part.vendorName}` })).sort((a, b) => a.label.localeCompare(b.label)),
     [allInstances]
   )
+  // Part options follow the Model filter (Model → Trial → Part).
   const partOptions = useMemo<LabeledOption[]>(
-    () => uniqBy(allInstances, (i) => i.part.partNo).map((i) => ({ value: i.part.partNo, label: `${i.part.partNo}: ${i.part.partName}` })).sort((a, b) => a.label.localeCompare(b.label)),
-    [allInstances]
+    () => uniqBy(allInstances.filter((i) => fModel.length === 0 || fModel.includes(i.part.model)), (i) => i.part.partNo)
+      .map((i) => ({ value: i.part.partNo, label: `${i.part.partNo}: ${i.part.partName}` })).sort((a, b) => a.label.localeCompare(b.label)),
+    [allInstances, fModel]
   )
   const picOptions = useMemo<LabeledOption[]>(
     () => uniqBy(allInstances, (i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)
@@ -971,25 +973,16 @@ function MyWorkPageInner() {
           </Card></ExportSection>
 
 
-          {/* Activity Update, linked to the page filters: Model → Trial → Part here are the same filters as above. */}
+          {/* Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above). */}
           <section className="epmp-card mb-3 p-3" aria-label="Activity Update">
             <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
               <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
-              {!updateClosed && (<>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Model</span>
-                <MultiSelect label="Model" options={modelOptions.map((o) => ({ value: o }))} selected={fModel} onChange={setFModel} />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">2 · Trial</span>
-                <MultiSelect label="Trial" options={milestoneOptions.map((o) => ({ value: o }))} selected={fMilestone} onChange={setFMilestone} />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">3 · Part</span>
-                <MultiSelect label="Part" options={partOptions.filter((o) => fModel.length === 0 || allInstances.some((i) => i.part.partNo === o.value && fModel.includes(i.part.model)))}
-                  selected={fPartNo} onChange={setFPartNo} />
-                <span className="text-[10.5px] text-[var(--color-muted)]">Linked to the page filters</span>
-              </>)}
+              {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Uses the Model, Trial and Part filters above</span>}
               <span className="ml-auto"><CollapseButton collapsed={updateClosed} onToggle={toggleUpdate} label="Activity Update" /></span>
             </div>
             {!updateClosed && (fModel.length === 0 || fPartNo.length === 0 ? (
               <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
-                Select one or more <strong>models</strong> and <strong>parts</strong> (here or in the filters above) to update their activities together.
+                Select one or more <strong>models</strong> and <strong>parts</strong> in the filters above (and optionally a <strong>trial</strong>) to update their activities together.
               </p>
             ) : (
               <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} />

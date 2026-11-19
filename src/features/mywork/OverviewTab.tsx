@@ -77,9 +77,30 @@ interface Tile {
 }
 
 /** Which KPI tiles are hidden (remembered on this screen as the default). */
-const useHiddenTiles = create<{ hidden: string[]; set: (ids: string[]) => void }>()(
-  persist((set) => ({ hidden: [], set: (hidden) => set({ hidden }) }), { name: 'qa-tracker-hidden-tiles', version: 1 })
+/** Which KPI tiles are hidden, and the order the user dragged them into, per card (remembered on this screen). */
+const useHiddenTiles = create<{
+  hidden: string[]
+  set: (ids: string[]) => void
+  order: Record<string, string[]>
+  setOrder: (segment: string, ids: string[]) => void
+}>()(
+  persist(
+    (set) => ({
+      hidden: [],
+      set: (hidden) => set({ hidden }),
+      order: {},
+      setOrder: (segment, ids) => set((st) => ({ order: { ...st.order, [segment]: ids } })),
+    }),
+    { name: 'qa-tracker-hidden-tiles', version: 1 }
+  )
 )
+
+/** Tiles in the saved order; tiles not in it (e.g. new ones) keep their place after the ordered ones. */
+function inSavedOrder(tiles: Tile[], order: string[] | undefined): Tile[] {
+  if (!order?.length) return tiles
+  const pos = new Map(order.map((id, n) => [id, n]))
+  return tiles.map((t, n) => ({ t, k: pos.get(t.id) ?? order.length + n })).sort((a, b) => a.k - b.k).map((x) => x.t)
+}
 
 /** Gear menu listing a card's tiles with a tick each; unticked tiles are hidden. */
 function TilePicker({ title, tiles }: { title: string; tiles: Tile[] }) {
@@ -121,15 +142,29 @@ function TilePicker({ title, tiles }: { title: string; tiles: Tile[] }) {
   )
 }
 
-function Segment({ id, title, icon, tiles, className = '' }: { id: string; title: string; icon: string; tiles: Tile[]; className?: string }) {
+function Segment({ id, title, icon, tiles: given, className = '' }: { id: string; title: string; icon: string; tiles: Tile[]; className?: string }) {
   const [collapsed, toggle] = useCollapsed(id)
-  const hidden = useHiddenTiles((s) => s.hidden)
+  const { hidden, order, setOrder } = useHiddenTiles()
+  const tiles = inSavedOrder(given, order[id])
   const visible = tiles.filter((t) => !hidden.includes(t.id))
+  // Drag a tile onto another to move it there (the new order is remembered).
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const drop = (target: string) => {
+    if (!dragId || dragId === target) return
+    const ids = tiles.map((t) => t.id).filter((x) => x !== dragId)
+    ids.splice(ids.indexOf(target), 0, dragId)
+    setOrder(id, ids)
+  }
   return (
     <section className={`epmp-card p-3 ${collapsed ? 'self-start' : ''} ${className}`}>
       <h3 className={`flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[#344054] ${collapsed ? '' : 'mb-2'}`}>
         <FbIcon name={icon} size={12} />{title}
         <span className="ml-auto flex items-center gap-0.5">
+          {order[id]?.length ? (
+            <button type="button" onClick={() => setOrder(id, [])} title="Back to the default order" data-export-ignore="true"
+              className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]">Reset order</button>
+          ) : null}
           <TilePicker title={title} tiles={tiles} />
           <CollapseButton collapsed={collapsed} onToggle={toggle} label={title} />
         </span>
@@ -138,7 +173,17 @@ function Segment({ id, title, icon, tiles, className = '' }: { id: string; title
         <p className="py-2 text-[10.5px] text-[var(--color-muted)]">All tiles hidden. Use <FbIcon name="cog" size={11} /> to show them.</p>
       ) : (
         <div className={TILE_GRID}>
-          {visible.map(({ id: tid, ...t }) => <KpiCard key={tid} {...t} />)}
+          {visible.map(({ id: tid, ...t }) => (
+            <div key={tid} draggable title="Drag to reorder"
+              onDragStart={(e) => { setDragId(tid); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tid) }}
+              onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(tid) } }}
+              onDragLeave={() => setOverId((o) => (o === tid ? null : o))}
+              onDrop={(e) => { e.preventDefault(); drop(tid); setOverId(null) }}
+              onDragEnd={() => { setDragId(null); setOverId(null) }}
+              className={`grid cursor-grab rounded-lg active:cursor-grabbing ${dragId === tid ? 'opacity-40' : ''} ${overId === tid && dragId !== tid ? 'ring-2 ring-[var(--color-primary)] ring-offset-1' : ''}`}>
+              <KpiCard {...t} />
+            </div>
+          ))}
         </div>
       ))}
     </section>
