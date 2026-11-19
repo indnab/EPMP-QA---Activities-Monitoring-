@@ -291,7 +291,7 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
       // Returned / exceptions
       ...(currentPersona === 'PIC' ? [{ id: 'act.returnedToVendor', title: 'Returned to vendor', value: act.returnedToVendor, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'vendor' }), hint: `Activities returned to the vendor (by PIC ${act.returnedToVendorBy.PIC}, by SIC ${act.returnedToVendorBy.SIC})` }] : []),
       ...(currentPersona === 'SIC' ? [{ id: 'act.returnedToPic', title: 'Returned to PIC', value: act.returnedToPic, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'pic' }), hint: 'Activities you (SIC) returned to the PIC' }] : []),
-      { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('actions', { focus: 'delay' }), hint: 'Vendor delay reasons waiting for review' },
+      { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('worklist'), hint: 'Vendor delay reasons waiting for review (in My Approvals)' },
     ] },
     { id: 'ov-models', title: 'Models', icon: 'grid', className: 'min-w-[150px] flex-[1_1_150px]', tiles: [
       { id: 'models.under', title: 'Under dev.', value: modelStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: models before SOP' },

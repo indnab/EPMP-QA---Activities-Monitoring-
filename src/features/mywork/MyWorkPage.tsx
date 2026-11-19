@@ -36,7 +36,6 @@ import type { PartRecord } from '../../domain'
 import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { hasMyWork, isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { ReleasePanel } from './ReleasePanel'
-import { DelayPanel } from '../delay/DelayPanel'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useApprovalRows } from './approvalRows'
 import type { ApprovalRow, ApprovalType } from './approvalRows'
@@ -826,7 +825,7 @@ function MyWorkPageInner() {
       }, { replace: true })
     }
     else setView(tab, payload?.bucket, payload?.seg)
-    const anchor = payload?.bucket || payload?.ret || payload?.pend || payload?.mine || tab === 'overview' ? 'mw-detail' : payload?.focus === 'delay' ? 'mw-delay' : payload?.focus === 'release' ? 'mw-release' : null
+    const anchor = payload?.bucket || payload?.ret || payload?.pend || payload?.mine || tab === 'overview' ? 'mw-detail' : payload?.focus === 'release' ? 'mw-release' : null
     if (anchor) {
       // Wait for the tab's content to render, then bring the target queue into view.
       setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
@@ -846,7 +845,7 @@ function MyWorkPageInner() {
           onChange={(id) => setView(id as MwTab)}
           items={[
             { id: 'overview', label: 'My Work' },
-            { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
+            { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
             { id: 'calendar', label: 'My Calendar' }
           ]}
@@ -903,9 +902,8 @@ function MyWorkPageInner() {
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (
         <>
-          {/* Release handshake + delay reason approvals — the PIC's transactional approvals */}
+          {/* Release handshake (delay reasons are reviewed in My Approvals and Exception Management) */}
           <ExportSection id="mw-release-sec" label="Release to vendor"><div id="mw-release"><ReleasePanel /></div></ExportSection>
-          <ExportSection id="mw-delay-sec" label="Delay reasons"><div id="mw-delay"><DelayPanel /></div></ExportSection>
         </>
       ) : (
         // Overview sections, in the order the user dragged them into (grip in the left gutter).
