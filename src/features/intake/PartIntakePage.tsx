@@ -1,3 +1,4 @@
+import { RELEASE_LABEL } from '../mywork/ReleasePanel'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Button } from '../../components'
@@ -210,12 +211,12 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                           release === 'Acknowledged' ? 'bg-emerald-100 text-emerald-800'
-                          : release === 'Released' ? 'bg-blue-100 text-blue-800'
+                          : release === 'Released' ? 'bg-violet-100 text-violet-800'
                           : release === 'Returned' ? 'bg-red-100 text-red-800'
                           : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {release === 'Acknowledged' ? 'Acknowledged' : release === 'Released' ? 'Released · awaiting ack' : release === 'Returned' ? 'Returned by vendor' : 'Not released'}
+                        {RELEASE_LABEL[release]}
                       </span>
                       {returnedReason && <div className="mt-1 max-w-[220px] text-[10px] text-[var(--color-muted)]">“{returnedReason}”</div>}
                     </td>

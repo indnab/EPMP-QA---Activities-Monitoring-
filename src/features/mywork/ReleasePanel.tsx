@@ -19,14 +19,22 @@ const SLICE_STATES: Record<Slice, ReleaseState[]> = {
   returned: ['Returned']
 }
 
-const STATE_PILL: Record<ReleaseState, { label: string; cls: string }> = {
-  Pending: { label: 'Not released', cls: 'bg-amber-100 text-amber-800' },
-  Released: { label: 'Awaiting acknowledgement', cls: 'bg-blue-100 text-blue-800' },
-  Acknowledged: { label: 'Acknowledged', cls: 'bg-emerald-100 text-emerald-800' },
-  Returned: { label: 'Returned', cls: 'bg-red-100 text-red-800' }
+/** State pill per release state, worded like the tiles above (PIC and vendor wording). */
+export const RELEASE_LABEL: Record<ReleaseState, string> = {
+  Pending: 'Pending release',
+  Released: 'Pending acknowledgement',
+  Acknowledged: 'Acknowledged',
+  Returned: 'Returned by vendor',
+}
+const VENDOR_LABEL: Record<ReleaseState, string> = { ...RELEASE_LABEL, Released: 'Awaiting my acknowledgement', Returned: 'Returned by me' }
+const STATE_CLS: Record<ReleaseState, string> = {
+  Pending: 'bg-amber-100 text-amber-800',
+  Released: 'bg-violet-100 text-violet-800',
+  Acknowledged: 'bg-emerald-100 text-emerald-800',
+  Returned: 'bg-red-100 text-red-800',
 }
 
-function Tile(props: { title: string; count: number; sub: string; color: string; active: boolean; onClick: () => void }) {
+function Tile(props: { title: string; count: number; color: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={props.onClick}
@@ -39,7 +47,6 @@ function Tile(props: { title: string; count: number; sub: string; color: string;
         {props.title}
         <span className="ml-auto text-[18px] font-bold leading-none">{props.count}</span>
       </span>
-      <span className="mt-0.5 text-[10px] leading-tight text-[var(--color-muted)]">{props.sub}</span>
     </button>
   )
 }
@@ -137,16 +144,16 @@ export function ReleasePanel() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {isVendor ? (
           <>
-            <Tile title="Awaiting my acknowledgement" count={counts.awaiting} sub="released by the PIC, not yet answered" color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
-            <Tile title="Acknowledged" count={counts.acknowledged} sub="accepted, ready to work on" color="#16a34a" active={slice === 'acknowledged'} onClick={() => choose('acknowledged')} />
-            <Tile title="Returned by me" count={counts.returned} sub="sent back to the PIC" color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
+            <Tile title="Awaiting my acknowledgement" count={counts.awaiting} color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
+            <Tile title="Acknowledged" count={counts.acknowledged} color="#16a34a" active={slice === 'acknowledged'} onClick={() => choose('acknowledged')} />
+            <Tile title="Returned by me" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
           </>
         ) : (
           <>
-            <Tile title="Released to vendor" count={counts.released} sub={`${counts.awaiting} awaiting acknowledgement · ${counts.acknowledged} acknowledged`} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
-            <Tile title="Pending acknowledgement" count={counts.awaiting} sub="released, the vendor has not acknowledged yet" color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
-            <Tile title="Pending release" count={counts.pending} sub="not yet released to the vendor" color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
-            <Tile title="Returned by vendor" count={counts.returned} sub="back with the PIC to fix and release again" color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
+            <Tile title="Released to vendor" count={counts.released} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
+            <Tile title="Pending acknowledgement" count={counts.awaiting} color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
+            <Tile title="Pending release" count={counts.pending} color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
+            <Tile title="Returned by vendor" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
           </>
         )}
       </div>
@@ -224,13 +231,13 @@ export function ReleasePanel() {
                       <td className="px-3 py-2">{part.model}</td>
                       <td className="px-3 py-2">{part.vendorName}</td>
                       <td className="px-3 py-2">
-                        <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_PILL[state].cls}`}>{STATE_PILL[state].label}</span>
+                        <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{(isVendor ? VENDOR_LABEL : RELEASE_LABEL)[state]}</span>
                       </td>
                       <td className="max-w-[360px] px-3 py-2 text-[10.5px] text-[var(--color-muted)]">
                         {state === 'Returned' && ret
                           ? `Returned ${fmtDate(ret.at.slice(0, 10))}: “${ret.reason}”`
                           : state === 'Pending'
-                            ? 'Not released yet'
+                            ? '—'
                             : rel
                               ? `Released ${fmtDate(rel.at.slice(0, 10))} by ${rel.by}`
                               : '—'}
