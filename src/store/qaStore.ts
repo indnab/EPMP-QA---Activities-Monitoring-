@@ -68,7 +68,7 @@ import {
   generateOverviewDashboardConfig
 } from '../engine'
 
-interface QAStoreState {
+export interface QAStoreState {
   activities: ActivityDefinition[]
   entries: ActivityEntry[]
   dashboards: DashboardConfig[]

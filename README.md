@@ -52,6 +52,21 @@ location.reload()
 
 ---
 
+## Sharing the activity configuration
+
+Activities set up in Governance (archetypes / WBS, the Activity Builder, milestones, section templates) are saved
+in the browser. To share them:
+
+1. The person who configured them: **Governance → Export configuration** (Admin persona). This downloads
+   `activity-config.json`; email it.
+2. To publish it for everyone: save the file in this repo as **`public/config/activity-config.json`**, commit and
+   push. After the deploy, each browser that opens the site applies it once and shows a notice. A newer file
+   (exported again) is applied again; the same file is not re-applied.
+3. To try a file in your own browser only: **Governance → Import configuration** (shows what will change first).
+
+Only configuration is replaced. Models, projects, parts, entries and other work data are kept. Unpublished
+Activity Builder drafts are not included in the file.
+
 ## Project Structure
 
 ```

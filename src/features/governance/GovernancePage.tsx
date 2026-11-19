@@ -14,6 +14,7 @@ import { isBuildable } from '../../domain'
 import { ArchetypesPage } from './ArchetypesPage'
 import { BuilderPage } from '../builder/BuilderPage'
 import { ActivityLibrary } from './ActivityLibrary'
+import { ConfigShare } from './ConfigShare'
 
 type GovTab = 'archetypes' | 'builder' | 'library'
 const TABS: GovTab[] = ['archetypes', 'builder', 'library']
@@ -51,7 +52,7 @@ export function GovernancePage() {
 
   return (
     <div>
-      <PageHeader title="Governance" section="Admin" />
+      <PageHeader title="Governance" section="Admin" actions={<ConfigShare />} />
       <Tabs
         className="mb-4"
         activeId={tab}

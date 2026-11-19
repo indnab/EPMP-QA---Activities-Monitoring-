@@ -1,6 +1,7 @@
 import { Icon as FbIcon } from '../components/Icon'
-import { Toaster } from '../components/Toast'
-import { useState } from 'react'
+import { Toaster, toast } from '../components/Toast'
+import { loadSharedConfig } from './governance/configFile'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { PersonaSwitcher } from '../components/PersonaSwitcher'
 import { Modal } from '../components/Modal'
@@ -153,6 +154,10 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppLayout() {
   useTableAxisLock()
+  // A newer shared activity configuration in the repo (public/config/activity-config.json) is applied once.
+  useEffect(() => {
+    loadSharedConfig().then((s) => { if (s) toast(`Shared activity configuration applied: ${s}.`) })
+  }, [])
   const [navCollapsed, setNavCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   // The tour lives here (not in HomePage) so it survives the route changes it triggers.
