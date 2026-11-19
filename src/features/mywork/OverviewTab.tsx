@@ -226,6 +226,15 @@ function useModelStages(parts: PartRecord[]) {
   }, [parts, models, projects, archetypes])
 }
 
+/** The Overdue tiles, by who has to act next (see mineBucket). */
+export const OVERDUE_TILES: [MineKey, string][] = [
+  ['picUpdate', 'PIC data entry overdue'],
+  ['vendorUpdate', 'Vendor data entry overdue'],
+  ['approvePIC', 'PIC approval overdue'],
+  ['approveSIC', 'SIC approval overdue'],
+  ['approveDPM', 'DPM approval overdue'],
+]
+
 /** Parts / Activities / Models KPI segments, compact, for the left of the "Workspace by" chart. */
 export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, delayReviews, onGo }: {
   /** The role's activity instances (part × activity), after the page filters. */
@@ -260,13 +269,17 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, de
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
     const mine: Record<MineKey, number> = { picUpdate: 0, vendorUpdate: 0, approvePIC: 0, approveSIC: 0, approveDPM: 0 }
+    // Overdue (past the planned end, not approved), split by who has to act next.
+    const overdue: Record<MineKey, number> = { picUpdate: 0, vendorUpdate: 0, approvePIC: 0, approveSIC: 0, approveDPM: 0 }
     for (const i of counted) {
       const pend = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })
       const m = mineBucket(pend, i.status)
       if (m) mine[m] += 1
+      if (m && workBucket(i) === 'Delayed') overdue[m] += 1
     }
     return {
       mine,
+      overdue,
       returnedToVendor: toVendor.length,
       returnedToVendorBy: { PIC: toVendor.filter((i) => returnedTo(i)?.by === 'PIC').length, SIC: toVendor.filter((i) => returnedTo(i)?.by === 'SIC').length },
       returnedToPic: counted.filter(isReturnedToPicBySic).length,
@@ -280,13 +293,17 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, de
       { id: 'scope.under.parts', group: 'Under Development', title: 'Total unique parts', value: scope.under.parts, color: '#2153f5', icon: 'tools', hint: 'Parts of models before SOP' },
       { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months' },
       { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months' },
-      { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA. Their data is kept and comes back if the part is activated again.' },
+      { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA (recalled from the vendor; listed in My Parts). Their data is kept and comes back if the part is activated again.' },
     ] },
     { id: 'ov-activities', title: 'Activities', icon: 'clipboard-list', className: 'min-w-[280px] flex-[6_1_560px]', tiles: [
       // Status
       { id: 'act.upcoming', title: 'Upcoming', value: totals.Upcoming, color: WORK_BUCKET_COLORS.Upcoming, icon: 'calendar-month', onClick: () => onGo('overview', { bucket: 'Upcoming' }) },
       { id: 'act.completed', title: 'Completed', value: totals.Completed, color: WORK_BUCKET_COLORS.Completed, icon: 'check-circle', onClick: () => onGo('overview', { bucket: 'Completed' }) },
-      { id: 'act.delayed', title: 'Overdue', value: totals.Delayed, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }), hint: 'Past the planned end and not approved' },
+      // Overdue (past the planned end, not approved), by who has to act next
+      ...OVERDUE_TILES.map(([mk, title]) => ({
+        id: `act.overdue.${mk}`, title, value: act.overdue[mk], color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle',
+        onClick: () => onGo('overview', { bucket: 'Delayed', mine: mk }), hint: `${title}: past the planned end and not approved`,
+      })),
       { id: 'act.ng', title: 'NG / Rework', value: totals.NG, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }), hint: 'Sent back for rework (NG concerns)' },
       // Who has to act next (these three together are every open activity)
       { id: 'act.picUpdate', title: 'PIC data entry pending', value: act.mine.picUpdate, color: '#6d28d9', icon: 'pen', onClick: () => onGo('overview', { mine: 'picUpdate' }), hint: 'Open activities the PIC has to fill, release or redo' },

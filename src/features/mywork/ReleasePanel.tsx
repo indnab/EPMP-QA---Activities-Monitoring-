@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { activeModelNames } from '../../domain/projects'
 import { usePicViewMatch } from './picView'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
@@ -9,9 +11,9 @@ import type { PartRecord, ReleaseState } from '../../domain'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 
 /** Which slice of parts the list below the tiles shows. */
-type Slice = 'pending' | 'released' | 'awaiting' | 'acknowledged' | 'returned'
-
-const SLICE_STATES: Record<Slice, ReleaseState[]> = {
+type Slice = 'pending' | 'released' | 'awaiting' | 'acknowledged' | 'returned' | 'deleted'
+/** 'deleted' is not a release state: it lists parts SAP / ENOVIA deleted (they are recalled automatically). */
+const SLICE_STATES: Record<Exclude<Slice, 'deleted'>, ReleaseState[]> = {
   pending: ['Pending'],
   released: ['Released', 'Acknowledged'],
   awaiting: ['Released'],
@@ -57,7 +59,9 @@ function Tile(props: { title: string; count: number; color: string; active: bool
  * release several parts together. Vendor: the parts released to it, to acknowledge or return together.
  */
 export function ReleasePanel() {
-  const { partReleases, partAcks, picAssignments, releasePart, acknowledgeParts, returnParts } = useQAStore()
+  const { partReleases, partAcks, picAssignments, releasePart, acknowledgeParts, returnParts, entries } = useQAStore()
+  const storeParts = useQAStore((s) => s.parts)
+  const projects = useQAStore((s) => s.projects)
   const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
@@ -73,6 +77,14 @@ export function ReleasePanel() {
         .filter((r) => !isVendor || r.state !== 'Pending'),
     [parts, partReleases, partAcks, currentPersona, isVendor, inView]
   )
+  // Parts deleted in SAP / ENOVIA (off the work screens; recalled from the vendor). PIC side only.
+  const deletedRows = useMemo(() => {
+    if (isVendor) return []
+    const live = activeModelNames(projects)
+    return storeParts
+      .filter((p) => p.sourceDeleted && !p.supersededBy && live.has(p.model) && partInScope(p, currentPersona) && inView(p))
+      .map((p) => ({ part: p, state: getReleaseState(p.partNo, partReleases, partAcks) }))
+  }, [storeParts, projects, partReleases, partAcks, currentPersona, isVendor, inView])
   const n = (states: ReleaseState[]) => rows.filter((r) => states.includes(r.state)).length
   const counts = {
     pending: n(['Pending']),
@@ -82,16 +94,20 @@ export function ReleasePanel() {
     returned: n(['Returned'])
   }
 
-  const [slice, setSlice] = useState<Slice>(isVendor ? 'awaiting' : 'pending')
+  // ?slice=deleted (from the Scope "Part Deleted" tile) opens the deleted parts.
+  const [searchParams] = useSearchParams()
+  const [slice, setSlice] = useState<Slice>(!isVendor && searchParams.get('slice') === 'deleted' ? 'deleted' : isVendor ? 'awaiting' : 'pending')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [returnOpen, setReturnOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState('')
 
-  const shown = rows.filter((r) => SLICE_STATES[slice].includes(r.state))
-  const pickable = (state: ReleaseState) => (isVendor ? state === 'Released' : canReleaseParts && (state === 'Pending' || state === 'Returned'))
-  const pickedHere = shown.filter((r) => picked.has(r.part.partNo) && pickable(r.state)).map((r) => r.part.partNo)
-  const allPickable = shown.filter((r) => pickable(r.state)).map((r) => r.part.partNo)
+  const shown = slice === 'deleted' ? deletedRows : rows.filter((r) => SLICE_STATES[slice].includes(r.state))
+  // Deleted parts cannot be released (SAP / ENOVIA has to activate them first).
+  const pickable = (state: ReleaseState, part?: PartRecord) =>
+    !part?.sourceDeleted && (isVendor ? state === 'Released' : canReleaseParts && (state === 'Pending' || state === 'Returned'))
+  const pickedHere = shown.filter((r) => picked.has(r.part.partNo) && pickable(r.state, r.part)).map((r) => r.part.partNo)
+  const allPickable = shown.filter((r) => pickable(r.state, r.part)).map((r) => r.part.partNo)
   const allPicked = allPickable.length > 0 && allPickable.every((no) => picked.has(no))
 
   const choose = (s: Slice) => {
@@ -141,7 +157,7 @@ export function ReleasePanel() {
             : 'Parts released to the vendor, waiting to be released, and returned by the vendor.'}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${isVendor ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
         {isVendor ? (
           <>
             <Tile title="Awaiting my acknowledgement" count={counts.awaiting} color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
@@ -154,6 +170,7 @@ export function ReleasePanel() {
             <Tile title="Pending acknowledgement" count={counts.awaiting} color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
             <Tile title="Pending release" count={counts.pending} color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
             <Tile title="Returned by vendor" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
+            <Tile title="Part Deleted" count={deletedRows.length} color="#991b1b" active={slice === 'deleted'} onClick={() => choose('deleted')} />
           </>
         )}
       </div>
@@ -215,7 +232,7 @@ export function ReleasePanel() {
                   return (
                     <tr key={part.partNo} className="border-b border-[var(--color-border)] last:border-0">
                       <td className="px-3 py-2">
-                        {pickable(state) && (
+                        {pickable(state, part) && (
                           <input
                             type="checkbox"
                             aria-label={`Select ${part.partNo}`}
@@ -231,10 +248,16 @@ export function ReleasePanel() {
                       <td className="px-3 py-2">{part.model}</td>
                       <td className="px-3 py-2">{part.vendorName}</td>
                       <td className="px-3 py-2">
-                        <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{(isVendor ? VENDOR_LABEL : RELEASE_LABEL)[state]}</span>
+                        {part.sourceDeleted ? (
+                          <span className="whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">Deleted in {part.sourceDeleted.system}</span>
+                        ) : (
+                          <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{(isVendor ? VENDOR_LABEL : RELEASE_LABEL)[state]}</span>
+                        )}
                       </td>
                       <td className="max-w-[360px] px-3 py-2 text-[10.5px] text-[var(--color-muted)]">
-                        {state === 'Returned' && ret
+                        {part.sourceDeleted
+                          ? `Deleted ${fmtDate(part.sourceDeleted.at.slice(0, 10))} · ${rel?.comment?.startsWith('Recalled automatically') ? 'recalled from the vendor automatically' : 'was not released to the vendor'} · ${entries.filter((e) => e.partNo === part.partNo).length} activity entries kept (back when reactivated)`
+                          : state === 'Returned' && ret
                           ? `Returned ${fmtDate(ret.at.slice(0, 10))}: “${ret.reason}”`
                           : state === 'Pending'
                             ? '—'

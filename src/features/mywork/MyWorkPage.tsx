@@ -4,10 +4,9 @@ import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './q
 import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
-import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket, useKpiCardsLayout } from './OverviewTab'
+import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, OVERDUE_TILES, mineBucket, useKpiCardsLayout } from './OverviewTab'
 import { SortableSections, useSortable } from '../sortable'
 import { UpcomingMilestones } from './UpcomingMilestones'
-import { DeletedPartsDialog } from './DeletedPartsDialog'
 import { activeModelNames } from '../../domain/projects'
 import type { PendRole, MineKey } from './OverviewTab'
 const MINE_LABEL: Record<MineKey, string> = {
@@ -518,7 +517,6 @@ function MyWorkPageInner() {
     const live = activeModelNames(projects)
     return storeParts.filter((p) => p.sourceDeleted && !p.supersededBy && live.has(p.model))
   }, [storeParts, projects])
-  const [deletedOpen, setDeletedOpen] = useState(false)
   const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
 
@@ -953,7 +951,11 @@ function MyWorkPageInner() {
               instances={instances}
               parts={overviewParts}
               deletedParts={deletedParts.length}
-              onShowDeleted={() => setDeletedOpen(true)}
+              onShowDeleted={() => {
+                // Deleted parts live in My Parts (recalled from the vendor automatically).
+                setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('view', 'actions'); n.set('slice', 'deleted'); return n })
+                setTimeout(() => document.getElementById('mw-release')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+              }}
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />
@@ -992,7 +994,7 @@ function MyWorkPageInner() {
                 {selectedBucket ? (
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[selectedBucket] }} />
-                    {selectedBucket} parts
+                    {selectedBucket === 'Delayed' && mineFilter ? OVERDUE_TILES.find(([k]) => k === mineFilter)?.[1] : `${selectedBucket} parts`}
                   </span>
                 ) : returnedFilter ? (returnedFilter === 'vendor' ? 'Returned to vendor' : 'Returned to PIC') : pendFilter ? `Pending at ${PERSONA_LABEL[pendFilter] ?? pendFilter}` : mineFilter ? MINE_LABEL[mineFilter] : 'All parts'}
                 {selectedGroup ? <span className="text-[var(--color-muted)]"> · {selectedGroup}</span> : ''}
@@ -1227,8 +1229,6 @@ function MyWorkPageInner() {
           ) },
         ]} />
       )}
-
-      {deletedOpen && <DeletedPartsDialog parts={deletedParts} onClose={() => setDeletedOpen(false)} />}
 
       {/* Insights bulk fill: the shared fields of the ticked rows, written to each row's own activity entry. */}
       {insBulkOpen && (

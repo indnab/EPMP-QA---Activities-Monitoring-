@@ -665,8 +665,21 @@ export const useQAStore = create<QAStoreState>()(
           const changed = state.parts.filter((p) => partNos.includes(p.partNo) && !!p.sourceDeleted !== deleted)
           if (changed.length === 0) return {}
           const ids = new Set(changed.map((p) => p.partNo))
+          // Deleting recalls the part from the vendor (if it was released). Reactivated parts stay recalled: the PIC
+          // reviews them and releases them again.
+          const recalls: PartRelease[] = deleted
+            ? changed
+                .filter((p) => getReleaseState(p.partNo, state.partReleases, state.partAcks) !== 'Pending')
+                .map((p, n) => ({
+                  id: `rel-${p.partNo}-${state.partReleases.filter((r) => r.partNo === p.partNo).length + 1 + n}`,
+                  partNo: p.partNo, released: false, by: `${system} feed`, byRole: by,
+                  at: new Date(Math.max(Date.parse(when), ...state.partReleases.filter((r) => r.partNo === p.partNo).map((r) => Date.parse(r.at) + 1000))).toISOString(),
+                  comment: `Recalled automatically: part deleted in ${system}`,
+                }))
+            : []
           return {
             parts: state.parts.map((p) => (ids.has(p.partNo) ? { ...p, sourceDeleted: deleted ? { system, at: when } : undefined } : p)),
+            partReleases: recalls.length ? [...state.partReleases, ...recalls] : state.partReleases,
             partEvents: [
               ...state.partEvents,
               ...changed.map((p, n): PartEvent => ({
@@ -1702,7 +1715,15 @@ export const useQAStore = create<QAStoreState>()(
           return {
             parts: gone ? d.parts.map((p) => (p.partNo === gone.partNo ? { ...p, sourceDeleted: { system: 'ENOVIA' as const, at: deletedAt } } : p)) : d.parts,
             entries: d.entries,
-            partReleases: d.partReleases,
+            // …and recalled from the vendor automatically, as the feed does.
+            partReleases: gone && getReleaseState(gone.partNo, d.partReleases, d.partAcks) !== 'Pending'
+              ? [...d.partReleases, {
+                  id: `rel-${gone.partNo}-deleted`, partNo: gone.partNo, released: false, by: 'ENOVIA feed', byRole: 'Admin' as const,
+                  // After the part's latest release record (so it is the one in force).
+                  at: new Date(Math.max(Date.parse(deletedAt), ...d.partReleases.filter((r) => r.partNo === gone.partNo).map((r) => Date.parse(r.at) + 1000))).toISOString(),
+                  comment: 'Recalled automatically: part deleted in ENOVIA',
+                }]
+              : d.partReleases,
             partAcks: d.partAcks,
             partEvents: gone ? [{ id: 'pe-sample-deleted', kind: 'Deleted' as const, partNo: gone.partNo, system: 'ENOVIA' as const, by: 'ENOVIA feed', byRole: 'Admin' as const, at: deletedAt }] : [],
             picAssignments: [],
