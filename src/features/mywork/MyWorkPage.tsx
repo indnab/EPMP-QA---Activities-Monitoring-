@@ -228,7 +228,7 @@ function ApprovalTable({
 
 /**
  * Merged Worklist: one card per item for the current role — the work they enter and the things they approve, at the
- * same granularity as before (one activity-part per card). A segment switches between "To enter" and "To approve".
+ * same granularity as before (one activity-part per card). Only items to approve are listed ("My Approvals").
  * Multi-select to approve in one go; clicking a card opens the activity form in a drawer.
  */
 interface WorkFilters {
@@ -289,11 +289,6 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
   }, [filtered, sortKey, sortDir])
   const { activities, templateRows, transitionEntryState, advanceDeviation, decideDelayReasons, updateAction } = useQAStore()
   const { currentPersona } = usePersonaStore()
-  // ?seg= (from an Overview tile) opens a segment; 'sentback' = To enter, only items sent back for correction.
-  const [searchParams] = useSearchParams()
-  const segParam = searchParams.get('seg')
-  const [segment, setSegment] = useState<'all' | 'enter' | 'approve'>(segParam === 'approve' ? 'approve' : segParam === 'enter' || segParam === 'sentback' ? 'enter' : 'all')
-  const [sentBackOnly, setSentBackOnly] = useState(segParam === 'sentback')
   const [viewMode, setViewMode] = useViewMode('worklist')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
@@ -304,9 +299,9 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
   const openActivity = openRow ? activities.find((a) => a.id === (templateRows.find((t) => t.id === openRow.rowId)?.activityId)) : undefined
   const openTemplateRow = openRow ? templateRows.find((t) => t.id === openRow.rowId) : undefined
 
-  const enterRows = rows.filter((r) => r.mode === 'enter')
+  // My Approvals lists only items to approve; data entry is done from My Work.
   const approveRows = rows.filter((r) => r.mode === 'approve')
-  const shown = segment === 'enter' ? enterRows.filter((r) => !sentBackOnly || r.statusLabel === 'Sent back') : segment === 'approve' ? approveRows : rows
+  const shown = approveRows
 
   const keys = useMemo(() => new Set(approveRows.map((r) => r.key)), [approveRows])
   const selected = useMemo(() => new Set([...picked].filter((k) => keys.has(k))), [picked, keys])
@@ -348,23 +343,10 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-3 lg:-mx-7 lg:px-7">
       {filterBar}
       <section className="epmp-card flex items-center gap-3 overflow-x-auto px-4 py-3">
-        <div className="flex-none">
-          <Tabs
-            activeId={segment}
-            onChange={(id) => { setSegment(id as 'all' | 'enter' | 'approve'); setSentBackOnly(false); setPicked(new Set()) }}
-            items={[
-              { id: 'all', label: 'All', badge: rows.length || undefined },
-              { id: 'enter', label: 'To enter', badge: enterRows.length || undefined },
-              { id: 'approve', label: 'To approve', badge: approveRows.length || undefined }
-            ]}
-          />
-        </div>
-        {sentBackOnly && segment === 'enter' && (
-          <button type="button" onClick={() => setSentBackOnly(false)} title="Show all items to enter"
-            className="inline-flex flex-none items-center gap-1 rounded-full bg-[#fef2f2] px-2.5 py-1 text-[10.5px] font-semibold text-[#dc2626] hover:brightness-95">
-            Sent back only <FbIcon name="close" size={11} />
-          </button>
-        )}
+        <h3 className="flex flex-none items-center gap-2 text-[12px] font-semibold text-[var(--color-text)]">
+          To approve
+          <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[10.5px] font-semibold tabular-nums text-[#344054]">{approveRows.length}</span>
+        </h3>
         <div className="ml-auto flex flex-none items-center gap-2">
           {notice && <span className="whitespace-nowrap text-[10.5px] text-emerald-700" role="status">{notice}</span>}
           <SortMenu options={WORK_SORT_OPTIONS} sortKey={sortKey} sortDir={sortDir} onChange={(k, d) => { setSortKey(k); setSortDir(d) }} />
@@ -814,15 +796,16 @@ function MyWorkPageInner() {
   if (!hasMyWork(currentPersona)) {
     return (
       <div>
-        <PageHeader title="My Workspace" section="Workspace" description="A worklist for Vendors and PICs." />
-        <Card><p className="py-6 text-center text-sm text-[var(--color-muted)]">My Work is available to the Vendor, PIC, SIC and DPM roles. Switch persona to see it.</p></Card>
+        <PageHeader title="Workspace" section="Workspace" description="A worklist for Vendors and PICs." />
+        <Card><p className="py-6 text-center text-sm text-[var(--color-muted)]">The Workspace is available to the Vendor, PIC, SIC and DPM roles. Switch persona to see it.</p></Card>
       </div>
     )
   }
 
 
   // ── Worklist (merged): everything for this role — work to enter + things to approve ──
-  const worklistCount = approvalInRange ? approvalRows.filter(approvalInRange).length : approvalRows.length
+  const approveOnly = approvalRows.filter((r) => r.mode === 'approve')
+  const worklistCount = approvalInRange ? approveOnly.filter(approvalInRange).length : approveOnly.length
   const effectiveView = view
 
   // From an Overview KPI: switch to the right tab, pre-apply the bucket filter (Insights), and scroll to the queue.
@@ -862,10 +845,10 @@ function MyWorkPageInner() {
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
           items={[
-            { id: 'overview', label: 'Overview' },
+            { id: 'overview', label: 'My Work' },
             { id: 'actions', label: 'My Actions', badge: (releaseCounts.pending + releaseCounts.returned + excDelays.review.length) || undefined },
-            { id: 'worklist', label: 'Approvals', badge: worklistCount || undefined },
-            { id: 'calendar', label: 'Calendar' }
+            { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
+            { id: 'calendar', label: 'My Calendar' }
           ]}
         />
         </div>
@@ -874,7 +857,7 @@ function MyWorkPageInner() {
             <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
               className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
           )}
-          <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
+          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Actions', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar' }[effectiveView]}`} />
         </div>
       </div>
 

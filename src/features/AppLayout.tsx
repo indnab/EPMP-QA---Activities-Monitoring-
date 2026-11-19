@@ -93,7 +93,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/',           label: 'Home',       group: 'Workspace', tour: 'nav-home',
     icon: ico(<><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>) },
-  { to: '/mywork',     label: 'My Work',    group: 'Workspace', tour: 'nav-mywork',
+  { to: '/mywork',     label: 'Workspace',  group: 'Workspace', tour: 'nav-mywork',
     roles: ['Vendor', 'PIC', 'SIC', 'DPM'],
     icon: ico(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h9" /></>) },
   { to: '/data-entry', label: 'Parts Data Entry', group: 'Workspace', tour: 'nav-data-entry',

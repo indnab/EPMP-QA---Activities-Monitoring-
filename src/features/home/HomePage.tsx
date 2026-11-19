@@ -28,7 +28,7 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
   Vendor: {
     title: 'Vendor', job: 'Acknowledge released parts, enter your fields, and explain delays.',
     links: [
-      { to: '/mywork', label: 'My Work', desc: 'Parts to acknowledge and enter', icon: 'check' },
+      { to: '/mywork', label: 'Workspace', desc: 'Parts to acknowledge and enter', icon: 'check' },
       { to: '/exceptions', label: 'Exceptions', desc: 'Delay reasons and actions', icon: 'alert' },
       { to: '/activities', label: 'Activities', desc: 'Status of your parts', icon: 'list' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Your activity charts', icon: 'chart' }
@@ -37,7 +37,7 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
   PIC: {
     title: 'Person-In-Charge', job: 'Release parts, enter PIC fields, validate vendor entries, and close exceptions.',
     links: [
-      { to: '/mywork', label: 'My Work', desc: 'Worklist and release status', icon: 'check' },
+      { to: '/mywork', label: 'Workspace', desc: 'Worklist and release status', icon: 'check' },
       { to: '/part-workspace', label: 'Part Workspace', desc: 'One part, all activities', icon: 'form' },
       { to: '/exceptions', label: 'Exceptions', desc: 'Deviations, actions, delays', icon: 'alert' },
       { to: '/parts', label: 'Part Intake', desc: 'Intake, release and audit', icon: 'box' }
@@ -46,7 +46,7 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
   SIC: {
     title: 'Section-In-Charge', job: 'Review submitted entries, assign PICs and approve deviations.',
     links: [
-      { to: '/mywork', label: 'My Work', desc: 'Entries to validate', icon: 'check' },
+      { to: '/mywork', label: 'Workspace', desc: 'Entries to validate', icon: 'check' },
       { to: '/pics', label: 'PIC Assignments', desc: 'Who owns which part', icon: 'person' },
       { to: '/exceptions', label: 'Exceptions', desc: 'Deviations, actions, delays', icon: 'alert' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Section view', icon: 'chart' }
@@ -55,7 +55,7 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
   DPM: {
     title: 'Dept. Planning Mgr', job: 'Track completion across vendors, approve deviations, and escalate overdue items.',
     links: [
-      { to: '/mywork', label: 'My Work', desc: 'Entries to validate', icon: 'check' },
+      { to: '/mywork', label: 'Workspace', desc: 'Entries to validate', icon: 'check' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Completion across vendors', icon: 'chart' },
       { to: '/lessons', label: 'Lessons Learnt', desc: 'Scorecards and forecast', icon: 'bulb' },
       { to: '/exceptions', label: 'Exceptions', desc: 'Deviations, actions, delays', icon: 'alert' }
@@ -237,7 +237,7 @@ export function HomePage() {
         {/* ── My Work / My Modules ─────────────────────────────────────── */}
         <section className="flex min-h-[300px] flex-col rounded-2xl p-5 text-white shadow-[0_8px_24px_rgba(37,99,235,.25)]" style={{ background: 'linear-gradient(160deg,#1d4ed8,#2563eb 60%,#1e40af)' }} aria-label="My work">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 text-[13px] font-semibold">{hasMyWork(currentPersona) ? 'My Work' : 'My Modules'}</h2>
+            <h2 className="m-0 text-[13px] font-semibold">{hasMyWork(currentPersona) ? 'Workspace' : 'My Modules'}</h2>
             <Link to={hasMyWork(currentPersona) ? '/mywork' : home.links[0].to} className="text-[10.5px] font-medium text-white/85 hover:text-white">
               View all ›
             </Link>
@@ -246,7 +246,7 @@ export function HomePage() {
             {hasMyWork(currentPersona) ? (
               workGroups.length === 0 ? (
                 <div className="flex flex-1 items-center justify-center rounded-xl bg-white/10 px-4 text-center text-[11.5px] text-white/85">
-                  Nothing is waiting for you in My Work.
+                  Nothing is waiting for you in the Workspace.
                 </div>
               ) : (
                 workGroups.map(({ g, mode }) => {

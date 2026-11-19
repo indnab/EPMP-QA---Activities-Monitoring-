@@ -134,7 +134,7 @@ export function ActivitiesPage() {
             </Link>
             {hasMyWork(currentPersona) ? (
               <Button variant="secondary" size="md" onClick={() => navigate('/mywork')}>
-                Open My Work
+                Open Workspace
               </Button>
             ) : null}
           </div>

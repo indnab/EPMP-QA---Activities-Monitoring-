@@ -87,9 +87,9 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'vendor-mywork',
-    title: 'Step 8 — Vendor: My Work',
+    title: 'Step 8 — Vendor: Workspace',
     body:
-      'My Work lists everything waiting for the Vendor, grouped by activity and milestone across sections, with items sent back by the PIC first. Each group shows its date range and a count per state. "Open entry grid" opens all of that activity\'s parts in one table.',
+      'Workspace → My Work lists everything waiting for the Vendor, grouped by activity and milestone across sections, with items sent back by the PIC first. Each group shows its date range and a count per state. "Open entry grid" opens all of that activity\'s parts in one table.',
     persona: 'Vendor',
     navigateTo: '/mywork',
     highlight: '[data-tour="nav-mywork"]',
@@ -134,7 +134,7 @@ const TOUR_STEPS: TourStep[] = [
     id: 'sic-dpm-validate',
     title: 'Step 13 — SIC and DPM: validate only',
     body:
-      'The SIC and DPM also get My Work, but only a "To validate" list and the validation grid: no entry tabs and no AI import. They can approve or send back many rows at once, and they cannot approve a row whose required PIC fields are still empty.',
+      'The SIC and DPM also get the Workspace, but only a "To validate" list and the validation grid: no entry tabs and no AI import. They can approve or send back many rows at once, and they cannot approve a row whose required PIC fields are still empty.',
     persona: 'DPM',
     navigateTo: '/mywork',
     highlight: '[data-tour="nav-mywork"]',

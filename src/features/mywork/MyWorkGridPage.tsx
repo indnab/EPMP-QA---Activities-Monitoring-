@@ -149,7 +149,7 @@ function MyWorkGridPageInner() {
   if (gate || !activity) {
     return (
       <div>
-        <PageHeader title="Entry grid" section="My Work" description="Update many parts of one activity in a single table." />
+        <PageHeader title="Entry grid" section="Workspace" description="Update many parts of one activity in a single table." />
         <Card>
           <p className="py-6 text-center text-sm text-[var(--color-muted)]">{gate}</p>
         </Card>
@@ -425,7 +425,7 @@ function MyWorkGridPageInner() {
     <div>
       <PageHeader
         title={activity.name}
-        section="My Work"
+        section="Workspace"
         crumb={`${milestoneId} ${validating ? 'validation' : 'entry'} grid`}
         description={
           validating
@@ -439,7 +439,7 @@ function MyWorkGridPageInner() {
             to="/mywork"
             className="inline-flex items-center rounded-[10px] border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10.5px] font-semibold text-[var(--color-text)] hover:bg-[#fafafa]"
           >
-            ← My Work
+            ← Workspace
           </Link>
           </>
         }
