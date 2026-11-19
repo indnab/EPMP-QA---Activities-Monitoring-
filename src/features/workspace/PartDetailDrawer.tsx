@@ -47,6 +47,8 @@ interface PartDetailDrawerProps {
   row: TemplateRow
   partNo: string
   onClose: () => void
+  /** Render only this tab's content (no frame, header or footer), e.g. inside the Activity Update drawer. */
+  embedTab?: string
 }
 
 type FetchEntry = { loading: boolean; error?: string; lastFetched?: string }
@@ -55,7 +57,7 @@ function isFetchedSource(source: string): boolean {
   return ['enovia', 'sap', 'edoc', 'regapp'].includes(source)
 }
 
-export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailDrawerProps) {
+export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: PartDetailDrawerProps) {
   const { entries, activities, models, picAssignments, parts, partReleases, partAcks, delayReasons, updateEntryValues, transitionEntryState, markEntryNg, logAudit, documents, setNotApplicable, releasePart, setVendorTimeline, addAction, updateAction, deleteAction, addDeviation, advanceDeviation } = useQAStore()
   const { currentPersona } = usePersonaStore()
 
@@ -80,7 +82,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
   const [ngReason, setNgReason] = useState('')
   const [ngTarget, setNgTarget] = useState('')
   const [showDeviation, setShowDeviation] = useState(false)
-  const [activeTab, setActiveTab] = useState('form')
+  const [activeTab, setActiveTab] = useState(embedTab ?? 'form')
   const [naDialog, setNaDialog] = useState<'mark' | 'reverse' | null>(null)
   const [releaseComment, setReleaseComment] = useState('')
   const [delayOpenReq, setDelayOpenReq] = useState(0)
@@ -501,239 +503,9 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
     advanceDeviation(row.id, part!.partNo, id, action, currentPersona, picActorName)
   }
 
-  return (
+  // The content of the active tab (also used on its own when embedded in another drawer).
+  const tabBody = (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={closeForm} />
-
-      <div className="fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col max-lg:h-[100dvh] max-lg:overflow-y-auto">
-        {/* Header (mobile: scrolls away with the form) */}
-        <div className="border-b border-[var(--color-border)] px-5 py-4 flex-shrink-0 max-sm:px-4">
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                {isNa && (
-                  <span className="inline-flex items-center gap-1.5 rounded-md border border-[#cbd5e1] bg-[#f1f5f9] px-2 py-1 text-[10px] font-medium text-[#475569]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#94a3b8]" />
-                    Not applicable
-                  </span>
-                )}
-                {!isNa && <StatusPill
-                  status={
-                    entryState === 'Submitted' ? 'Submitted'
-                    : entryState === 'Sent back' ? 'SentBack'
-                    : entryState === 'Approved' ? 'Approved'
-                    : 'Draft'
-                  }
-                  size="sm"
-                />}
-                <span className="text-xs text-[var(--color-muted)]">{part.type === 'NewPart' ? 'New Part' : 'ECN'}</span>
-                {/* The next step from the activity's flow (same as the Task column in My Work). */}
-                {(() => {
-                  const task = taskOf(
-                    { activity, entry, part, status: entry ? entry.validationState : 'NotStarted', notApplicable: isNa },
-                    { releases: partReleases, acks: partAcks }
-                  )
-                  return task ? (
-                    <span className="inline-flex items-center gap-1 rounded-md border border-[#bfdbfe] bg-secondary px-2 py-0.5 text-[10.5px] text-primary" title="Next step in this activity's flow">
-                      <span className="text-[var(--color-muted)]">Task</span> <strong className="font-semibold">{task}</strong>
-                    </span>
-                  ) : null
-                })()}
-              </div>
-              {/* The activity this form is for, then the part. */}
-              <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={activity.name}>
-                <span className="truncate">{activity.name}</span>
-                <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{row.milestoneId}</span>
-              </h2>
-              <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
-                {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
-              </p>
-            </div>
-            <button
-              onClick={closeForm}
-              className="ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
-              aria-label="Close"
-              title="Close"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-xs text-[var(--color-muted)]">
-            <span>Model: <strong className="text-[var(--color-text)]">{part.model}</strong></span>
-            <span>Vendor: <strong className="text-[var(--color-text)]">{part.vendorName}</strong></span>
-            <span>Dept: <strong className="text-[var(--color-text)]">{part.department}</strong></span>
-            <span>Section: <strong className="text-[var(--color-text)]">{part.section}</strong></span>
-            <span>
-              PIC:{' '}
-              <strong className="text-[var(--color-text)]">{currentPic.name ? picLabel(currentPic.name) : 'Unassigned'}</strong>
-              {currentPic.assignment && (
-                <span className="ml-1 text-[10px]">
-                  (assigned from {fmtDate(currentPic.assignment.effectiveFrom)})
-                </span>
-              )}
-            </span>
-            <span>
-              {row.milestoneId} MRD:{' '}
-              <strong className="text-[var(--color-text)]">{milestoneMrd ? fmtDate(milestoneMrd) : 'Awaiting MRD'}</strong>
-            </span>
-            <span>
-              Planned:{' '}
-              <strong className="text-[var(--color-text)]">
-                {dates.status === 'resolved' ? `${fmtDate(dates.start)} → ${fmtDate(dates.end)}` : 'Awaiting MRD'}
-              </strong>
-            </span>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="px-5 pt-3 flex-shrink-0 border-b border-[var(--color-border)] max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-white max-sm:px-4">
-          <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} className="max-lg:flex-nowrap" />
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 max-lg:flex-none max-lg:overflow-visible max-sm:p-4">
-          {/* Release-to-vendor gate */}
-          {released ? (
-            <div
-              className={`mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5 text-sm ${
-                rstate === 'Acknowledged' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-blue-200 bg-blue-50 text-blue-900'
-              }`}
-            >
-              <span className="font-medium">
-                {rstate === 'Acknowledged' ? 'Released to vendor · acknowledged' : 'Released to vendor · awaiting acknowledgement'}
-              </span>
-              <span className={`text-xs ${rstate === 'Acknowledged' ? 'text-emerald-700' : 'text-blue-700'}`}>
-                {rstate === 'Acknowledged'
-                  ? 'The vendor has accepted this part and can act on it.'
-                  : 'The vendor must acknowledge or return this part before working on it.'}
-              </span>
-              {canRelease && (
-                <div className="ml-auto flex items-center gap-2">
-                  <input
-                    value={releaseComment}
-                    onChange={(e) => setReleaseComment(e.target.value)}
-                    placeholder="Reason for recall (optional)"
-                    className="h-8 rounded-lg border border-emerald-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
-                  />
-                  <Button variant="secondary" size="sm" onClick={() => handleRelease(false)}>
-                    Recall
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              className={`mb-4 rounded-lg border px-3 py-2.5 text-sm ${
-                rstate === 'Returned' ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900'
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{rstate === 'Returned' ? 'Returned by vendor' : 'Not yet released to vendor'}</span>
-                <span className={`text-xs ${rstate === 'Returned' ? 'text-red-700' : 'text-amber-700'}`}>
-                  {rstate === 'Returned'
-                    ? `Reason: ${returnInfo?.reason ?? '—'}. Fix the details and release it again.`
-                    : 'Review the details above. The vendor can’t see this part until you release it. You can still do your own updates.'}
-                </span>
-              </div>
-              {canRelease && (
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    value={releaseComment}
-                    onChange={(e) => setReleaseComment(e.target.value)}
-                    placeholder="Note (optional) — e.g. vendor code verified"
-                    className="h-8 flex-1 rounded-lg border border-amber-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
-                  />
-                  <Button variant="primary" size="sm" onClick={() => handleRelease(true)}>
-                    {rstate === 'Returned' ? 'Release again' : 'Release to vendor'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-          <DelayReasonBlock
-            activity={activity} row={row} partNo={partNo} partName={part?.partName ?? partNo} entry={entry}
-            plannedEnd={plannedEnd} ryg={String(rygNow)} notApplicable={naNow} openRequest={delayOpenReq}
-          />
-          {/* Planned timeline (template vs vendor-set) */}
-          {vtAllowed && (
-            <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11.5px] font-semibold text-[var(--color-text)]">Planned timeline</span>
-                {canEditTimeline && !tlEditing && (
-                  <Button variant="secondary" size="sm" onClick={openTimelineEditor}>
-                    {vt ? 'Update timeline' : 'Set vendor timeline'}
-                  </Button>
-                )}
-              </div>
-
-              {/* Template baseline */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="w-16 flex-none text-[var(--color-muted)]">Template</span>
-                <span className={vt ? 'text-[var(--color-muted)] line-through' : 'font-medium text-[var(--color-text)]'}>
-                  {templateDates.status === 'resolved'
-                    ? `${fmtDate(templateDates.start)} → ${fmtDate(templateDates.end)}`
-                    : 'Awaiting MRD'}
-                </span>
-                {!vt && <span className="text-[10px] text-[var(--color-muted)]">· tracking uses this</span>}
-              </div>
-
-              {/* Vendor current + superseded versions (strikethrough) */}
-              {vt && (
-                <div className="mt-1.5 space-y-1 text-xs">
-                  {vt.history.map((h, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="w-16 flex-none text-[var(--color-muted)]">Vendor</span>
-                      <span className="text-[var(--color-muted)] line-through">
-                        {fmtDate(h.start)} → {fmtDate(h.end)}
-                      </span>
-                      <span className="text-[10px] text-[var(--color-muted)]">· {h.setBy}, {fmtDate(h.at.slice(0, 10))}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center gap-2">
-                    <span className="w-16 flex-none text-[var(--color-muted)]">Vendor</span>
-                    <span className="font-medium text-[var(--color-text)]">
-                      {fmtDate(vt.current.start)} → {fmtDate(vt.current.end)}
-                    </span>
-                    <span className="rounded-full bg-[#eff6ff] px-1.5 py-0.5 text-[10px] font-medium text-[#1d4ed8]">tracking uses this</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Editor */}
-              {tlEditing && (
-                <div className="mt-2.5 flex flex-wrap items-end gap-2 border-t border-[var(--color-border)] pt-2.5">
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">Start</span>
-                    <input type="date" value={tlStart} onChange={(e) => setTlStart(e.target.value)}
-                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">End</span>
-                    <input type="date" value={tlEnd} onChange={(e) => setTlEnd(e.target.value)}
-                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
-                  </label>
-                  <Button variant="primary" size="sm" onClick={saveTimeline} disabled={!tlStart || !tlEnd || tlStart > tlEnd}>
-                    Save
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setTlEditing(false)}>Cancel</Button>
-                  {tlStart && tlEnd && tlStart > tlEnd && (
-                    <span className="w-full text-[10px] text-red-600">Start must not be after end.</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {isNa && entry?.notApplicable && (
-            <div className="mb-4 rounded-lg border border-[#cbd5e1] bg-[#f1f5f9] px-3 py-2.5 text-sm text-[#334155]">
-              <div className="font-medium">Not applicable for this part</div>
-              <div className="mt-0.5 text-xs">
-                Marked by <strong>{entry.notApplicable.by}</strong> on {fmtDate(entry.notApplicable.at.slice(0, 10))}
-                {entry.notApplicable.reason ? <> — “{entry.notApplicable.reason}”</> : ' (no reason given)'}.
-                The form is read-only and the part is excluded from completion %.
-              </div>
-            </div>
-          )}
           {activeTab === 'documents' && (
             <DocumentsTab
               entryId={entryId}
@@ -1037,6 +809,244 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
               )}
             </div>
           )}
+    </>
+  )
+  if (embedTab) return <div>{tabBody}</div>
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={closeForm} />
+
+      <div className="fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col max-lg:h-[100dvh] max-lg:overflow-y-auto">
+        {/* Header (mobile: scrolls away with the form) */}
+        <div className="border-b border-[var(--color-border)] px-5 py-4 flex-shrink-0 max-sm:px-4">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                {isNa && (
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-[#cbd5e1] bg-[#f1f5f9] px-2 py-1 text-[10px] font-medium text-[#475569]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#94a3b8]" />
+                    Not applicable
+                  </span>
+                )}
+                {!isNa && <StatusPill
+                  status={
+                    entryState === 'Submitted' ? 'Submitted'
+                    : entryState === 'Sent back' ? 'SentBack'
+                    : entryState === 'Approved' ? 'Approved'
+                    : 'Draft'
+                  }
+                  size="sm"
+                />}
+                <span className="text-xs text-[var(--color-muted)]">{part.type === 'NewPart' ? 'New Part' : 'ECN'}</span>
+                {/* The next step from the activity's flow (same as the Task column in My Work). */}
+                {(() => {
+                  const task = taskOf(
+                    { activity, entry, part, status: entry ? entry.validationState : 'NotStarted', notApplicable: isNa },
+                    { releases: partReleases, acks: partAcks }
+                  )
+                  return task ? (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-[#bfdbfe] bg-secondary px-2 py-0.5 text-[10.5px] text-primary" title="Next step in this activity's flow">
+                      <span className="text-[var(--color-muted)]">Task</span> <strong className="font-semibold">{task}</strong>
+                    </span>
+                  ) : null
+                })()}
+              </div>
+              {/* The activity this form is for, then the part. */}
+              <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={activity.name}>
+                <span className="truncate">{activity.name}</span>
+                <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{row.milestoneId}</span>
+              </h2>
+              <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
+                {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
+              </p>
+            </div>
+            <button
+              onClick={closeForm}
+              className="ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
+              aria-label="Close"
+              title="Close"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-xs text-[var(--color-muted)]">
+            <span>Model: <strong className="text-[var(--color-text)]">{part.model}</strong></span>
+            <span>Vendor: <strong className="text-[var(--color-text)]">{part.vendorName}</strong></span>
+            <span>Dept: <strong className="text-[var(--color-text)]">{part.department}</strong></span>
+            <span>Section: <strong className="text-[var(--color-text)]">{part.section}</strong></span>
+            <span>
+              PIC:{' '}
+              <strong className="text-[var(--color-text)]">{currentPic.name ? picLabel(currentPic.name) : 'Unassigned'}</strong>
+              {currentPic.assignment && (
+                <span className="ml-1 text-[10px]">
+                  (assigned from {fmtDate(currentPic.assignment.effectiveFrom)})
+                </span>
+              )}
+            </span>
+            <span>
+              {row.milestoneId} MRD:{' '}
+              <strong className="text-[var(--color-text)]">{milestoneMrd ? fmtDate(milestoneMrd) : 'Awaiting MRD'}</strong>
+            </span>
+            <span>
+              Planned:{' '}
+              <strong className="text-[var(--color-text)]">
+                {dates.status === 'resolved' ? `${fmtDate(dates.start)} → ${fmtDate(dates.end)}` : 'Awaiting MRD'}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="px-5 pt-3 flex-shrink-0 border-b border-[var(--color-border)] max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:bg-white max-sm:px-4">
+          <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} className="max-lg:flex-nowrap" />
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 max-lg:flex-none max-lg:overflow-visible max-sm:p-4">
+          {/* Release-to-vendor gate */}
+          {released ? (
+            <div
+              className={`mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5 text-sm ${
+                rstate === 'Acknowledged' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-blue-200 bg-blue-50 text-blue-900'
+              }`}
+            >
+              <span className="font-medium">
+                {rstate === 'Acknowledged' ? 'Released to vendor · acknowledged' : 'Released to vendor · awaiting acknowledgement'}
+              </span>
+              <span className={`text-xs ${rstate === 'Acknowledged' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                {rstate === 'Acknowledged'
+                  ? 'The vendor has accepted this part and can act on it.'
+                  : 'The vendor must acknowledge or return this part before working on it.'}
+              </span>
+              {canRelease && (
+                <div className="ml-auto flex items-center gap-2">
+                  <input
+                    value={releaseComment}
+                    onChange={(e) => setReleaseComment(e.target.value)}
+                    placeholder="Reason for recall (optional)"
+                    className="h-8 rounded-lg border border-emerald-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
+                  />
+                  <Button variant="secondary" size="sm" onClick={() => handleRelease(false)}>
+                    Recall
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              className={`mb-4 rounded-lg border px-3 py-2.5 text-sm ${
+                rstate === 'Returned' ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{rstate === 'Returned' ? 'Returned by vendor' : 'Not yet released to vendor'}</span>
+                <span className={`text-xs ${rstate === 'Returned' ? 'text-red-700' : 'text-amber-700'}`}>
+                  {rstate === 'Returned'
+                    ? `Reason: ${returnInfo?.reason ?? '—'}. Fix the details and release it again.`
+                    : 'Review the details above. The vendor can’t see this part until you release it. You can still do your own updates.'}
+                </span>
+              </div>
+              {canRelease && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    value={releaseComment}
+                    onChange={(e) => setReleaseComment(e.target.value)}
+                    placeholder="Note (optional) — e.g. vendor code verified"
+                    className="h-8 flex-1 rounded-lg border border-amber-200 bg-white px-2 text-[10.5px] text-[#344054] placeholder-[var(--color-muted)]"
+                  />
+                  <Button variant="primary" size="sm" onClick={() => handleRelease(true)}>
+                    {rstate === 'Returned' ? 'Release again' : 'Release to vendor'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          <DelayReasonBlock
+            activity={activity} row={row} partNo={partNo} partName={part?.partName ?? partNo} entry={entry}
+            plannedEnd={plannedEnd} ryg={String(rygNow)} notApplicable={naNow} openRequest={delayOpenReq}
+          />
+          {/* Planned timeline (template vs vendor-set) */}
+          {vtAllowed && (
+            <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11.5px] font-semibold text-[var(--color-text)]">Planned timeline</span>
+                {canEditTimeline && !tlEditing && (
+                  <Button variant="secondary" size="sm" onClick={openTimelineEditor}>
+                    {vt ? 'Update timeline' : 'Set vendor timeline'}
+                  </Button>
+                )}
+              </div>
+
+              {/* Template baseline */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-16 flex-none text-[var(--color-muted)]">Template</span>
+                <span className={vt ? 'text-[var(--color-muted)] line-through' : 'font-medium text-[var(--color-text)]'}>
+                  {templateDates.status === 'resolved'
+                    ? `${fmtDate(templateDates.start)} → ${fmtDate(templateDates.end)}`
+                    : 'Awaiting MRD'}
+                </span>
+                {!vt && <span className="text-[10px] text-[var(--color-muted)]">· tracking uses this</span>}
+              </div>
+
+              {/* Vendor current + superseded versions (strikethrough) */}
+              {vt && (
+                <div className="mt-1.5 space-y-1 text-xs">
+                  {vt.history.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-16 flex-none text-[var(--color-muted)]">Vendor</span>
+                      <span className="text-[var(--color-muted)] line-through">
+                        {fmtDate(h.start)} → {fmtDate(h.end)}
+                      </span>
+                      <span className="text-[10px] text-[var(--color-muted)]">· {h.setBy}, {fmtDate(h.at.slice(0, 10))}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 flex-none text-[var(--color-muted)]">Vendor</span>
+                    <span className="font-medium text-[var(--color-text)]">
+                      {fmtDate(vt.current.start)} → {fmtDate(vt.current.end)}
+                    </span>
+                    <span className="rounded-full bg-[#eff6ff] px-1.5 py-0.5 text-[10px] font-medium text-[#1d4ed8]">tracking uses this</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Editor */}
+              {tlEditing && (
+                <div className="mt-2.5 flex flex-wrap items-end gap-2 border-t border-[var(--color-border)] pt-2.5">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">Start</span>
+                    <input type="date" value={tlStart} onChange={(e) => setTlStart(e.target.value)}
+                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-medium text-[var(--color-muted)]">End</span>
+                    <input type="date" value={tlEnd} onChange={(e) => setTlEnd(e.target.value)}
+                      className="h-8 rounded-lg border border-[var(--color-border)] bg-white px-2 text-[10.5px]" />
+                  </label>
+                  <Button variant="primary" size="sm" onClick={saveTimeline} disabled={!tlStart || !tlEnd || tlStart > tlEnd}>
+                    Save
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setTlEditing(false)}>Cancel</Button>
+                  {tlStart && tlEnd && tlStart > tlEnd && (
+                    <span className="w-full text-[10px] text-red-600">Start must not be after end.</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {isNa && entry?.notApplicable && (
+            <div className="mb-4 rounded-lg border border-[#cbd5e1] bg-[#f1f5f9] px-3 py-2.5 text-sm text-[#334155]">
+              <div className="font-medium">Not applicable for this part</div>
+              <div className="mt-0.5 text-xs">
+                Marked by <strong>{entry.notApplicable.by}</strong> on {fmtDate(entry.notApplicable.at.slice(0, 10))}
+                {entry.notApplicable.reason ? <> — “{entry.notApplicable.reason}”</> : ' (no reason given)'}.
+                The form is read-only and the part is excluded from completion %.
+              </div>
+            </div>
+          )}
+          {tabBody}
         </div>
 
         {/* Footer */}

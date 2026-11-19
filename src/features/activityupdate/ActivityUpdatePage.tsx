@@ -8,8 +8,9 @@
 import { toast } from '../../components/Toast'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, PageHeader, getFieldRenderer, SourceBadge } from '../../components'
-import type { SourceType } from '../../components'
+import { Button, PageHeader, getFieldRenderer, SourceBadge, Tabs } from '../../components'
+import type { SourceType, TabItem } from '../../components'
+import { PartDetailDrawer } from '../workspace/PartDetailDrawer'
 import { Icon } from '../../components/Icon'
 import type { ActivityEntry, FieldDefinition } from '../../domain'
 import { makeEntryId } from '../../domain'
@@ -44,7 +45,7 @@ function rollup(items: FilteredInstance[]): { label: string; cls: string } {
  * Shared by the Activity Update page and the My Work Overview, which pass the items their filters select.
  */
 export function ActivityUpdatePanel({ instances, partCount }: { instances: FilteredInstance[]; partCount: number }) {
-  const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState } = useQAStore()
+  const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState, entries, documents } = useQAStore()
   const { currentPersona: role } = usePersonaStore()
   const [activeKey, setActiveKey] = useState<string | null>(null) // `${activityId}|${milestoneId}`
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
@@ -52,6 +53,9 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
   const [review, setReview] = useState<{ mode: Mode; conflicts: Conflict[] } | null>(null)
   const [keep, setKeep] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
+  // Drawer tab (Form = the bulk update; the others are the part form's tabs) and, for those, which part they show.
+  const [tab, setTab] = useState('form')
+  const [tabPart, setTabPart] = useState<string | null>(null)
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
   const groups = useMemo(() => {
     const byMs = new Map<string, Map<string, FilteredInstance[]>>()
@@ -104,7 +108,7 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
   }, [selectionSig]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { prevAutoDraft.current = autoDraft }) // after every render: the latest values, for the next change
   useEffect(() => () => prevAutoDraft.current(), []) // leaving the page
-  const pick = (k: string) => { if (k !== activeKey) autoDraft(); setActiveKey(k); setDraft({}); setNotice('') }
+  const pick = (k: string) => { if (k !== activeKey) autoDraft(); setActiveKey(k); setDraft({}); setNotice(''); setTab('form'); setTabPart(null) }
 
   /** Write the values, then submit / approve each part as its flow allows. */
   function apply(mode: Mode, kept: Set<string>) {
@@ -171,6 +175,19 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
   const tasks = [...new Set(items.map((i) => taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'))]
   const st = active ? rollup(items) : null
   const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))]
+  // Same tabs as the part form; counts add up over the selected parts.
+  const liveEntry = (i: FilteredInstance) => entries.find((e) => e.id === makeEntryId(i.row.id, i.part.partNo))
+  const sum = (f: (i: FilteredInstance) => number) => items.reduce((n, i) => n + f(i), 0)
+  const drawerTabs: TabItem[] = active ? [
+    { id: 'form', label: 'Form' },
+    ...(active.activity.trackNgRounds ? [{ id: 'ng', label: `NG rounds (${sum((i) => liveEntry(i)?.ngRounds?.length ?? 0)})` }] : []),
+    { id: 'documents', label: `Documents (${sum((i) => documents.filter((d) => d.entryId === makeEntryId(i.row.id, i.part.partNo) && (role !== 'Vendor' || d.uploadedBy === 'Vendor')).length)})` },
+    { id: 'actions', label: `Actions (${sum((i) => liveEntry(i)?.actions?.length ?? 0)})` },
+    { id: 'deviations', label: `Deviations (${sum((i) => liveEntry(i)?.deviations?.length ?? 0)})` },
+    ...(active.activity.canReferenceOtherActivities ? [{ id: 'refs', label: 'References' }] : []),
+    { id: 'history', label: `History (${sum((i) => liveEntry(i)?.history?.length ?? 0)})` },
+  ] : []
+  const shownPart = items.find((i) => i.part.partNo === tabPart) ?? items[0]
 
   return (
     <>
@@ -260,8 +277,33 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
               </div>
             </div>
 
+            {/* Tabs (as on the part form) */}
+            <div className="flex-shrink-0 border-b border-[var(--color-border)] px-5 pt-3 max-sm:px-4">
+              <Tabs items={drawerTabs} activeId={tab} onChange={setTab} className="max-lg:flex-nowrap" />
+            </div>
+
             {/* Body */}
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 max-sm:px-4">
+              {tab !== 'form' && shownPart && (
+                <>
+                  {items.length > 1 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Part">
+                      <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Part</span>
+                      {items.map((i) => {
+                        const on = i.part.partNo === shownPart.part.partNo
+                        return (
+                          <button key={key(i)} type="button" onClick={() => setTabPart(i.part.partNo)} aria-pressed={on}
+                            className={`rounded-full border px-2.5 py-1 text-[10.5px] ${on ? 'border-[var(--color-primary)] bg-secondary font-semibold text-primary' : 'border-[var(--color-border)] text-[#344054] hover:bg-[var(--color-surface)]'}`}>
+                            <span className="font-mono">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <PartDetailDrawer key={`${tab}|${key(shownPart)}`} activity={shownPart.activity} row={shownPart.row} partNo={shownPart.part.partNo} onClose={() => setTab('form')} embedTab={tab} />
+                </>
+              )}
+              {tab === 'form' && (<>
               {/* The selected parts for this activity */}
               <div className="mb-4 overflow-hidden rounded-lg border border-[var(--color-border)]">
                 <table className="w-full text-[11px]">
@@ -298,9 +340,11 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
                   ))}
                 </div>
               )}
+              </>)}
             </div>
 
-            {/* Footer */}
+            {/* Footer (the bulk form's buttons) */}
+            {tab === 'form' && (
             <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-5 py-3 max-sm:px-4">
               <Button variant="secondary" size="md" disabled={Object.keys(filled).length === 0} onClick={() => run('draft')}>Save draft</Button>
               {entersFirst && <Button variant={canApprove ? 'secondary' : 'primary'} size="md" onClick={() => run('submit')}>Submit</Button>}
@@ -309,6 +353,7 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
                 {notice || `Values are written to all ${items.length} selected part${items.length === 1 ? '' : 's'}; blank fields keep each part's value.`}
               </span>
             </div>
+            )}
           </div>
         </>
       )}
