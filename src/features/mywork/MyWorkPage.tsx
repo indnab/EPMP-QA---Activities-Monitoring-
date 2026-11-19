@@ -930,47 +930,6 @@ function MyWorkPageInner() {
               setFModel((cur) => (cur.length === 1 && cur[0] === m ? [] : [m]))
               setTimeout(() => document.getElementById('mw-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
             }} />
-          {/* Graphical: stacked bars by the chosen dimension */}
-          <ExportSection id="mw-ins-chart" label="Overview – workspace chart"><Card className="mb-3">
-            <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>
-              <h3 className="flex-none whitespace-nowrap text-[12px] font-semibold text-[var(--color-text)]">Workspace by {groupDimLabel}</h3>
-              {!chartClosed && (
-              <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
-                <option value="model">By Model</option>
-                <option value="vendor">By Vendor</option>
-                <option value="department">By Department</option>
-                <option value="milestone">By Trial status</option>
-              </select>
-              )}
-              <span className={chartClosed ? 'ml-auto' : ''}><CollapseButton collapsed={chartClosed} onToggle={toggleChart} label="chart" /></span>
-            </div>
-            {chartClosed ? null : groups.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[var(--color-muted)]">No parts match the current filters.</p>
-            ) : (
-              <div style={{ height: Math.max(180, groups.length * 34 + 60) }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}
-                    barCategoryGap={8}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
-                    <XAxis type="number" stroke="#9ca3af" fontSize={10} allowDecimals={false} />
-                    {/* Label column sized to the longest label so the bars use the rest of the card width */}
-                    <YAxis type="category" dataKey="key" stroke="#667085" fontSize={11} tickLine={false}
-                      width={Math.min(110, Math.max(48, Math.max(...groups.map((g) => String(g.key).length)) * 6.5 + 12))} />
-                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                    {WORK_BUCKETS.map((b) => (
-                      <Bar key={b} dataKey={b} name={b} stackId="s" fill={WORK_BUCKET_COLORS[b]}
-                        cursor="pointer"
-                        onClick={(d: any) => { setSelectedBucket(b); setSelectedGroup(d?.key ?? null) }}>
-                        {groups.map((g) => <Cell key={g.key} />)}
-                      </Bar>
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
-          </Card></ExportSection>
 
 
           {/* Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above). */}
@@ -1185,6 +1144,47 @@ function MyWorkPageInner() {
             </div>
             )}
           </>}
+          </Card></ExportSection>
+          {/* Insights (at the bottom): stacked bars by the chosen dimension */}
+          <ExportSection id="mw-ins-chart" label="Overview – insights"><Card className="mt-3">
+            <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>
+              <h3 className="flex-none whitespace-nowrap text-[12px] font-semibold text-[var(--color-text)]">Insights <span className="font-normal text-[var(--color-muted)]">· by {groupDimLabel}</span></h3>
+              {!chartClosed && (
+              <select value={groupDim} onChange={(e) => { setGroupDim(e.target.value as any); setSelectedGroup(null) }} className={`${filterCls} ml-auto w-auto max-w-[180px]`}>
+                <option value="model">By Model</option>
+                <option value="vendor">By Vendor</option>
+                <option value="department">By Department</option>
+                <option value="milestone">By Trial status</option>
+              </select>
+              )}
+              <span className={chartClosed ? 'ml-auto' : ''}><CollapseButton collapsed={chartClosed} onToggle={toggleChart} label="Insights" /></span>
+            </div>
+            {chartClosed ? null : groups.length === 0 ? (
+              <p className="py-10 text-center text-sm text-[var(--color-muted)]">No parts match the current filters.</p>
+            ) : (
+              <div style={{ height: Math.max(180, groups.length * 34 + 60) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}
+                    barCategoryGap={8}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                    <XAxis type="number" stroke="#9ca3af" fontSize={10} allowDecimals={false} />
+                    {/* Label column sized to the longest label so the bars use the rest of the card width */}
+                    <YAxis type="category" dataKey="key" stroke="#667085" fontSize={11} tickLine={false}
+                      width={Math.min(110, Math.max(48, Math.max(...groups.map((g) => String(g.key).length)) * 6.5 + 12))} />
+                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                    {WORK_BUCKETS.map((b) => (
+                      <Bar key={b} dataKey={b} name={b} stackId="s" fill={WORK_BUCKET_COLORS[b]}
+                        cursor="pointer"
+                        onClick={(d: any) => { setSelectedBucket(b); setSelectedGroup(d?.key ?? null) }}>
+                        {groups.map((g) => <Cell key={g.key} />)}
+                      </Bar>
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to filter the list above. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
           </Card></ExportSection>
         </>
       )}
