@@ -60,3 +60,16 @@ export function PartAttrSelects({ value, onChange, className }: { value: PartAtt
     </>
   )
 }
+
+/**
+ * Market filter (Domestic / Export), from the part's Model Variant (Part Intake `model_variant`: Domestic, Export
+ * or Domestic + Export). A "Domestic + Export" part matches either market. Both ticked = every part.
+ */
+export const MARKETS = ['Domestic', 'Export'] as const
+export const ALL_MARKETS: string[] = [...MARKETS]
+export const isAllMarkets = (sel: string[]) => sel.length === 0 || MARKETS.every((m) => sel.includes(m))
+export function matchMarket(part: { attrs?: Record<string, string> } | undefined, sel: string[]): boolean {
+  if (isAllMarkets(sel)) return true
+  const v = part?.attrs?.model_variant ?? ''
+  return sel.some((m) => v.includes(m))
+}
