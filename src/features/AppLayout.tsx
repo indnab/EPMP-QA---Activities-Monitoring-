@@ -74,7 +74,7 @@ export interface AppOutletContext {
 }
 
 const ico = (d: React.ReactNode) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d6daf5" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#d6daf5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     {d}
   </svg>
 )
@@ -171,25 +171,25 @@ export function AppLayout() {
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside
         className={`z-50 flex flex-none flex-col bg-[var(--color-nav-bg)] text-white shadow-[3px_0_4px_#e6ced2] transition-all duration-200
-          fixed inset-y-0 left-0 w-[248px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 ${navCollapsed ? 'lg:w-[76px]' : 'lg:w-[248px] xl:w-[272px]'}`}
+          fixed inset-y-0 left-0 w-[216px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:static lg:translate-x-0 ${navCollapsed ? 'lg:w-[60px]' : 'lg:w-[208px] xl:w-[216px]'}`}
       >
         <NavLink
           to="/"
           aria-label="EPMP home"
-          className="flex h-[137px] flex-none flex-col items-center justify-center border-b border-white/[.12] px-5"
+          className="flex h-[92px] flex-none flex-col items-center justify-center border-b border-white/[.12] px-4"
         >
           {navCollapsed ? (
-            <span className="text-xl font-bold tracking-wide">EP</span>
+            <span className="text-base font-bold tracking-wide">EP</span>
           ) : (
             <>
-              <img src={epmpLogo} alt="EPMP" className="h-auto w-full max-w-[210px]" />
-              <img src={epmpSub} alt="Powered by DE" className="mt-2 h-auto w-[150px] max-w-[85%]" />
+              <img src={epmpLogo} alt="EPMP" className="h-auto w-full max-w-[160px]" />
+              <img src={epmpSub} alt="Powered by DE" className="mt-1.5 h-auto w-[112px] max-w-[80%]" />
             </>
           )}
         </NavLink>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto py-4" aria-label="Main navigation">
+        <nav className="min-h-0 flex-1 overflow-y-auto py-2.5" aria-label="Main navigation">
           {visibleItems.map((item) => {
             const showGroup = item.group !== lastGroup
             lastGroup = item.group
@@ -206,10 +206,10 @@ export function AppLayout() {
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="flex h-[22px] w-[22px] flex-none items-center justify-center opacity-95">{item.icon}</span>
-                      {!navCollapsed && <span className="flex-1 whitespace-nowrap">{item.label}</span>}
+                      <span className="flex h-[18px] w-[18px] flex-none items-center justify-center opacity-95">{item.icon}</span>
+                      {!navCollapsed && <span className="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>}
                       {!navCollapsed && isActive && (
-                        <svg className="opacity-85" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="flex-none opacity-85" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18l6-6-6-6" />
                         </svg>
                       )}
@@ -221,12 +221,12 @@ export function AppLayout() {
           })}
         </nav>
 
-        <div className="flex flex-none flex-col gap-3 border-t border-white/[.12] px-5 py-[18px]">
+        <div className="flex flex-none flex-col gap-2 border-t border-white/[.12] px-4 py-3">
           <button
             type="button"
             onClick={() => setNavCollapsed((v) => !v)}
             aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className="hidden items-center gap-3 text-[10.5px] text-[#dadcfb] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:flex"
+            className="hidden items-center gap-2.5 text-[10.5px] text-[#dadcfb] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:flex"
           >
             <svg width="16" height="12" viewBox="0 0 42 32" fill="#f0f7fd" aria-hidden="true">
               <path d="M9.52 18.92a1.5 1.5 0 01-1.06-.44L.55 10.76a1.5 1.5 0 010-2.1L8.17.46a1.5 1.5 0 112.17 2.08L4.6 9.4l6.26 6.26a1.5 1.5 0 01-1.34 2.26z" />
@@ -246,7 +246,7 @@ export function AppLayout() {
 
       {/* ── Main column ─────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="mx-4 flex min-h-[72px] flex-none flex-wrap items-center gap-3 py-2.5 lg:mx-7">
+        <header className="mx-4 flex min-h-[60px] flex-none flex-wrap items-center gap-3 py-2 lg:mx-5">
           <button
             type="button"
             className="flex h-9 w-9 flex-none items-center justify-center lg:hidden"
@@ -273,12 +273,12 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 overflow-x-hidden overflow-y-auto px-4 pb-7 pt-1 lg:px-7">
+        <main id="main-content" className="flex-1 overflow-x-hidden overflow-y-auto px-4 pb-6 pt-1 lg:px-5">
           <Outlet context={{ startTour: () => setTourOpen(true) } satisfies AppOutletContext} />
         </main>
         <Toaster />
 
-        <footer className="app-footer flex flex-none flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-1 text-[10px] text-[var(--color-muted)] lg:px-7">
+        <footer className="app-footer flex flex-none flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-1 text-[10px] text-[var(--color-muted)] lg:px-5">
           <span>QA Activity Tracker · EPMP design language</span>
           <span>Prototype data · Light mode · build {BUILD_ID}</span>
         </footer>

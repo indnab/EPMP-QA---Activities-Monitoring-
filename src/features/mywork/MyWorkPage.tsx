@@ -339,7 +339,7 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
   return (
     <div>
       {/* Filters + toolbar pin to the top of the scroll area while the cards scroll under them. */}
-      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-3 lg:-mx-7 lg:px-7">
+      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-3 lg:-mx-5 lg:px-5">
       {filterBar}
       <section className="epmp-card flex items-center gap-3 overflow-x-auto px-4 py-3">
         <h3 className="flex flex-none items-center gap-2 text-[12px] font-semibold text-[var(--color-text)]">
@@ -862,7 +862,7 @@ function MyWorkPageInner() {
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
       {effectiveView === 'overview' && (
-      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-7 lg:px-7">
+      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
         <CompactFilterBar
           model={fModel} setModel={setFModel} modelOptions={modelOptions}
           dept={fDept} setDept={setFDept} deptOptions={deptOptions}

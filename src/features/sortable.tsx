@@ -111,7 +111,7 @@ export function SortableSections({ sort, sections }: {
         return (
           <div key={id} {...sort.itemProps(id)} data-section={id} className={`group/sec relative mb-3 ${sortableCls}`}>
             <Grip {...sort.gripProps(id, sec.label)}
-              className="absolute -left-[18px] top-2.5 z-10 opacity-30 transition-opacity group-hover/sec:opacity-100 focus-visible:opacity-100 lg:-left-6" />
+              className="absolute -left-[18px] top-2.5 z-10 opacity-30 transition-opacity group-hover/sec:opacity-100 focus-visible:opacity-100" />
             {sec.node}
           </div>
         )

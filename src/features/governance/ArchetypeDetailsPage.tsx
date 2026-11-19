@@ -326,7 +326,7 @@ export function ArchetypeDetailsPage() {
       </Card>
 
       {/* Sticky footer actions */}
-      <div className="fixed bottom-0 right-0 z-30 flex justify-end gap-3 border-t border-[var(--color-border)] bg-white/90 px-7 py-3 backdrop-blur lg:left-[248px] xl:left-[272px] left-0">
+      <div className="fixed bottom-0 right-0 z-30 flex justify-end gap-3 border-t border-[var(--color-border)] bg-white/90 px-7 py-3 backdrop-blur lg:left-[208px] xl:left-[216px] left-0">
         <Button variant="secondary" size="md" onClick={() => navigate('/governance')}>{isAdmin ? 'Cancel' : 'Back'}</Button>
         {isAdmin && <Button variant="primary" size="md" onClick={submit} disabled={touched && invalid}>Submit</Button>}
       </div>
