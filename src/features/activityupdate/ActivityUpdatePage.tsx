@@ -5,7 +5,8 @@
  * to every selected part of that activity (bulk update), after showing what each part already holds and asking
  * before overwriting. Save as draft, Submit, or (for the validator) Approve, following the activity's flow.
  */
-import { useMemo, useState } from 'react'
+import { toast } from '../../components/Toast'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, PageHeader, getFieldRenderer, SourceBadge } from '../../components'
 import type { SourceType } from '../../components'
@@ -38,48 +39,23 @@ function rollup(items: FilteredInstance[]): { label: string; cls: string } {
   return { label: 'Pending', cls: 'bg-slate-50 text-slate-600 border-slate-200' }
 }
 
-export function ActivityUpdatePage() {
-  const { entries, activities, templateRows, models, milestones, partReleases, partAcks, updateEntryValues, transitionEntryState } = useQAStore()
-  const workParts = useWorkParts()
+/**
+ * The split view itself: activities of the given items grouped by trial (left) and the update form (right).
+ * Shared by the Activity Update page and the My Work Overview, which pass the items their filters select.
+ */
+export function ActivityUpdatePanel({ instances, partCount }: { instances: FilteredInstance[]; partCount: number }) {
+  const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState } = useQAStore()
   const { currentPersona: role } = usePersonaStore()
-
-  const [fModels, setFModels] = useState<string[]>([])
-  const [trial, setTrial] = useState('All')
-  const [fParts, setFParts] = useState<string[]>([])
   const [activeKey, setActiveKey] = useState<string | null>(null) // `${activityId}|${milestoneId}`
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const [review, setReview] = useState<{ mode: Mode; conflicts: Conflict[] } | null>(null)
   const [keep, setKeep] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState('')
-
-  // ── Top filters: Model(s) → Trial → Part(s) ──
-  const scoped = useMemo(
-    () => workParts.filter((p) => !p.supersededBy && partInScope(p, role) && (role !== 'Vendor' || isWorkableByVendor(p.partNo, partReleases, partAcks))),
-    [workParts, role, partReleases, partAcks]
-  )
-  const modelOptions = useMemo(() => [...new Set(scoped.map((p) => p.model))].sort(), [scoped])
-  const partsOfModels = useMemo(() => scoped.filter((p) => fModels.includes(p.model)), [scoped, fModels])
-  const partOptions = useMemo(
-    () => partsOfModels.map((p) => ({ value: p.partNo, label: `${p.partNo}: ${p.partName} (${p.model})` })).sort((a, b) => a.label.localeCompare(b.label)),
-    [partsOfModels]
-  )
-  // A part no longer under a selected model drops out of the selection.
-  const selectedParts = useMemo(() => fParts.filter((pn) => partsOfModels.some((p) => p.partNo === pn)), [fParts, partsOfModels])
-
-  // ── Activities of the selected parts ──
-  const instances = useMemo(() => {
-    if (selectedParts.length === 0) return []
-    const sel = new Set(selectedParts)
-    return getFilteredData(entries, activities, scoped.filter((p) => sel.has(p.partNo)), templateRows, models, { ...ALL }, 'overview', DEMO_TODAY)
-      .filter((i) => !i.notApplicable)
-  }, [entries, activities, scoped, templateRows, models, selectedParts])
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
-  const trialOptions = useMemo(() => [...new Set(instances.map((i) => i.row.milestoneId))].sort((a, b) => msOrder(a) - msOrder(b)), [instances]) // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(() => {
     const byMs = new Map<string, Map<string, FilteredInstance[]>>()
     for (const i of instances) {
-      if (trial !== 'All' && i.row.milestoneId !== trial) continue
       const ms = byMs.get(i.row.milestoneId) ?? new Map<string, FilteredInstance[]>()
       ms.set(i.activity.id, [...(ms.get(i.activity.id) ?? []), i])
       byMs.set(i.row.milestoneId, ms)
@@ -91,7 +67,7 @@ export function ActivityUpdatePage() {
         const all = list.flatMap((a) => a.items)
         return { ms, label: milestones.find((m) => m.id === ms)?.label ?? ms, list, done: all.filter((i) => i.status === 'Approved').length, total: all.length }
       })
-  }, [instances, trial]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [instances]) // eslint-disable-line react-hooks/exhaustive-deps
   const activityCount = groups.reduce((n, g) => n + g.list.length, 0)
 
   const active = groups.flatMap((g) => g.list).find((a) => a.key === activeKey)
@@ -110,7 +86,25 @@ export function ActivityUpdatePage() {
   const canApprove = role !== 'Vendor' && steps.some((s) => s.role === validator && s.allowedOutcomes.includes('Approve'))
   const entersFirst = steps[0]?.role === role || (role !== 'Vendor' && steps[0]?.role === validator)
 
-  const pick = (k: string) => { setActiveKey(k); setDraft({}); setNotice('') }
+  // Leaving the activity (another activity, another selection or another page) saves what was entered as a draft,
+  // except values that would overwrite different saved data.
+  const autoDraft = () => {
+    if (!active || Object.keys(filled).length === 0) return
+    const kept = new Set(conflictsOf(targets, () => filled, () => fields).map((c) => c.k))
+    apply('draft', kept)
+    toast(`${active.activity.name}: your entries were saved as a draft${kept.size ? ` (${kept.size} value${kept.size === 1 ? '' : 's'} that would overwrite existing data left out)` : ''}.`)
+  }
+  // When the selection changes (filters), first save the previous entries as a draft for the parts they were made for.
+  const prevAutoDraft = useRef(autoDraft)
+  const selectionSig = instances.map(key).join(',')
+  useEffect(() => {
+    prevAutoDraft.current()
+    setDraft({})
+    setNotice('')
+  }, [selectionSig]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { prevAutoDraft.current = autoDraft }) // after every render: the latest values, for the next change
+  useEffect(() => () => prevAutoDraft.current(), []) // leaving the page
+  const pick = (k: string) => { if (k !== activeKey) autoDraft(); setActiveKey(k); setDraft({}); setNotice('') }
 
   /** Write the values, then submit / approve each part as its flow allows. */
   function apply(mode: Mode, kept: Set<string>) {
@@ -163,53 +157,8 @@ export function ActivityUpdatePage() {
     apply(mode, new Set())
   }
 
-  if (!hasMyWork(role)) {
-    return (
-      <div>
-        <PageHeader title="Activity Update" section="Parts Data Entry" />
-        <div className="epmp-card px-6 py-10 text-center text-sm text-[var(--color-muted)]">Activity Update is for the PIC, Vendor, SIC and DPM.</div>
-      </div>
-    )
-  }
-
-  const crumbs = [fModels.length ? fModels.join(', ') : 'Model', trial === 'All' ? 'All trials' : trial, active?.activity.name ?? 'Activity']
   return (
-    <div className="pb-6">
-      <PageHeader title="Activity Update" section="Parts Data Entry" />
-
-      {/* Top filter: Model(s) → Trial → Part(s) */}
-      <section className="epmp-card mb-3 flex flex-wrap items-center gap-2 px-3 py-2.5">
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Model</span>
-        <MultiSelect label="Model" options={modelOptions.map((m) => ({ value: m }))} selected={fModels} onChange={(v) => { setFModels(v); setActiveKey(null) }} />
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">2 · Trial</span>
-        <select value={trial} onChange={(e) => { setTrial(e.target.value); setActiveKey(null) }} aria-label="Trial" disabled={selectedParts.length === 0}
-          className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-[11.5px] text-[#344054]">
-          <option value="All">All trials</option>
-          {trialOptions.map((t) => <option key={t} value={t}>{milestones.find((m) => m.id === t)?.label ?? t}</option>)}
-        </select>
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">3 · Part</span>
-        {fModels.length === 0
-          ? <span className="text-[11.5px] text-[var(--color-muted)]">Choose model(s) first</span>
-          : <MultiSelect label="Part" options={partOptions} selected={selectedParts} onChange={(v) => { setFParts(v); setActiveKey(null) }} />}
-        <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">{selectedParts.length} part{selectedParts.length === 1 ? '' : 's'} selected</span>
-      </section>
-
-      {/* Breadcrumb of the selection */}
-      <nav className="mb-3 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#475467]" aria-label="Selection">
-        <Link to="/data-entry" className="inline-flex items-center hover:text-[var(--color-primary)]" aria-label="Parts Data Entry"><Icon name="grid" size={13} /></Link>
-        {crumbs.map((c, n) => (
-          <span key={n} className="inline-flex items-center gap-1.5">
-            <span className="text-[var(--color-muted)]">›</span>
-            <span className={n === crumbs.length - 1 ? 'font-semibold text-[#101828]' : ''}>{c}</span>
-          </span>
-        ))}
-      </nav>
-
-      {selectedParts.length === 0 ? (
-        <div className="epmp-card px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">
-          Select one or more <strong>models</strong>, then the <strong>parts</strong> to update. Pick several to update them together.
-        </div>
-      ) : (
+    <>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(300px,2fr)_minmax(0,3fr)]">
           {/* Left: activities grouped by trial */}
           <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
@@ -261,7 +210,7 @@ export function ActivityUpdatePage() {
               {active ? <>Update activity · {active.activity.name} <span className="ml-1 rounded bg-white/20 px-1.5 py-0.5 text-[10px]">{active.items[0].row.milestoneId}</span></> : 'Update activity'}
             </h2>
             {!active ? (
-              <p className="px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">Pick an activity on the left to update it for the {selectedParts.length} selected part{selectedParts.length === 1 ? '' : 's'}.</p>
+              <p className="px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">Pick an activity on the left to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}.</p>
             ) : (
               <>
                 <div className="max-h-[calc(100vh-360px)] overflow-y-auto p-4">
@@ -314,12 +263,88 @@ export function ActivityUpdatePage() {
             )}
           </section>
         </div>
-      )}
-
       {review && (
         <OverwriteReview conflicts={review.conflicts} keep={keep} setKeep={setKeep}
           confirmLabel={review.mode === 'approve' ? 'Confirm & approve' : review.mode === 'submit' ? 'Confirm & submit' : 'Confirm & save'}
           onBack={() => setReview(null)} onConfirm={() => apply(review.mode, keep)} />
+      )}
+    </>
+  )
+}
+
+export function ActivityUpdatePage() {
+  const { entries, activities, templateRows, models, milestones, partReleases, partAcks } = useQAStore()
+  const workParts = useWorkParts()
+  const { currentPersona: role } = usePersonaStore()
+  const [fModels, setFModels] = useState<string[]>([])
+  const [trial, setTrial] = useState('All')
+  const [fParts, setFParts] = useState<string[]>([])
+
+  // ── Top filters: Model(s) → Trial → Part(s) ──
+  const scoped = useMemo(
+    () => workParts.filter((p) => !p.supersededBy && partInScope(p, role) && (role !== 'Vendor' || isWorkableByVendor(p.partNo, partReleases, partAcks))),
+    [workParts, role, partReleases, partAcks]
+  )
+  const modelOptions = useMemo(() => [...new Set(scoped.map((p) => p.model))].sort(), [scoped])
+  const partsOfModels = useMemo(() => scoped.filter((p) => fModels.includes(p.model)), [scoped, fModels])
+  const partOptions = useMemo(
+    () => partsOfModels.map((p) => ({ value: p.partNo, label: `${p.partNo}: ${p.partName} (${p.model})` })).sort((a, b) => a.label.localeCompare(b.label)),
+    [partsOfModels]
+  )
+  const selectedParts = useMemo(() => fParts.filter((pn) => partsOfModels.some((p) => p.partNo === pn)), [fParts, partsOfModels])
+  const allOfParts = useMemo(() => {
+    if (selectedParts.length === 0) return []
+    const sel = new Set(selectedParts)
+    return getFilteredData(entries, activities, scoped.filter((p) => sel.has(p.partNo)), templateRows, models, { ...ALL }, 'overview', DEMO_TODAY)
+      .filter((i) => !i.notApplicable)
+  }, [entries, activities, scoped, templateRows, models, selectedParts])
+  const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
+  const trialOptions = [...new Set(allOfParts.map((i) => i.row.milestoneId))].sort((a, b) => msOrder(a) - msOrder(b))
+  const instances = useMemo(() => allOfParts.filter((i) => trial === 'All' || i.row.milestoneId === trial), [allOfParts, trial])
+
+  if (!hasMyWork(role)) {
+    return (
+      <div>
+        <PageHeader title="Activity Update" section="Parts Data Entry" />
+        <div className="epmp-card px-6 py-10 text-center text-sm text-[var(--color-muted)]">Activity Update is for the PIC, Vendor, SIC and DPM.</div>
+      </div>
+    )
+  }
+
+  const crumbs = [fModels.length ? fModels.join(', ') : 'Model', trial === 'All' ? 'All trials' : trial, 'Activity']
+  return (
+    <div className="pb-6">
+      <PageHeader title="Activity Update" section="Parts Data Entry" />
+      <section className="epmp-card mb-3 flex flex-wrap items-center gap-2 px-3 py-2.5">
+        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Model</span>
+        <MultiSelect label="Model" options={modelOptions.map((m) => ({ value: m }))} selected={fModels} onChange={setFModels} />
+        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">2 · Trial</span>
+        <select value={trial} onChange={(e) => setTrial(e.target.value)} aria-label="Trial" disabled={selectedParts.length === 0}
+          className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-[11.5px] text-[#344054]">
+          <option value="All">All trials</option>
+          {trialOptions.map((t) => <option key={t} value={t}>{milestones.find((m) => m.id === t)?.label ?? t}</option>)}
+        </select>
+        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">3 · Part</span>
+        {fModels.length === 0
+          ? <span className="text-[11.5px] text-[var(--color-muted)]">Choose model(s) first</span>
+          : <MultiSelect label="Part" options={partOptions} selected={selectedParts} onChange={setFParts} />}
+        <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">{selectedParts.length} part{selectedParts.length === 1 ? '' : 's'} selected</span>
+      </section>
+      <nav className="mb-3 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#475467]" aria-label="Selection">
+        <Link to="/data-entry" className="inline-flex items-center hover:text-[var(--color-primary)]" aria-label="Parts Data Entry"><Icon name="grid" size={13} /></Link>
+        {crumbs.map((c, n) => (
+          <span key={n} className="inline-flex items-center gap-1.5">
+            <span className="text-[var(--color-muted)]">›</span>
+            <span className={n === crumbs.length - 1 ? 'font-semibold text-[#101828]' : ''}>{c}</span>
+          </span>
+        ))}
+      </nav>
+      {selectedParts.length === 0 ? (
+        <div className="epmp-card px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">
+          Select one or more <strong>models</strong>, then the <strong>parts</strong> to update. Pick several to update them together.
+        </div>
+      ) : (
+        <ActivityUpdatePanel instances={instances} partCount={selectedParts.length} />
       )}
     </div>
   )

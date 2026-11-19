@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { toast } from '../../components/Toast'
 import { picLabel } from '../../domain/people'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { ActivityDefinition, FieldDefinition, ActivityEntry, TemplateRow, PartRecord } from '../../domain'
@@ -168,7 +169,10 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actualBeyondMrd, currentPersona])
 
+  // Set once the user edits a field, so values the form fills in by itself (derived rows) never trigger an auto-save.
+  const editedRef = useRef(false)
   const handleFieldChange = useCallback((key: string, value: any) => {
+    editedRef.current = true
     setLocalValues((prev) => ({ ...prev, [key]: value }))
     setFieldErrors((prev) => {
       const next = { ...prev }
@@ -235,6 +239,20 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
     }
     setFieldErrors(errors)
     return Object.keys(errors).length === 0 && ruleViolations.length === 0
+  }
+
+  // Auto-save on close: unsaved changes to the fields this role may edit are kept as a draft (no validation).
+  const blankToNull = (v: unknown) => (v === undefined || v === '' || (Array.isArray(v) && v.length === 0) ? null : v)
+  const unsavedKeys = activity.fields
+    .filter((f) => !f.dataOnly && f.source !== 'calculated' && canPersonaEdit(f, currentPersona, entry))
+    .map((f) => f.key)
+    .filter((k) => JSON.stringify(blankToNull(localValues[k])) !== JSON.stringify(blankToNull(entry?.values?.[k])))
+  function closeForm() {
+    if (editedRef.current && unsavedKeys.length > 0 && !isNotApplicable(entry)) {
+      updateEntryValues(row.id, partNo, localValues, currentPersona)
+      toast(`${activity.name} · ${partNo}: your changes were saved as a draft.`)
+    }
+    onClose()
   }
 
   function handleSave() {
@@ -485,7 +503,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={closeForm} />
 
       <div className="fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col max-lg:h-[100dvh] max-lg:overflow-y-auto">
         {/* Header (mobile: scrolls away with the form) */}
@@ -532,7 +550,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose }: PartDetailD
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={closeForm}
               className="ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
               aria-label="Close"
               title="Close"

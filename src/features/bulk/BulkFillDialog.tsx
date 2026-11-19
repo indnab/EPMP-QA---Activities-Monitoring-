@@ -10,6 +10,7 @@
  * value on some items, a review step lists them (existing vs new) and the user chooses, per value or for all, to
  * overwrite it or keep what is there. Kept values are passed back in `skip` as `${targetId}|${fieldKey}`.
  */
+import { toast } from '../../components/Toast'
 import { useState } from 'react'
 import { Button, Modal, getFieldRenderer, SourceBadge } from '../../components'
 import type { SourceType } from '../../components'
@@ -74,6 +75,15 @@ export function BulkFillDialog({
     }
     onApply(bySection[SINGLE] ?? {}, submit, bySection, new Set())
   }
+  // Closing with values entered saves them as a draft, but never over different data already saved (those are left out).
+  const closeWithDraft = () => {
+    if (filledCount === 0) { onClose(); return }
+    const skip = new Set(findConflicts().map((c) => c.k))
+    onApply(bySection[SINGLE] ?? {}, false, bySection, skip)
+    toast(skip.size
+      ? `Saved as a draft. ${skip.size} value${skip.size === 1 ? '' : 's'} that would overwrite existing data ${skip.size === 1 ? 'was' : 'were'} not saved.`
+      : 'Your entries were saved as a draft.')
+  }
   const confirmReview = () => review && onApply(bySection[SINGLE] ?? {}, review.submit, bySection, keep)
   const noFields = blocks.every((b) => b.fields.length === 0)
   if (review) {
@@ -85,7 +95,7 @@ export function BulkFillDialog({
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={closeWithDraft}
       size="lg"
       title={title}
       footer={
@@ -94,7 +104,7 @@ export function BulkFillDialog({
             {filledCount === 0 ? 'Enter at least one field.' : `${filledCount} field${filledCount === 1 ? '' : 's'} → ${items}`}
           </span>
           <div className="ml-auto flex gap-2">
-            <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
+            <Button variant="secondary" size="md" onClick={onClose} title="Close without saving">Discard</Button>
             <Button variant="secondary" size="md" disabled={filledCount === 0} onClick={() => apply(false)}>Save draft</Button>
             <Button variant="primary" size="md" disabled={filledCount === 0} onClick={() => apply(true)}>Save &amp; submit</Button>
           </div>

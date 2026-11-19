@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../../components/Icon'
+import { ActivityUpdatePanel } from '../activityupdate/ActivityUpdatePage'
 import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './quickRange'
 import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
@@ -577,6 +578,7 @@ function MyWorkPageInner() {
   // Collapsible Overview sections (remembered).
   const [chartClosed, toggleChart] = useCollapsed('ov-chart')
   const [listClosed, toggleList] = useCollapsed('ov-list')
+  const [updateClosed, toggleUpdate] = useCollapsed('ov-update')
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
@@ -968,6 +970,31 @@ function MyWorkPageInner() {
             {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to open those parts below. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
           </Card></ExportSection>
 
+
+          {/* Activity Update, linked to the page filters: Model → Trial → Part here are the same filters as above. */}
+          <section className="epmp-card mb-3 p-3" aria-label="Activity Update">
+            <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
+              <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
+              {!updateClosed && (<>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">1 · Model</span>
+                <MultiSelect label="Model" options={modelOptions.map((o) => ({ value: o }))} selected={fModel} onChange={setFModel} />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">2 · Trial</span>
+                <MultiSelect label="Trial" options={milestoneOptions.map((o) => ({ value: o }))} selected={fMilestone} onChange={setFMilestone} />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">3 · Part</span>
+                <MultiSelect label="Part" options={partOptions.filter((o) => fModel.length === 0 || allInstances.some((i) => i.part.partNo === o.value && fModel.includes(i.part.model)))}
+                  selected={fPartNo} onChange={setFPartNo} />
+                <span className="text-[10.5px] text-[var(--color-muted)]">Linked to the page filters</span>
+              </>)}
+              <span className="ml-auto"><CollapseButton collapsed={updateClosed} onToggle={toggleUpdate} label="Activity Update" /></span>
+            </div>
+            {!updateClosed && (fModel.length === 0 || fPartNo.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
+                Select one or more <strong>models</strong> and <strong>parts</strong> (here or in the filters above) to update their activities together.
+              </p>
+            ) : (
+              <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} />
+            ))}
+          </section>
 
           {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
           <div id="mw-detail" />

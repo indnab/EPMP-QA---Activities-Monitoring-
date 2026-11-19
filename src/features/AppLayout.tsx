@@ -1,4 +1,5 @@
 import { Icon as FbIcon } from '../components/Icon'
+import { Toaster } from '../components/Toast'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { PersonaSwitcher } from '../components/PersonaSwitcher'
@@ -275,6 +276,7 @@ export function AppLayout() {
         <main id="main-content" className="flex-1 overflow-x-hidden overflow-y-auto px-4 pb-7 pt-1 lg:px-7">
           <Outlet context={{ startTour: () => setTourOpen(true) } satisfies AppOutletContext} />
         </main>
+        <Toaster />
 
         <footer className="app-footer flex flex-none flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-1 text-[10px] text-[var(--color-muted)] lg:px-7">
           <span>QA Activity Tracker · EPMP design language</span>
