@@ -4,7 +4,8 @@ import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './q
 import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
-import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket } from './OverviewTab'
+import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket, useKpiCardsLayout } from './OverviewTab'
+import { SortableSections, useSortable } from '../sortable'
 import type { PendRole, MineKey } from './OverviewTab'
 const MINE_LABEL: Record<MineKey, string> = {
   picUpdate: 'PIC data entry pending', vendorUpdate: 'Awaiting Vendor update',
@@ -56,6 +57,9 @@ const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] white
 // Combined columns: Part = code + name, Vendor = code + name, Dates = trial + MRD + planned end,
 // Pending with = staff / vendor ID + name + role. Task = the next step from the activity's flow.
 type TableColKey = 'status' | 'part' | 'model' | 'vendor' | 'activity' | 'task' | 'dates' | 'pending'
+/** Overview sections in their default order (the user can drag them into another order). */
+const OV_SECTIONS = ['kpis', 'priority', 'update', 'list', 'insights']
+
 const TABLE_COLS: { key: TableColKey; label: string }[] = [
   { key: 'status', label: 'Status' },
   { key: 'part', label: 'Part' },
@@ -584,6 +588,8 @@ function MyWorkPageInner() {
   const [chartClosed, toggleChart] = useCollapsed('ov-chart')
   const [listClosed, toggleList] = useCollapsed('ov-list')
   const [updateClosed, toggleUpdate] = useCollapsed('ov-update')
+  const ovSort = useSortable('ov-sections', OV_SECTIONS)
+  const kpiLayout = useKpiCardsLayout()
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
@@ -864,6 +870,10 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {effectiveView === 'overview' && (ovSort.customized || kpiLayout.customized) && (
+            <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
+              className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
+          )}
           <DownloadMenu title={`My Workspace – ${{ overview: 'Overview', actions: 'My Actions', worklist: 'Approvals', insights: 'Overview', calendar: 'Calendar' }[effectiveView]}`} />
         </div>
       </div>
@@ -915,8 +925,9 @@ function MyWorkPageInner() {
           <ExportSection id="mw-delay-sec" label="Delay reasons"><div id="mw-delay"><DelayPanel /></div></ExportSection>
         </>
       ) : (
-        <>
-          {/* Overview: Parts / Activities / Models in one row; the chart beside the priority models; then the list */}
+        // Overview sections, in the order the user dragged them into (grip in the left gutter).
+        <SortableSections sort={ovSort} sections={[
+          { id: 'kpis', label: 'KPI cards', node: (
             <OverviewKpis
               instances={instances}
               parts={overviewParts}
@@ -926,17 +937,18 @@ function MyWorkPageInner() {
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />
-          {/* Models above the chart */}
-          <PriorityModels instances={instancesAllModels} parts={partsAllModels} className="mb-3" selected={fModel}
+          ) },
+          { id: 'priority', label: 'Priority models', node: (
+          <PriorityModels instances={instancesAllModels} parts={partsAllModels} selected={fModel}
             onPick={(m) => {
               // Same page: the card filters the list below by model (click again to clear).
               setFModel((cur) => (cur.length === 1 && cur[0] === m ? [] : [m]))
               setTimeout(() => document.getElementById('mw-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
             }} />
-
-
-          {/* Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above). */}
-          <section className="epmp-card mb-3 p-3" aria-label="Activity Update">
+          ) },
+          // Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above).
+          { id: 'update', label: 'Activity Update', node: (
+          <section className="epmp-card p-3" aria-label="Activity Update">
             <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
               <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
               {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Uses the Model, Trial and Part filters above</span>}
@@ -950,8 +962,9 @@ function MyWorkPageInner() {
               <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} />
             ))}
           </section>
-
-          {/* Detail table — appears for the selected bucket/group (KPI/NG drill lands here) */}
+          ) },
+          // Detail table — appears for the selected bucket/group (KPI/NG drill lands here)
+          { id: 'list', label: 'Parts list', node: (<>
           <div id="mw-detail" />
           <ExportSection id="mw-ins-detail" label="Insights – parts detail"><Card flush className="!overflow-visible">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-3">
@@ -1148,8 +1161,10 @@ function MyWorkPageInner() {
             )}
           </>}
           </Card></ExportSection>
-          {/* Insights (at the bottom): stacked bars by the chosen dimension */}
-          <ExportSection id="mw-ins-chart" label="Overview – insights"><Card className="mt-3">
+          </>) },
+          // Insights (at the bottom by default): stacked bars by the chosen dimension
+          { id: 'insights', label: 'Insights', node: (
+          <ExportSection id="mw-ins-chart" label="Overview – insights"><Card>
             <div className={`flex items-center gap-3 ${chartClosed ? '' : 'mb-3'}`}>
               <h3 className="flex-none whitespace-nowrap text-[12px] font-semibold text-[var(--color-text)]">Insights <span className="font-normal text-[var(--color-muted)]">· by {groupDimLabel}</span></h3>
               {!chartClosed && (
@@ -1187,9 +1202,10 @@ function MyWorkPageInner() {
                 </ResponsiveContainer>
               </div>
             )}
-            {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to filter the list above. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
+            {!chartClosed && <p className="mt-1 text-[10px] text-[var(--color-muted)]">Click a segment to filter the parts list. {groupDimLabel}-wise · Upcoming → Completed → Delayed → NG.</p>}
           </Card></ExportSection>
-        </>
+          ) },
+        ]} />
       )}
 
       {/* Insights bulk fill: the shared fields of the ticked rows, written to each row's own activity entry. */}

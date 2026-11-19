@@ -38,6 +38,7 @@ const ICONS: Record<string, Node[]> = {
   'download': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M12 4v12m0 0 4-4m-4 4-4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"}]],
   'table': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M4 10h16M4 14h16M10 4v16M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"}]],
   'presentation': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M4 4h16M5 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4M12 15v4m0 0-3 2m3-2 3 2"}]],
+  'users': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "d": "M16 19h4a1 1 0 0 0 1-1v-1a3 3 0 0 0-3-3h-2m-2.236-4a3 3 0 1 0 0-4M3 18v-1a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Zm8-10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"}]],
   'grid': [["path", {"stroke": "currentColor", "strokeLinecap": "round", "strokeLinejoin": "round", "d": "M5 4h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm9 0h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM5 13h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1Zm9 0h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1Z"}]],
 }
 
