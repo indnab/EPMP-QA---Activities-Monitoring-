@@ -144,6 +144,7 @@ export function ReleasePanel() {
         ) : (
           <>
             <Tile title="Released to vendor" count={counts.released} sub={`${counts.awaiting} awaiting acknowledgement · ${counts.acknowledged} acknowledged`} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
+            <Tile title="Pending acknowledgement" count={counts.awaiting} sub="released, the vendor has not acknowledged yet" color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
             <Tile title="Pending release" count={counts.pending} sub="not yet released to the vendor" color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
             <Tile title="Returned by vendor" count={counts.returned} sub="back with the PIC to fix and release again" color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
           </>

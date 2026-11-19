@@ -269,17 +269,6 @@ export function OverviewKpis({ instances, parts, delayReviews, onGo }: {
       returnedToPic: counted.filter(isReturnedToPicBySic).length,
     }
   }, [counted, picAssignments, partReleases, partAcks])
-  const modelStats = useMemo(() => {
-    const vals = [...stageOf.values()]
-    return { under: vals.filter((v) => v === 'under').length, developed: vals.filter((v) => v === 'developed').length }
-  }, [stageOf])
-  // Vendors of the counted parts; "with overdue / NG" = vendors having at least one such activity.
-  const vendorStats = useMemo(() => {
-    const key = (p: PartRecord) => p.vendorCode || p.vendorName
-    const total = new Set(parts.filter((p) => stageOf.get(p.model) !== 'past').map(key).filter(Boolean)).size
-    const withBucket = (b: WorkBucket) => new Set(counted.filter((i) => workBucket(i) === b).map((i) => key(i.part)).filter(Boolean)).size
-    return { total, overdue: withBucket('Delayed'), ng: withBucket('NG') }
-  }, [parts, counted, stageOf])
 
   const cards: { id: string; title: string; icon: string; className: string; tiles: Tile[] }[] = [
     { id: 'ov-parts', title: 'Scope', icon: 'list', className: 'min-w-[280px] flex-[3_1_380px]', tiles: [
@@ -307,21 +296,12 @@ export function OverviewKpis({ instances, parts, delayReviews, onGo }: {
       ...(currentPersona === 'SIC' ? [{ id: 'act.returnedToPic', title: 'Returned to PIC', value: act.returnedToPic, color: '#ea580c', icon: 'reply', onClick: () => onGo('overview', { ret: 'pic' }), hint: 'Activities you (SIC) returned to the PIC' }] : []),
       { id: 'act.delayReviews', title: 'Delay reviews', value: delayReviews, color: '#2563eb', icon: 'calendar-month', onClick: () => onGo('worklist'), hint: 'Vendor delay reasons waiting for review (in My Approvals)' },
     ] },
-    { id: 'ov-models', title: 'Models', icon: 'grid', className: 'min-w-[150px] flex-[1_1_150px]', tiles: [
-      { id: 'models.under', title: 'Under dev.', value: modelStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: models before SOP' },
-      { id: 'models.developed', title: 'Developed', value: modelStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: models past SOP, up to SOP + 3 months' },
-    ] },
-    { id: 'ov-vendors', title: 'Vendors', icon: 'users', className: 'min-w-[200px] flex-[2_1_220px]', tiles: [
-      { id: 'vendors.total', title: 'Total vendors', value: vendorStats.total, color: '#2153f5', icon: 'users', hint: 'Distinct vendors of the parts in view' },
-      { id: 'vendors.overdue', title: 'With overdue', value: vendorStats.overdue, color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', onClick: () => onGo('overview', { bucket: 'Delayed' }), hint: 'Vendors with at least one overdue activity' },
-      { id: 'vendors.ng', title: 'With NG', value: vendorStats.ng, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', onClick: () => onGo('overview', { bucket: 'NG' }), hint: 'Vendors with at least one NG / rework activity' },
-    ] },
   ]
   const sort = useSortable('ov-kpi-cards', cards.map((c) => c.id))
   const byId = new Map(cards.map((c) => [c.id, c]))
 
   return (
-    <ExportSection id="mw-ov-kpis" label="Overview – parts, activities, models, vendors" className="flex flex-wrap items-stretch gap-3">
+    <ExportSection id="mw-ov-kpis" label="Overview – scope, activities" className="flex flex-wrap items-stretch gap-3">
       {sort.ids.map((cid) => {
         const c = byId.get(cid)!
         return (
