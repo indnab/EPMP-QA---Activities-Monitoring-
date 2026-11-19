@@ -912,9 +912,6 @@ function MyWorkPageInner() {
             <OverviewKpis
               instances={instances}
               parts={overviewParts}
-              pendingRelease={releaseCounts.pending}
-              awaitingAck={releaseCounts.awaitingAck}
-              returned={releaseCounts.returned}
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />

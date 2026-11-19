@@ -76,6 +76,8 @@ interface Tile {
   icon: string
   onClick?: () => void
   hint?: string
+  /** Sub-heading the tile sits under inside its card (tiles of a group stay together). */
+  group?: string
 }
 
 /** Which KPI tiles are hidden (remembered on this screen as the default). */
@@ -174,8 +176,12 @@ function Segment({ id, title, icon, tiles: given, className = '', grip }: { id: 
       {!collapsed && (visible.length === 0 ? (
         <p className="py-2 text-[10.5px] text-[var(--color-muted)]">All tiles hidden. Use <FbIcon name="cog" size={11} /> to show them.</p>
       ) : (
+        <div className="space-y-2.5">
+        {[...new Set(visible.map((t) => t.group ?? ''))].map((g) => (
+        <div key={g}>
+        {g && <h4 className="mb-1.5 text-[10px] font-semibold text-[var(--color-muted)]">{g}</h4>}
         <div className={TILE_GRID}>
-          {visible.map(({ id: tid, ...t }) => (
+          {visible.filter((t) => (t.group ?? '') === g).map(({ id: tid, group: _g, ...t }) => (
             <div key={tid} draggable title="Drag to reorder"
               onDragStart={(e) => { setDragId(tid); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tid) }}
               onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(tid) } }}
@@ -186,6 +192,9 @@ function Segment({ id, title, icon, tiles: given, className = '', grip }: { id: 
               <KpiCard {...t} />
             </div>
           ))}
+        </div>
+        </div>
+        ))}
         </div>
       ))}
     </section>
@@ -218,14 +227,11 @@ function useModelStages(parts: PartRecord[]) {
 }
 
 /** Parts / Activities / Models KPI segments, compact, for the left of the "Workspace by" chart. */
-export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, returned, delayReviews, onGo }: {
+export function OverviewKpis({ instances, parts, delayReviews, onGo }: {
   /** The role's activity instances (part × activity), after the page filters. */
   instances: FilteredInstance[]
   /** The role's parts, after the page filters. */
   parts: PartRecord[]
-  pendingRelease: number
-  awaitingAck: number
-  returned: number
   delayReviews: number
   onGo: OverviewGo
 }) {
@@ -235,10 +241,18 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   // Parts and activities are counted up to SOP + 3 months.
   const counted = useMemo(() => instances.filter((i) => stageOf.get(i.part.model) !== 'past'), [instances, stageOf])
   const totals = useMemo(() => bucketTotals(counted), [counted])
-  const partStats = useMemo(() => ({
-    under: parts.filter((p) => stageOf.get(p.model) === 'under').length,
-    developed: parts.filter((p) => stageOf.get(p.model) === 'developed').length,
-  }), [parts, stageOf])
+  // Scope: unique models / vendors / parts, under development vs developed (up to SOP + 3 months).
+  const scope = useMemo(() => {
+    const of = (stage: 'under' | 'developed') => {
+      const ps = parts.filter((p) => stageOf.get(p.model) === stage)
+      return {
+        models: new Set(ps.map((p) => p.model)).size,
+        vendors: new Set(ps.map((p) => p.vendorCode || p.vendorName).filter(Boolean)).size,
+        parts: new Set(ps.map((p) => p.partNo)).size,
+      }
+    }
+    return { under: of('under'), developed: of('developed') }
+  }, [parts, stageOf])
   const act = useMemo(() => {
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
@@ -268,12 +282,12 @@ export function OverviewKpis({ instances, parts, pendingRelease, awaitingAck, re
   }, [parts, counted, stageOf])
 
   const cards: { id: string; title: string; icon: string; className: string; tiles: Tile[] }[] = [
-    { id: 'ov-parts', title: 'Parts', icon: 'list', className: 'min-w-[280px] flex-[3_1_380px]', tiles: [
-      { id: 'parts.under', title: 'Under dev.', value: partStats.under, color: '#2153f5', icon: 'tools', hint: 'Under development: parts of models before SOP' },
-      { id: 'parts.developed', title: 'Developed', value: partStats.developed, color: '#10b981', icon: 'check', hint: 'Developed: parts of models past SOP, up to SOP + 3 months' },
-      { id: 'parts.pendingRelease', title: 'Pending release', value: pendingRelease, color: '#d97706', icon: 'reply', onClick: () => onGo('actions', { focus: 'release' }) },
-      { id: 'parts.awaitingAck', title: 'Awaiting vendor ack.', value: awaitingAck, color: '#2563eb', icon: 'clipboard', onClick: () => onGo('actions', { focus: 'release' }), hint: 'Released, awaiting vendor acknowledgement' },
-      { id: 'parts.returned', title: 'Returned by vendor', value: returned, color: '#dc2626', icon: 'undo', onClick: () => onGo('actions', { focus: 'release' }) },
+    { id: 'ov-parts', title: 'Scope', icon: 'list', className: 'min-w-[280px] flex-[3_1_380px]', tiles: [
+      { id: 'scope.under.models', group: 'Under Development', title: 'Total unique models', value: scope.under.models, color: '#2153f5', icon: 'grid', hint: 'Models before SOP' },
+      { id: 'scope.under.vendors', group: 'Under Development', title: 'Total unique vendors', value: scope.under.vendors, color: '#2153f5', icon: 'users', hint: 'Vendors of parts of models before SOP' },
+      { id: 'scope.under.parts', group: 'Under Development', title: 'Total unique parts', value: scope.under.parts, color: '#2153f5', icon: 'tools', hint: 'Parts of models before SOP' },
+      { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months' },
+      { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months' },
     ] },
     { id: 'ov-activities', title: 'Activities', icon: 'clipboard-list', className: 'min-w-[280px] flex-[6_1_560px]', tiles: [
       // Status
