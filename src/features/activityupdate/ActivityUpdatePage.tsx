@@ -1,7 +1,7 @@
 /**
- * Activity Update (split view). Flow: Model(s) → Trial → Part(s) → Activity.
- * Pick one or more models and parts at the top (and optionally a trial). The left side lists the activities of those
- * parts grouped by trial, with progress; pick one and fill its fields on the right. Whatever is entered is written
+ * Activity Update. Flow: Model(s) → Trial → Part(s) → Activity.
+ * Pick one or more models and parts at the top (and optionally a trial). The list shows the activities of those
+ * parts grouped by trial, with progress; pick one and its update form opens in a drawer on the right. Whatever is entered is written
  * to every selected part of that activity (bulk update), after showing what each part already holds and asking
  * before overwriting. Save as draft, Submit, or (for the validator) Approve, following the activity's flow.
  */
@@ -40,7 +40,7 @@ function rollup(items: FilteredInstance[]): { label: string; cls: string } {
 }
 
 /**
- * The split view itself: activities of the given items grouped by trial (left) and the update form (right).
+ * The activity list of the given items (grouped by trial) and the update form, which opens in a right-side drawer.
  * Shared by the Activity Update page and the My Work Overview, which pass the items their filters select.
  */
 export function ActivityUpdatePanel({ instances, partCount }: { instances: FilteredInstance[]; partCount: number }) {
@@ -157,112 +157,161 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
     apply(mode, new Set())
   }
 
+  // Closing the drawer (✕, the backdrop or Esc) keeps what was entered as a draft, like the part form.
+  const closeForm = () => { autoDraft(); setActiveKey(null); setDraft({}); setNotice(''); setReview(null) }
+  const closeRef = useRef(closeForm)
+  useEffect(() => { closeRef.current = closeForm })
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !review) closeRef.current() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [active, review])
+
+  const tasks = [...new Set(items.map((i) => taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'))]
+  const st = active ? rollup(items) : null
+  const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))]
+
   return (
     <>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(300px,2fr)_minmax(0,3fr)]">
-          {/* Left: activities grouped by trial */}
-          <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
-            <h2 className="m-0 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">Activities ({activityCount}) · grouped by trial</h2>
-            <div className="max-h-[calc(100vh-300px)] space-y-2 overflow-y-auto p-2.5">
-              {groups.map((g) => {
-                const open = !closedGroups.has(g.ms)
-                const pct = g.total ? Math.round((g.done / g.total) * 100) : 0
-                return (
-                  <div key={g.ms} className="rounded-xl border border-[var(--color-border)] bg-white">
-                    <button type="button" onClick={() => setClosedGroups((s) => { const n = new Set(s); if (n.has(g.ms)) n.delete(g.ms); else n.add(g.ms); return n })}
-                      aria-expanded={open} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-[var(--color-surface)]">
-                      <Icon name="chevron-down" size={13} className={open ? '' : '-rotate-90'} />
-                      <span className="text-[12.5px] font-semibold text-[#101828]">{g.label} ({g.list.length})</span>
-                      <span className="ml-auto flex w-36 flex-col items-end gap-0.5">
-                        <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface)]"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} /></span>
-                        <span className="text-[10px] text-[var(--color-muted)]">{g.done} / {g.total} approved ({pct}%)</span>
-                      </span>
-                    </button>
-                    {open && (
-                      <ul className="border-t border-[var(--color-border)] p-1">
-                        {g.list.map((a, n) => {
-                          const st = rollup(a.items)
-                          const isOn = a.key === activeKey
-                          return (
-                            <li key={a.key}>
-                              <button type="button" onClick={() => pick(a.key)} aria-current={isOn ? 'true' : undefined}
-                                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left ${isOn ? 'bg-secondary ring-1 ring-[#bfdbfe]' : 'hover:bg-[var(--color-surface)]'}`}>
-                                <span className="w-5 flex-none text-[10px] tabular-nums text-[var(--color-muted)]">{String(n + 1).padStart(2, '0')}</span>
-                                <span className="min-w-0 flex-1 text-[11.5px] text-[#101828]">{a.activity.name}</span>
-                                <span className="text-[10px] tabular-nums text-[var(--color-muted)]">{a.items.filter((i) => i.status === 'Approved').length}/{a.items.length}</span>
-                                <span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold ${st.cls}`}>{st.label}</span>
-                              </button>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )
-              })}
-              {groups.length === 0 && <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)]">No activities for this selection.</p>}
-            </div>
-          </section>
-
-          {/* Right: update the picked activity for every selected part */}
-          <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
-            <h2 className="m-0 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">
-              {active ? <>Update activity · {active.activity.name} <span className="ml-1 rounded bg-white/20 px-1.5 py-0.5 text-[10px]">{active.items[0].row.milestoneId}</span></> : 'Update activity'}
-            </h2>
-            {!active ? (
-              <p className="px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">Pick an activity on the left to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}.</p>
-            ) : (
-              <>
-                <div className="max-h-[calc(100vh-360px)] overflow-y-auto p-4">
-                  {/* The selected parts for this activity */}
-                  <div className="mb-4 overflow-hidden rounded-lg border border-[var(--color-border)]">
-                    <table className="w-full text-[11px]">
-                      <thead className="bg-[var(--color-surface)] text-left text-[10.5px] text-[#344054]">
-                        <tr><th className="px-2.5 py-1.5">Part</th><th className="px-2.5 py-1.5">Model</th><th className="px-2.5 py-1.5">Status</th><th className="px-2.5 py-1.5">Task</th></tr>
-                      </thead>
-                      <tbody>
-                        {items.map((i) => (
-                          <tr key={key(i)} className="border-t border-[var(--color-border)]">
-                            <td className="px-2.5 py-1.5"><span className="font-mono">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
-                            <td className="px-2.5 py-1.5">{i.part.model}</td>
-                            <td className="px-2.5 py-1.5">{i.status === 'NotStarted' ? 'Not started' : i.status}</td>
-                            <td className="px-2.5 py-1.5">{taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {fields.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
-                      You have no fields to fill on this activity for these parts{canApprove ? ' — you can still approve what is waiting for you.' : '.'}
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
-                      {fields.map((field) => (
-                        <div key={field.key} className="min-w-0">
-                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11.5px] font-medium text-[#344054]">{field.label}{field.mandatory && <span className="text-red-500"> *</span>}</span>
-                            {field.source && <SourceBadge source={field.source as SourceType} />}
-                          </div>
-                          {getFieldRenderer(field.type).editor({ field, value: draft[field.key], onChange: (v) => setDraft((d) => ({ ...d, [field.key]: v })), currentPersona: role })}
-                          <ExistingValues field={field} targets={targets} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-4 py-3">
-                  <span className="min-w-0 flex-1 text-[10.5px] text-[var(--color-muted)]" role="status">
-                    {notice || `Values are written to all ${items.length} selected part${items.length === 1 ? '' : 's'}; blank fields keep each part's value.`}
+      {/* Activities of the selection, grouped by trial. Picking one opens its update form on the right. */}
+      <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
+        <h2 className="m-0 flex flex-wrap items-center gap-2 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">
+          Activities ({activityCount}) · grouped by trial
+          <span className="ml-auto text-[10.5px] font-normal text-white/80">Pick an activity to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}</span>
+        </h2>
+        <div className="grid max-h-[calc(100vh-300px)] grid-cols-1 items-start gap-2 overflow-y-auto p-2.5 xl:grid-cols-2">
+          {groups.map((g) => {
+            const open = !closedGroups.has(g.ms)
+            const pct = g.total ? Math.round((g.done / g.total) * 100) : 0
+            return (
+              <div key={g.ms} className="rounded-xl border border-[var(--color-border)] bg-white">
+                <button type="button" onClick={() => setClosedGroups((s) => { const n = new Set(s); if (n.has(g.ms)) n.delete(g.ms); else n.add(g.ms); return n })}
+                  aria-expanded={open} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-[var(--color-surface)]">
+                  <Icon name="chevron-down" size={13} className={open ? '' : '-rotate-90'} />
+                  <span className="text-[12.5px] font-semibold text-[#101828]">{g.label} ({g.list.length})</span>
+                  <span className="ml-auto flex w-36 flex-col items-end gap-0.5">
+                    <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface)]"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} /></span>
+                    <span className="text-[10px] text-[var(--color-muted)]">{g.done} / {g.total} approved ({pct}%)</span>
                   </span>
-                  <Button variant="secondary" size="md" disabled={Object.keys(filled).length === 0} onClick={() => run('draft')}>Save as draft</Button>
-                  {entersFirst && <Button variant="secondary" size="md" onClick={() => run('submit')}>Submit update</Button>}
-                  {canApprove && <Button variant="primary" size="md" onClick={() => run('approve')}><Icon name="check" size={14} className="mr-1" />Save &amp; approve</Button>}
-                </div>
-              </>
-            )}
-          </section>
+                </button>
+                {open && (
+                  <ul className="border-t border-[var(--color-border)] p-1">
+                    {g.list.map((a, n) => {
+                      const rs = rollup(a.items)
+                      const isOn = a.key === activeKey
+                      return (
+                        <li key={a.key}>
+                          <button type="button" onClick={() => pick(a.key)} aria-current={isOn ? 'true' : undefined} aria-haspopup="dialog"
+                            className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left ${isOn ? 'bg-secondary ring-1 ring-[#bfdbfe]' : 'hover:bg-[var(--color-surface)]'}`}>
+                            <span className="w-5 flex-none text-[10px] tabular-nums text-[var(--color-muted)]">{String(n + 1).padStart(2, '0')}</span>
+                            <span className="min-w-0 flex-1 text-[11.5px] text-[#101828]">{a.activity.name}</span>
+                            <span className="text-[10px] tabular-nums text-[var(--color-muted)]">{a.items.filter((i) => i.status === 'Approved').length}/{a.items.length}</span>
+                            <span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold ${rs.cls}`}>{rs.label}</span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
+          {groups.length === 0 && <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)] xl:col-span-2">No activities for this selection.</p>}
         </div>
+      </section>
+
+      {/* Update form: a drawer on the right, same frame as the part form. */}
+      {active && st && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeForm} />
+          <div role="dialog" aria-modal="true" aria-label={`Update activity · ${active.activity.name}`}
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl max-lg:h-[100dvh]">
+            {/* Header */}
+            <div className="flex-shrink-0 border-b border-[var(--color-border)] px-5 py-4 max-sm:px-4">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
+                    <span className="text-xs text-[var(--color-muted)]">Bulk update · {items.length} part{items.length === 1 ? '' : 's'}</span>
+                    <span className="inline-flex items-center gap-1 rounded-md border border-[#bfdbfe] bg-secondary px-2 py-0.5 text-[10.5px] text-primary" title="Next step in this activity's flow">
+                      <span className="text-[var(--color-muted)]">Task</span> <strong className="font-semibold">{tasks.length === 1 ? tasks[0] : 'Mixed'}</strong>
+                    </span>
+                  </div>
+                  <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={active.activity.name}>
+                    <span className="truncate">{active.activity.name}</span>
+                    <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{active.items[0].row.milestoneId}</span>
+                  </h2>
+                  <p className="mt-0.5 truncate text-[12px] text-[#344054]">
+                    {items.length === 1
+                      ? <>{items[0].part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {items[0].part.partNo}</span></>
+                      : `${items.length} parts updated together`}
+                  </p>
+                </div>
+                <button type="button" onClick={closeForm} aria-label="Close" title="Close (your entries are kept as a draft)"
+                  className="ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--color-muted)]">
+                <span>Model: <strong className="text-[var(--color-text)]">{uniq(items.map((i) => i.part.model)).join(', ')}</strong></span>
+                <span>Vendor: <strong className="text-[var(--color-text)]">{uniq(items.map((i) => i.part.vendorName)).join(', ') || '—'}</strong></span>
+                <span>Trial: <strong className="text-[var(--color-text)]">{milestones.find((m) => m.id === active.items[0].row.milestoneId)?.label ?? active.items[0].row.milestoneId}</strong></span>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 max-sm:px-4">
+              {/* The selected parts for this activity */}
+              <div className="mb-4 overflow-hidden rounded-lg border border-[var(--color-border)]">
+                <table className="w-full text-[11px]">
+                  <thead className="bg-[var(--color-surface)] text-left text-[10.5px] text-[#344054]">
+                    <tr><th className="px-2.5 py-1.5">Part</th><th className="px-2.5 py-1.5">Model</th><th className="px-2.5 py-1.5">Status</th><th className="px-2.5 py-1.5">Task</th></tr>
+                  </thead>
+                  <tbody>
+                    {items.map((i) => (
+                      <tr key={key(i)} className="border-t border-[var(--color-border)]">
+                        <td className="px-2.5 py-1.5"><span className="font-mono">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
+                        <td className="px-2.5 py-1.5">{i.part.model}</td>
+                        <td className="px-2.5 py-1.5">{i.status === 'NotStarted' ? 'Not started' : i.status}</td>
+                        <td className="px-2.5 py-1.5">{taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {fields.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
+                  You have no fields to fill on this activity for these parts{canApprove ? ' — you can still approve what is waiting for you.' : '.'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
+                  {fields.map((field) => (
+                    <div key={field.key} className="min-w-0">
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11.5px] font-medium text-[#344054]">{field.label}{field.mandatory && <span className="text-red-500"> *</span>}</span>
+                        {field.source && <SourceBadge source={field.source as SourceType} />}
+                      </div>
+                      {getFieldRenderer(field.type).editor({ field, value: draft[field.key], onChange: (v) => setDraft((d) => ({ ...d, [field.key]: v })), currentPersona: role })}
+                      <ExistingValues field={field} targets={targets} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-5 py-3 max-sm:px-4">
+              <Button variant="secondary" size="md" disabled={Object.keys(filled).length === 0} onClick={() => run('draft')}>Save draft</Button>
+              {entersFirst && <Button variant={canApprove ? 'secondary' : 'primary'} size="md" onClick={() => run('submit')}>Submit</Button>}
+              {canApprove && <Button variant="primary" size="md" onClick={() => run('approve')}><Icon name="check" size={14} className="mr-1" />Save &amp; approve</Button>}
+              <span className="min-w-0 flex-1 basis-full text-[10.5px] text-[var(--color-muted)] sm:basis-0 sm:text-right" role="status">
+                {notice || `Values are written to all ${items.length} selected part${items.length === 1 ? '' : 's'}; blank fields keep each part's value.`}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
       {review && (
         <OverwriteReview conflicts={review.conflicts} keep={keep} setKeep={setKeep}
           confirmLabel={review.mode === 'approve' ? 'Confirm & approve' : review.mode === 'submit' ? 'Confirm & submit' : 'Confirm & save'}
