@@ -6,6 +6,7 @@ import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket, useKpiCardsLayout } from './OverviewTab'
 import { SortableSections, useSortable } from '../sortable'
+import { UpcomingMilestones } from './UpcomingMilestones'
 import type { PendRole, MineKey } from './OverviewTab'
 const MINE_LABEL: Record<MineKey, string> = {
   picUpdate: 'PIC data entry pending', vendorUpdate: 'Awaiting Vendor update',
@@ -638,6 +639,11 @@ function MyWorkPageInner() {
       .map((i) => ({ value: i.part.partNo, label: `${i.part.partNo}: ${i.part.partName}` })).sort((a, b) => a.label.localeCompare(b.label)),
     [allInstances, fModel]
   )
+  // Choosing models ticks all of their parts in the Part filter (untick any to narrow it); no model = no part filter.
+  const chooseModels = (next: string[]) => {
+    setFModel(next)
+    setFPartNo(next.length ? [...new Set(allInstances.filter((i) => next.includes(i.part.model)).map((i) => i.part.partNo))] : [])
+  }
   const picOptions = useMemo<LabeledOption[]>(
     () => uniqBy(allInstances, (i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)
       .map((i) => { const name = getPicOn(i.part, picAssignments, DEMO_TODAY).name; return { value: name, label: picLabel(name) } })
@@ -852,6 +858,14 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {effectiveView === 'overview' && (
+            <UpcomingMilestones models={modelOptions} selModel={fModel} selMilestone={fMilestone}
+              onPick={(p) => {
+                // Acts as a milestone filter: the model + its trial (cleared with null).
+                chooseModels(p ? [p.model] : [])
+                setFMilestone(p ? [p.milestoneId] : [])
+              }} />
+          )}
           {effectiveView === 'overview' && (ovSort.customized || kpiLayout.customized) && (
             <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
               className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
@@ -864,7 +878,7 @@ function MyWorkPageInner() {
       {effectiveView === 'overview' && (
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
         <CompactFilterBar
-          model={fModel} setModel={setFModel} modelOptions={modelOptions}
+          model={fModel} setModel={chooseModels} modelOptions={modelOptions}
           dept={fDept} setDept={setFDept} deptOptions={deptOptions}
           vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
           milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
@@ -885,7 +899,7 @@ function MyWorkPageInner() {
           inRange={approvalInRange}
           filterBar={
             <CompactFilterBar
-              model={fModel} setModel={setFModel} modelOptions={modelOptions}
+              model={fModel} setModel={chooseModels} modelOptions={modelOptions}
               dept={fDept} setDept={setFDept} deptOptions={deptOptions}
               vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
               milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
@@ -920,7 +934,7 @@ function MyWorkPageInner() {
           <PriorityModels instances={instancesAllModels} parts={partsAllModels} selected={fModel}
             onPick={(m) => {
               // Same page: the card filters the list below by model (click again to clear).
-              setFModel((cur) => (cur.length === 1 && cur[0] === m ? [] : [m]))
+              chooseModels(fModel.length === 1 && fModel[0] === m ? [] : [m])
               setTimeout(() => document.getElementById('mw-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
             }} />
           ) },
