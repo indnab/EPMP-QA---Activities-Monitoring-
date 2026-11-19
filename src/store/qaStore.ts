@@ -171,6 +171,11 @@ export interface QAStoreState {
    * successor. Creates the new part from the old one's attributes if it doesn't exist yet.
    * Records a 'Transferred' PartEvent. No-op if the old part is unknown or already superseded.
    */
+  /**
+   * SAP / ENOVIA feed: the part was deleted there (deleted = true) or activated again (false). Deleting hides the
+   * part from the work screens; reactivating brings it back with all its entries. Logged as a part event.
+   */
+  setPartSourceDeleted: (args: { partNos: string[]; deleted: boolean; system: 'SAP' | 'ENOVIA'; by: PersonaId; at?: string }) => void
   transferPart: (args: {
     fromPartNo: string
     toPartNo: string
@@ -654,6 +659,23 @@ export const useQAStore = create<QAStoreState>()(
           return { parts: [...state.parts, newPart], partEvents: [...state.partEvents, event] }
         }),
 
+      setPartSourceDeleted: ({ partNos, deleted, system, by, at }) =>
+        set((state) => {
+          const when = at ?? new Date().toISOString()
+          const changed = state.parts.filter((p) => partNos.includes(p.partNo) && !!p.sourceDeleted !== deleted)
+          if (changed.length === 0) return {}
+          const ids = new Set(changed.map((p) => p.partNo))
+          return {
+            parts: state.parts.map((p) => (ids.has(p.partNo) ? { ...p, sourceDeleted: deleted ? { system, at: when } : undefined } : p)),
+            partEvents: [
+              ...state.partEvents,
+              ...changed.map((p, n): PartEvent => ({
+                id: `pe-${Date.now().toString(36)}-${n}`, kind: deleted ? 'Deleted' : 'Reactivated', partNo: p.partNo, system,
+                by: `${system} feed`, byRole: by, at: when,
+              })),
+            ],
+          }
+        }),
       transferPart: ({ fromPartNo, toPartNo, newPartName, by, actorName, reason }) =>
         set((state) => {
           const from = state.parts.find((p) => p.partNo === fromPartNo)
@@ -1673,12 +1695,16 @@ export const useQAStore = create<QAStoreState>()(
                 }
               ]
             : []
+          // One sample part deleted in ENOVIA during development (shows under "Part Deleted"; its entries are kept).
+          const withData = new Set(d.entries.map((e) => e.partNo))
+          const gone = [...d.parts].reverse().find((p) => withData.has(p.partNo))
+          const deletedAt = '2026-10-12T09:30:00Z'
           return {
-            parts: d.parts,
+            parts: gone ? d.parts.map((p) => (p.partNo === gone.partNo ? { ...p, sourceDeleted: { system: 'ENOVIA' as const, at: deletedAt } } : p)) : d.parts,
             entries: d.entries,
             partReleases: d.partReleases,
             partAcks: d.partAcks,
-            partEvents: [],
+            partEvents: gone ? [{ id: 'pe-sample-deleted', kind: 'Deleted' as const, partNo: gone.partNo, system: 'ENOVIA' as const, by: 'ENOVIA feed', byRole: 'Admin' as const, at: deletedAt }] : [],
             picAssignments: [],
             delayReasons: d.delayReasons,
             models: d.models,

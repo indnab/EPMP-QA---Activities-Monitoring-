@@ -450,6 +450,12 @@ export interface PartRecord {
   /** Set on the new part after an ECN transfer: the old part number whose history it inherited. */
   supersedes?: string
   /**
+   * Set while SAP or ENOVIA reports the part as deleted (e.g. dropped during model development). A deleted part
+   * leaves every work screen and shows under "Part Deleted"; its entries and history are kept. When the system
+   * activates it again this is cleared and the part is back with all its previous data.
+   */
+  sourceDeleted?: { system: 'SAP' | 'ENOVIA'; at: string }
+  /**
    * Further intake attributes (Model Variant, Fuel Type, Plant, Color…), keyed as in mock/partIntakeFields.ts.
    * The core fields above (part no, name, model, vendor, department, section, PIC) are not repeated here.
    */
@@ -545,8 +551,13 @@ export interface DelayReason {
  */
 export interface PartEvent {
   id: string
-  /** 'Created' = a dummy/placeholder part was added; 'Transferred' = history moved from an old part to a new one. */
-  kind: 'Created' | 'Transferred'
+  /**
+   * 'Created' = a dummy/placeholder part was added; 'Transferred' = history moved from an old part to a new one;
+   * 'Deleted' / 'Reactivated' = SAP or ENOVIA deleted the part or activated it again (see PartRecord.sourceDeleted).
+   */
+  kind: 'Created' | 'Transferred' | 'Deleted' | 'Reactivated'
+  /** For Deleted / Reactivated: the system that reported it. */
+  system?: 'SAP' | 'ENOVIA'
   partNo: string // the subject part (new part for a transfer, the created part for a creation)
   fromPartNo?: string // old part number, for a transfer
   /** Number of activity entries carried over, for a transfer. */

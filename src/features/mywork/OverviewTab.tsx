@@ -227,11 +227,14 @@ function useModelStages(parts: PartRecord[]) {
 }
 
 /** Parts / Activities / Models KPI segments, compact, for the left of the "Workspace by" chart. */
-export function OverviewKpis({ instances, parts, delayReviews, onGo }: {
+export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, delayReviews, onGo }: {
   /** The role's activity instances (part × activity), after the page filters. */
   instances: FilteredInstance[]
   /** The role's parts, after the page filters. */
   parts: PartRecord[]
+  /** Parts SAP / ENOVIA deleted (off the work screens), after the page filters. */
+  deletedParts: number
+  onShowDeleted: () => void
   delayReviews: number
   onGo: OverviewGo
 }) {
@@ -277,6 +280,7 @@ export function OverviewKpis({ instances, parts, delayReviews, onGo }: {
       { id: 'scope.under.parts', group: 'Under Development', title: 'Total unique parts', value: scope.under.parts, color: '#2153f5', icon: 'tools', hint: 'Parts of models before SOP' },
       { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months' },
       { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months' },
+      { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA. Their data is kept and comes back if the part is activated again.' },
     ] },
     { id: 'ov-activities', title: 'Activities', icon: 'clipboard-list', className: 'min-w-[280px] flex-[6_1_560px]', tiles: [
       // Status

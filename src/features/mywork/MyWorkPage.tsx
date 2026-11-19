@@ -7,6 +7,8 @@ import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, mineBucket, useKpiCardsLayout } from './OverviewTab'
 import { SortableSections, useSortable } from '../sortable'
 import { UpcomingMilestones } from './UpcomingMilestones'
+import { DeletedPartsDialog } from './DeletedPartsDialog'
+import { activeModelNames } from '../../domain/projects'
 import type { PendRole, MineKey } from './OverviewTab'
 const MINE_LABEL: Record<MineKey, string> = {
   picUpdate: 'PIC data entry pending', vendorUpdate: 'Awaiting Vendor update',
@@ -509,6 +511,14 @@ export function MyWorkPage() {
 function MyWorkPageInner() {
   const { activities, entries, templateRows, models, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
   const parts = useWorkParts()
+  // Parts SAP / ENOVIA deleted: off the work screens (useWorkParts), listed under "Part Deleted".
+  const storeParts = useQAStore((s) => s.parts)
+  const projects = useQAStore((s) => s.projects)
+  const deletedWorkParts = useMemo(() => {
+    const live = activeModelNames(projects)
+    return storeParts.filter((p) => p.sourceDeleted && !p.supersededBy && live.has(p.model))
+  }, [storeParts, projects])
+  const [deletedOpen, setDeletedOpen] = useState(false)
   const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
 
@@ -695,6 +705,15 @@ function MyWorkPageInner() {
     [parts, currentPersona, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, picAssignments, inView, rangePartNos, range, models]
   )
   const overviewParts = useMemo(() => partsAllModels.filter((p) => inSel(fModel, p.model)), [partsAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Deleted parts under the same filters (not the date range or Part filter: deleted parts have no open activities).
+  const deletedParts = useMemo(
+    () => deletedWorkParts.filter((p) =>
+      partInScope(p, currentPersona) && inView(p) && inSel(fModel, p.model) &&
+      inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
+      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deletedWorkParts, currentPersona, fModel, fDept, fVendorCode, fPic, fAttrs, fMarket, picAssignments, inView]
+  )
   // Workspace rollups.
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
 
@@ -933,6 +952,8 @@ function MyWorkPageInner() {
             <OverviewKpis
               instances={instances}
               parts={overviewParts}
+              deletedParts={deletedParts.length}
+              onShowDeleted={() => setDeletedOpen(true)}
               delayReviews={excDelays.review.length}
               onGo={goFromOverview}
             />
@@ -1206,6 +1227,8 @@ function MyWorkPageInner() {
           ) },
         ]} />
       )}
+
+      {deletedOpen && <DeletedPartsDialog parts={deletedParts} onClose={() => setDeletedOpen(false)} />}
 
       {/* Insights bulk fill: the shared fields of the ticked rows, written to each row's own activity entry. */}
       {insBulkOpen && (

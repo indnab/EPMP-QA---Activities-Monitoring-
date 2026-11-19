@@ -101,7 +101,8 @@ export function projectOfModel(modelName: string, projects: Project[]): Project 
 export function gateParts(parts: PartRecord[], projects: Project[]): PartRecord[] {
   const active = activeModelNames(projects)
   if (active.size === 0) return []
-  return parts.filter((p) => active.has(p.model))
+  // Parts deleted in SAP / ENOVIA are off the work screens until reactivated (their data is kept).
+  return parts.filter((p) => active.has(p.model) && !p.sourceDeleted)
 }
 
 /** A project's parts (by its models), excluding superseded parts. */

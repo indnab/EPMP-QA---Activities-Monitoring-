@@ -34,7 +34,7 @@ const PRIMARY = INTAKE_FIELDS.filter((f) => f.primary)
 
 /** Every part that came in from SAP / ENOVIA (or was added manually), with its intake fields. */
 export function PartIntakePage({ embedded = false, actions }: { embedded?: boolean; actions?: IntakeActions }) {
-  const { parts, models, picAssignments, sections, partReleases, partAcks } = useQAStore()
+  const { parts, models, picAssignments, sections, partReleases, partAcks, setPartSourceDeleted } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [params, setParams] = useSearchParams()
   const canAdd = currentPersona === 'SectionAdmin' || currentPersona === 'Admin' || currentPersona === 'PIC'
@@ -42,8 +42,11 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
   const [origins, setOrigins] = useState<Origin[]>([])
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [text, setText] = useState('')
+  // "Deleted in SAP / ENOVIA" tile: show only those parts.
+  const [deletedOnly, setDeletedOnly] = useState(false)
 
   const scoped = useMemo(() => parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), [parts, currentPersona])
+  const deletedCount = scoped.filter((p) => p.sourceDeleted).length
   const counts = useMemo(() => {
     const c: Record<Origin, number> = { SAP: 0, ENOVIA: 0, Manual: 0 }
     for (const p of scoped) c[originOf(p.origin)] += 1
@@ -70,11 +73,12 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
     const q = text.trim().toLowerCase()
     return rows
       .filter((r) => origins.length === 0 || origins.includes(r.origin))
+      .filter((r) => !deletedOnly || !!r.part.sourceDeleted)
       .filter((r) => PRIMARY.every((f) => !(filters[f.key]?.length) || filters[f.key].includes(r.values[f.key])))
       .filter((r) => !q || Object.values(r.values).join(' ').toLowerCase().includes(q))
       .sort((a, b) => a.part.partNo.localeCompare(b.part.partNo))
-  }, [rows, origins, filters, text])
-  const anyFilter = origins.length > 0 || text !== '' || Object.values(filters).some((v) => v.length)
+  }, [rows, origins, filters, text, deletedOnly])
+  const anyFilter = deletedOnly || origins.length > 0 || text !== '' || Object.values(filters).some((v) => v.length)
   const toggleOrigin = (o: Origin) => setOrigins((prev) => (prev.length === 1 && prev[0] === o ? [] : [o]))
   const closeAdd = () => {
     setAddOpen(false)
@@ -131,6 +135,11 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
         {tile('SAP', 'Received from SAP', counts.SAP, 'SAP')}
         {tile('ENOVIA', 'Received from ENOVIA', counts.ENOVIA, 'ENOVIA')}
         {tile('Manual', 'Added manually (dummy)', counts.Manual, 'Manual')}
+        <button type="button" onClick={() => setDeletedOnly((v) => !v)} aria-pressed={deletedOnly}
+          className={`epmp-card min-w-[150px] flex-1 px-4 py-3 text-left transition-colors ${deletedOnly ? 'ring-2 ring-red-500' : 'hover:bg-[var(--color-surface)]'}`}>
+          <div className="text-[10.5px] font-medium text-[var(--color-muted)]">Part Deleted (SAP / ENOVIA)</div>
+          <div className="mt-0.5 text-2xl font-semibold text-red-600">{deletedCount}</div>
+        </button>
       </div>
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-2.5 px-4 py-3.5">
         <input
@@ -151,7 +160,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
           />
         ))}
         {anyFilter && (
-          <button type="button" onClick={() => { setOrigins([]); setFilters({}); setText('') }} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">
+          <button type="button" onClick={() => { setOrigins([]); setFilters({}); setText(''); setDeletedOnly(false) }} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">
             Clear filters
           </button>
         )}
@@ -206,6 +215,11 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                   <tr key={part.partNo} className="hover:bg-[#fafbff]">
                     <td className="sticky left-0 z-10 border-b border-r border-[var(--color-border)] bg-white px-3 py-2">
                       <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium ${ORIGIN_TAG[origin]}`}>{SOURCE_LABEL[origin]}</span>
+                      {part.sourceDeleted && (
+                        <div className="mt-1 whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Off the work screens; its data is kept and comes back when reactivated">
+                          Deleted in {part.sourceDeleted.system} · {fmtDate(part.sourceDeleted.at.slice(0, 10))}
+                        </div>
+                      )}
                     </td>
                     <td className="border-b border-[var(--color-border)] px-3 py-2">
                       <span
@@ -223,7 +237,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                     {showActions && (
                       <td className="border-b border-[var(--color-border)] px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {actions!.canRelease && (
+                          {actions!.canRelease && !part.sourceDeleted && (
                             <button
                               onClick={() => actions!.onRelease(part, !withVendor)}
                               className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe]"
@@ -232,6 +246,21 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                             </button>
                           )}
                           {actions!.canEcn && (
+                            // Stand-in for the SAP / ENOVIA feed (there is no live feed in this prototype).
+                            <select aria-label={`Simulate SAP / ENOVIA feed for ${part.partNo}`} value=""
+                              title="Simulate the SAP / ENOVIA feed: delete the part there, or activate it again"
+                              onChange={(e) => {
+                                const [act, system] = e.target.value.split(':') as ['del' | 'act', 'SAP' | 'ENOVIA']
+                                if (act) setPartSourceDeleted({ partNos: [part.partNo], deleted: act === 'del', system, by: currentPersona })
+                              }}
+                              className="h-[26px] rounded-lg border border-[var(--color-border)] bg-white px-1.5 text-[10.5px] text-[#344054]">
+                              <option value="">Simulate feed…</option>
+                              {part.sourceDeleted
+                                ? <option value={`act:${part.sourceDeleted.system}`}>Activated again in {part.sourceDeleted.system}</option>
+                                : <><option value="del:SAP">Deleted in SAP</option><option value="del:ENOVIA">Deleted in ENOVIA</option></>}
+                            </select>
+                          )}
+                          {actions!.canEcn && !part.sourceDeleted && (
                             <button
                               onClick={() => actions!.onEcn(part)}
                               className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe]"
