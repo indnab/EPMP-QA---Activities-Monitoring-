@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { PartAttrSelects, matchAttrValues } from '../partAttrFilters'
 import type { PartAttrValues } from '../partAttrFilters'
@@ -293,7 +294,7 @@ export function PartsPage() {
                         <div className="text-[10.5px] text-[var(--color-muted)]">{l.vendorCode}</div>
                       </td>
                       <td className="px-4 py-3 text-[11.5px]">
-                        {l.activityName} <span className="text-[var(--color-muted)]">({l.milestoneId})</span>
+                        {l.activityName} <span className="text-[var(--color-muted)]">(<TrialName id={l.milestoneId} />)</span>
                       </td>
                       <td className="px-4 py-3 text-[11.5px]">
                         <span className={l.action === 'Approved' ? 'font-medium text-emerald-700' : ''}>{l.action}</span>

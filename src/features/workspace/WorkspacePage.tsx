@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { PendingRoleChip } from '../pendency'
 import { BackButton } from '../../components/BackButton'
@@ -354,7 +355,7 @@ export function WorkspacePage() {
           <div className="flex-1 min-w-0 max-md:basis-full">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
               <span className="text-xs font-medium bg-secondary text-primary px-2 py-0.5 rounded">
-                {row.milestoneId}
+                <TrialName id={row.milestoneId} />
               </span>
               <span className="text-xs font-medium bg-surface text-[var(--color-ink-muted)] px-2 py-0.5 rounded">
                 {row.section}
@@ -363,7 +364,7 @@ export function WorkspacePage() {
             </div>
             <h1 className="m-0 text-[21px] font-semibold leading-8 tracking-[-0.3px] text-[var(--color-text)] max-sm:text-[18px] max-sm:leading-7">
               {activity.name}
-              {row.subType && <span className="ml-2 align-middle rounded bg-secondary px-2 py-0.5 text-xs font-semibold text-primary">{row.milestoneId} · {row.subType}</span>}
+              {row.subType && <span className="ml-2 align-middle rounded bg-secondary px-2 py-0.5 text-xs font-semibold text-primary"><TrialName id={row.milestoneId} /> · {row.subType}</span>}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-[var(--color-muted)]">
               <span>Owner: <strong className="text-[var(--color-text)]">{activity.ownerPersona}</strong></span>
@@ -698,7 +699,7 @@ export function WorkspacePage() {
       {bulkFillOpen && (
         <BulkFillDialog
           title={`Fill ${bulkTargets.length} part${bulkTargets.length === 1 ? '' : 's'} · ${activity.name}`}
-          note={row.milestoneId}
+          note={trialLabelOf(row.milestoneId)}
           fields={bulkEditableFields}
           targetCount={bulkTargets.length}
           targets={bulkTargets.map((pno) => ({ id: pno, label: `${pno} · ${parts.find((p) => p.partNo === pno)?.partName ?? ''}`, values: entryMap.get(pno)?.values ?? {} }))}

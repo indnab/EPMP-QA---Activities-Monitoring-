@@ -5,6 +5,7 @@
  * to every selected part of that activity (bulk update), after showing what each part already holds and asking
  * before overwriting. Save as draft, Submit, or (for the validator) Approve, following the activity's flow.
  */
+import { TrialName } from '../trialLabel'
 import { toast } from '../../components/Toast'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -274,7 +275,7 @@ export function ActivityUpdatePanel({ instances, partCount, trials }: {
                   </div>
                   <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={active.activity.name}>
                     <span className="truncate">{active.activity.name}</span>
-                    <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{active.items[0].row.milestoneId}</span>
+                    <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary"><TrialName id={active.items[0].row.milestoneId} /></span>
                   </h2>
                   <p className="mt-0.5 truncate text-[12px] text-[#344054]">
                     {items.length === 1

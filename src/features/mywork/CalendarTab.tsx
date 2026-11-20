@@ -3,6 +3,7 @@
  * Clicking a day lists its activities with an Open form button (the week view also lists them in each day's column).
  * Activities still awaiting an MRD have no date and are left out.
  */
+import { TrialName } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { Button } from '../../components'
 import { Icon as FbIcon } from '../../components/Icon'
@@ -168,7 +169,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[11.5px] font-medium text-[var(--color-text)]">{i.activity.name}</div>
                     <div className="truncate text-[10.5px] text-[var(--color-muted)]">
-                      <span className="font-mono">{i.part.partNo}</span> · {i.part.model} · {i.row.milestoneId} · {b}
+                      <span className="font-mono">{i.part.partNo}</span> · {i.part.model} · <TrialName id={i.row.milestoneId} /> · {b}
                     </div>
                   </div>
                   <Button variant="primary" size="sm" onClick={() => onOpen(i)}>Open form</Button>

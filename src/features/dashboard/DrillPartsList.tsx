@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityDefinition } from '../../domain'
@@ -80,7 +81,7 @@ export function DrillPartsList({ instances, activity }: DrillPartsListProps) {
                     <td className="px-3 py-2 font-mono">{d.part.partNo}</td>
                     <td className="px-3 py-2 max-w-[160px] truncate" title={d.part.partName}>{d.part.partName}</td>
                     {!activity && <td className="px-3 py-2 max-w-[160px] truncate" title={d.activity.name}>{d.activity.name}</td>}
-                    <td className="px-3 py-2 text-[var(--color-muted)]">{d.row.milestoneId}</td>
+                    <td className="px-3 py-2 text-[var(--color-muted)]"><TrialName id={d.row.milestoneId} /></td>
                     <td className="px-3 py-2 text-[var(--color-muted)]">{d.row.section}</td>
                     <td className="px-3 py-2 text-[var(--color-muted)]">{d.part.model}</td>
                     <td className="px-3 py-2 text-[var(--color-muted)]">{d.part.department}</td>

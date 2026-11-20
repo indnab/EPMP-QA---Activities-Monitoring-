@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useEffect, useState } from 'react'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
@@ -197,7 +198,7 @@ export function DelayPanel({ showEmpty = false }: { showEmpty?: boolean }) {
                     </td>
                     <td className="px-3 py-2">
                       {r.item.activityName}
-                      <div className="text-[10.5px] text-[var(--color-muted)]">{r.item.milestoneId}</div>
+                      <div className="text-[10.5px] text-[var(--color-muted)]"><TrialName id={r.item.milestoneId} /></div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <span className="font-semibold text-[#b91c1c]">{r.item.daysLate} d</span>

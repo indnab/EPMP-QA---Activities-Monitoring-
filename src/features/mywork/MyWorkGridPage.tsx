@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { PART_ATTR_FIELDS } from '../partAttrFilters'
@@ -214,14 +215,14 @@ function MyWorkGridPageInner() {
     setExcelBusy(true)
     try {
       const blob = await downloadFillTemplate({
-        title: `${activity!.name} · ${milestoneId} ${validating ? 'validation' : 'entry'} grid · ${role}`,
+        title: `${activity!.name} · ${trialLabelOf(milestoneId)} ${validating ? 'validation' : 'entry'} grid · ${role}`,
         note: 'One row per part. Fill your own fields; other columns are for reference.',
         meta: excelMeta,
         columns: excelColumns,
         rows: shown.map(toFillRow)
       })
       downloadBlob(blob, `${[activityId, milestoneId, role, mode, 'template'].join('_')}.xlsx`)
-      logAudit({ persona: role, actorName: actorLabel(role), action: 'Excel template downloaded', activityId, detail: `${activity!.name} (${milestoneId}), ${shown.length} part row${shown.length !== 1 ? 's' : ''}` })
+      logAudit({ persona: role, actorName: actorLabel(role), action: 'Excel template downloaded', activityId, detail: `${activity!.name} (${trialLabelOf(milestoneId)}), ${shown.length} part row${shown.length !== 1 ? 's' : ''}` })
     } finally {
       setExcelBusy(false)
     }
@@ -426,7 +427,7 @@ function MyWorkGridPageInner() {
       <PageHeader
         title={activity.name}
         section="Workspace"
-        crumb={`${milestoneId} ${validating ? 'validation' : 'entry'} grid`}
+        crumb={`${trialLabelOf(milestoneId)} ${validating ? 'validation' : 'entry'} grid`}
         description={
           validating
             ? 'Vendor submissions waiting for you, one row per part. Vendor values are read-only; fill your own fields, then approve the rows that are complete. The same rules as the part form apply.'
@@ -451,7 +452,7 @@ function MyWorkGridPageInner() {
       {/* Summary + filters */}
       <div className="epmp-card mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[10.5px] text-[var(--color-muted)]">
         <span>
-          <strong className="text-[var(--color-text)]">{milestoneId}</strong> · {shown.length} part{shown.length !== 1 ? 's' : ''}
+          <strong className="text-[var(--color-text)]"><TrialName id={milestoneId} /></strong> · {shown.length} part{shown.length !== 1 ? 's' : ''}
         </span>
         <span>{openShown.length} open</span>
         {sentBackTotal > 0 && <span className="font-medium text-[var(--color-ryg-red)]">{sentBackTotal} sent back</span>}

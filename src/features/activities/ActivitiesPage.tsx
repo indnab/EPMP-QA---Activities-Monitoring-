@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
 import type { PartAttrValues } from '../partAttrFilters'
@@ -229,7 +230,7 @@ export function ActivitiesPage() {
                           className="font-medium text-[var(--color-accent)] hover:underline"
                         >
                           {s.activity.name}
-                          {s.row.subType && <span className="ml-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{s.row.milestoneId} · {s.row.subType}</span>}
+                          {s.row.subType && <span className="ml-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary"><TrialName id={s.row.milestoneId} /> · {s.row.subType}</span>}
                         </Link>
                         {s.activity.description && (
                           <div className="text-xs text-[var(--color-muted)] mt-0.5 line-clamp-1">{s.activity.description}</div>
@@ -238,7 +239,7 @@ export function ActivitiesPage() {
                       <td className="px-4 py-3 text-[var(--color-text)]">{s.row.section}</td>
                       <td className="px-4 py-3">
                         <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-secondary text-primary">
-                          {s.row.milestoneId}
+                          <TrialName id={s.row.milestoneId} />
                         </span>
                         <div className="text-[10px] text-[var(--color-muted)] mt-0.5">{fmtOffsetRange(s.row)}</div>
                       </td>

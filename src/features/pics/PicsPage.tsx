@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { PartAttrSelects, matchAttrValues } from '../partAttrFilters'
 import type { PartAttrValues } from '../partAttrFilters'
@@ -292,7 +293,7 @@ export function PicsPage() {
                       </td>
                       <td className="px-4 py-2.5">
                         {l.activityName}
-                        <div className="text-[10px] text-[var(--color-muted)]">{l.milestoneId}</div>
+                        <div className="text-[10px] text-[var(--color-muted)]"><TrialName id={l.milestoneId} /></div>
                       </td>
                       <td className="px-4 py-2.5">
                         {l.partName}

@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
@@ -181,7 +182,7 @@ export function HomePage() {
         kind = 'Enter'
       }
       if (kind) {
-        out.push({ key: inst.entry.id, kind, title: inst.part.partName, sub: `${inst.activity.name} · ${inst.row.milestoneId}`, due: inst.dates.end, to: `/activities/${inst.row.id}?part=${encodeURIComponent(inst.part.partNo)}` })
+        out.push({ key: inst.entry.id, kind, title: inst.part.partName, sub: `${inst.activity.name} · ${trialLabelOf(inst.row.milestoneId)}`, due: inst.dates.end, to: `/activities/${inst.row.id}?part=${encodeURIComponent(inst.part.partNo)}` })
       }
     }
     for (const a of attention) {
@@ -262,7 +263,7 @@ export function HomePage() {
                       <span className="inline-block h-9 w-9 flex-none rounded-full" style={{ background: `${col}22`, boxShadow: `inset 0 0 0 2px ${col}` }} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[11.5px] font-semibold">{g.activity.name}</span>
-                        <span className="block truncate text-[10.5px] text-[var(--color-muted)]">{g.milestoneId} · {n} part{n === 1 ? '' : 's'}{bits.length ? ` · ${bits.join(', ')}` : ''}</span>
+                        <span className="block truncate text-[10.5px] text-[var(--color-muted)]"><TrialName id={g.milestoneId} /> · {n} part{n === 1 ? '' : 's'}{bits.length ? ` · ${bits.join(', ')}` : ''}</span>
                       </span>
                       <span className="text-[var(--color-muted)]" aria-hidden="true">→</span>
                     </Link>

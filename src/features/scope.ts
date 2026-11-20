@@ -1,3 +1,4 @@
+import { trialLabelOf } from './trialLabel'
 import type { ActivityDefinition, ActivityEntry, FieldDefinition, PartRecord, TemplateRow } from '../domain'
 import type { RygResult } from '../engine'
 import type { RygStatus } from '../components/RygDot'
@@ -72,7 +73,7 @@ export function fmtOffset(n: number): string {
 
 /** e.g. "PP: MRD-23 to MRD-4" */
 export function fmtOffsetRange(row: TemplateRow): string {
-  return `${row.milestoneId}: ${fmtOffset(row.startOffset)} to ${fmtOffset(row.endOffset)}`
+  return `${trialLabelOf(row.milestoneId)}: ${fmtOffset(row.startOffset)} to ${fmtOffset(row.endOffset)}`
 }
 
 /** Baseline "today" for the demo; matches the engine's default so Activities, Workspace, Home and Dashboards agree. */

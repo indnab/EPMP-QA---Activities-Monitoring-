@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { toast } from '../../components/Toast'
 import { picLabel } from '../../domain/people'
@@ -539,7 +540,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
           {activeTab === 'form' && (
             <FormTab
               part={part}
-              milestoneLabel={row.milestoneId}
+              milestoneLabel={trialLabelOf(row.milestoneId)}
               milestoneMrd={milestoneMrd}
               entry={entry}
               localValues={localValues}
@@ -855,7 +856,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
               {/* The activity this form is for, then the part. */}
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--color-text)]" title={activity.name}>
                 <span className="truncate">{activity.name}</span>
-                <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{row.milestoneId}</span>
+                <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary"><TrialName id={row.milestoneId} /></span>
               </h2>
               <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
                 {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
@@ -885,7 +886,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
               )}
             </span>
             <span>
-              {row.milestoneId} MRD:{' '}
+              <TrialName id={row.milestoneId} /> MRD:{' '}
               <strong className="text-[var(--color-text)]">{milestoneMrd ? fmtDate(milestoneMrd) : 'Awaiting MRD'}</strong>
             </span>
             <span>

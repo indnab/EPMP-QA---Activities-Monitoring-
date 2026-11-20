@@ -3,7 +3,7 @@
  * only draggable while its grip is held, so text, inputs and buttons inside it work as usual; the grip also moves
  * the item with the arrow keys.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DragEvent, KeyboardEvent, ReactNode } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -95,27 +95,68 @@ export function Grip(props: ReturnType<ReturnType<typeof useSortable>['gripProps
 }
 
 /**
- * Page sections stacked vertically, in the list's saved order. Each has a grip in the left gutter (shown on hover
- * or keyboard focus) to drag it up or down, or move it with the arrow keys.
+ * Page sections stacked vertically, in the list's saved order. Each has, in the left gutter (shown on hover or
+ * keyboard focus), a grip to drag it up or down (or move it with the arrow keys) and a maximize button that opens
+ * the section over the whole screen (Restore or Esc to go back).
  */
 export function SortableSections({ sort, sections }: {
   sort: ReturnType<typeof useSortable>
   sections: { id: string; label: string; node: ReactNode }[]
 }) {
   const byId = new Map(sections.map((x) => [x.id, x]))
+  const [maxId, setMaxId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!maxId) return
+    const esc = (e: KeyboardEvent | globalThis.KeyboardEvent) => {
+      // Esc restores, unless a dialog / drawer opened from inside the section is handling it.
+      if (e.key === 'Escape' && !document.querySelector('[role=dialog]')) setMaxId(null)
+    }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [maxId])
   return (
     <>
       {sort.ids.map((id) => {
         const sec = byId.get(id)
         if (!sec) return null
+        const max = maxId === id
         return (
-          <div key={id} {...sort.itemProps(id)} data-section={id} className={`group/sec relative mb-3 ${sortableCls}`}>
-            <Grip {...sort.gripProps(id, sec.label)}
-              className="absolute -left-[18px] top-2.5 z-10 opacity-30 transition-opacity group-hover/sec:opacity-100 focus-visible:opacity-100" />
+          <div key={id} {...(max ? {} : sort.itemProps(id))} data-section={id} data-maximized={max ? 'true' : undefined}
+            className={max ? 'epmp-shell fixed inset-0 z-[60] overflow-auto p-5' : `group/sec relative mb-3 ${sortableCls}`}>
+            {max ? (
+              <div className="sticky top-0 z-20 -mx-5 -mt-5 mb-3 flex items-center gap-2 bg-white/80 px-5 py-2 backdrop-blur" data-export-ignore="true">
+                <span className="text-[12px] font-semibold text-[var(--color-text)]">{sec.label}</span>
+                <span className="text-[10.5px] text-[var(--color-muted)]">· full screen</span>
+                <button type="button" onClick={() => setMaxId(null)} title="Back to the page (Esc)"
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[10.5px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+                  <MaxIcon restore /> Restore
+                </button>
+              </div>
+            ) : (
+              <>
+                <Grip {...sort.gripProps(id, sec.label)}
+                  className="absolute -left-[18px] top-2.5 z-10 opacity-30 transition-opacity group-hover/sec:opacity-100 focus-visible:opacity-100" />
+                <button type="button" onClick={() => setMaxId(id)} aria-label={`Maximize ${sec.label}`} title="Maximize (full screen)" data-export-ignore="true"
+                  className="absolute -left-[18px] top-9 z-10 inline-flex h-6 w-5 items-center justify-center rounded text-[var(--color-muted)] opacity-30 transition-opacity hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[#bfdbfe] group-hover/sec:opacity-100">
+                  <MaxIcon />
+                </button>
+              </>
+            )}
             {sec.node}
           </div>
         )
       })}
     </>
+  )
+}
+
+/** Maximize / restore glyph. */
+function MaxIcon({ restore = false }: { restore?: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {restore
+        ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+        : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+    </svg>
   )
 }

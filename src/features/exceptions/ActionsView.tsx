@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, Modal, RygDot } from '../../components'
@@ -220,7 +221,7 @@ export function ActionsView() {
                     </td>
                     <td className="px-3 py-2.5 text-[11.5px]">
                       {r.activityName}
-                      <div className="text-[10px] text-[var(--color-muted)]">{r.milestoneId}</div>
+                      <div className="text-[10px] text-[var(--color-muted)]"><TrialName id={r.milestoneId} /></div>
                     </td>
                     <td className="px-3 py-2.5 text-[11.5px]">
                       {a.assignedTo}

@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { ALL_MARKETS, EMPTY_ATTR_SEL, MARKETS, PartAttrFilters, hasAttrSel, isAllMarkets, matchMarket, matchPartAttrs } from '../partAttrFilters'
 import type { PartAttrSel } from '../partAttrFilters'
@@ -182,7 +183,7 @@ export function LessonsPage() {
     const inst = getFilteredData(entries, activities, parts, templateRows, models, { ...EMPTY_FILTERS }, 'overview', DEMO_TODAY)
     return {
       model: uniq(parts.map((p) => p.model)),
-      trial: uniq(inst.map((i) => i.row.milestoneId)),
+      trial: [...new Set(inst.map((i) => i.row.milestoneId))].map((value) => ({ value, label: trialLabelOf(value) })),
       part: labeled(parts.filter((p) => f.model.length === 0 || f.model.includes(p.model)).map((p) => [p.partNo, `${p.partNo}: ${p.partName}`])),
       dept: uniq(parts.map((p) => p.department || 'Other')),
       vendor: labeled(parts.map((p) => [p.vendorCode, `${p.vendorCode}: ${p.vendorName}`])),
@@ -282,7 +283,7 @@ export function LessonsPage() {
                     <tr key={`${p.activityId}-${p.partNo}`} className="border-b border-[var(--color-border)] last:border-0 align-top">
                       <td className="whitespace-nowrap px-4 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${rs[p.level]}`}>{p.level}</span></td>
                       <td className="px-4 py-2.5"><div className="font-medium text-[#101828]">{p.partNo}</div><div className="text-[10px] text-[var(--color-muted)]">{p.vendorName}</div></td>
-                      <td className="px-4 py-2.5">{p.activityName} <span className="text-[var(--color-muted)]">· {p.milestoneId}</span></td>
+                      <td className="px-4 py-2.5">{p.activityName} <span className="text-[var(--color-muted)]">· <TrialName id={p.milestoneId} /></span></td>
                       <td className="px-4 py-2.5 font-medium text-[#344054]">{p.outcome}</td>
                       <td className="px-4 py-2.5 text-[10.5px] text-[var(--color-muted)]">{p.reasons.join('; ')}</td>
                       <td className="px-4 py-2.5 text-[10.5px] text-[var(--color-muted)]">{p.confidence}</td>

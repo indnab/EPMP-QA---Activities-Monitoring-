@@ -1,3 +1,4 @@
+import { TrialName } from '../trialLabel'
 import { useMemo, useState } from 'react'
 import { Card, Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
@@ -156,7 +157,7 @@ export function DeviationsView() {
                     </td>
                     <td className="px-3 py-2.5 text-[11.5px]">
                       {r.activityName}
-                      <div className="text-[10px] text-[var(--color-muted)]">{r.milestoneId}</div>
+                      <div className="text-[10px] text-[var(--color-muted)]"><TrialName id={r.milestoneId} /></div>
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1">

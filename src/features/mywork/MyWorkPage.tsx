@@ -1,3 +1,4 @@
+import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { ActivityUpdatePanel } from '../activityupdate/ActivityUpdatePage'
 import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './quickRange'
@@ -483,7 +484,7 @@ function CompactFilterBar(f: FilterBarProps) {
         {f.leading}
         {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
         <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
-        <MultiSelect label="Trial" options={plain(f.milestoneOptions)} selected={f.milestone} onChange={f.setMilestone} />
+        <MultiSelect label="Trial" options={f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) }))} selected={f.milestone} onChange={f.setMilestone} />
         <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
         <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
@@ -750,7 +751,7 @@ function MyWorkPageInner() {
     switch (key) {
       case 'part': return `${i.part.partNo} ${i.part.partName}`
       case 'vendor': return `${i.part.vendorCode} ${i.part.vendorName}`
-      case 'dates': return `${i.row.milestoneId} ${mrdOf(i) ? fmtDate(mrdOf(i)!) : ''} ${plannedText(i)}`
+      case 'dates': return `${trialLabelOf(i.row.milestoneId)} ${mrdOf(i) ? fmtDate(mrdOf(i)!) : ''} ${plannedText(i)}`
       case 'pending': return pendOf(i) ? `${pendOf(i)!.name} ${PERSONA_LABEL[pendOf(i)!.role]}` : ''
       case 'task': return taskFor(i) ?? ''
       default: return cellValue(i, key)
@@ -1064,7 +1065,7 @@ function MyWorkPageInner() {
                           style={{ background: `${WORK_BUCKET_COLORS[b]}1a`, color: WORK_BUCKET_COLORS[b] }}>
                           <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}
                         </span>
-                        <span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span>
+                        <span className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary"><TrialName id={i.row.milestoneId} /></span>
                       </div>
                       <div>
                         <div className="text-[12px] font-semibold text-[var(--color-text)]">{i.activity.name}</div>
@@ -1165,7 +1166,7 @@ function MyWorkPageInner() {
                           dates: (
                         <td className="px-3 py-2 whitespace-nowrap text-[10.5px]">
                           <div className="flex items-center gap-1.5">
-                            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{i.row.milestoneId}</span>
+                            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary"><TrialName id={i.row.milestoneId} /></span>
                             <span className="text-[var(--color-muted)]">MRD {mrdOf(i) ? fmtDate(mrdOf(i)!) : '—'}</span>
                           </div>
                           <div className="mt-0.5 text-[var(--color-text)]">End {i.dates.status === 'resolved' ? fmtDate(i.dates.end) : <em className="text-[var(--color-muted)]">Awaiting MRD</em>}</div>
