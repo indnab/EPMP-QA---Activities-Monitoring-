@@ -246,7 +246,7 @@ export function ReleasePanel() {
                         <div className="font-mono text-[10.5px] text-[var(--color-muted)]">{part.partNo}</div>
                       </td>
                       <td className="px-3 py-2">{part.model}</td>
-                      <td className="px-3 py-2">{part.vendorName}</td>
+                      <td className="px-3 py-2"><span className="font-mono text-[10.5px] text-[var(--color-muted)]">{part.vendorCode}</span>{part.vendorCode ? ': ' : ''}{part.vendorName}</td>
                       <td className="px-3 py-2">
                         {part.sourceDeleted ? (
                           <span className="whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">Deleted in {part.sourceDeleted.system}</span>

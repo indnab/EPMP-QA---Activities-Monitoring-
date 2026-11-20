@@ -231,8 +231,10 @@ export function buildDemoData(
         if (scenario === 0) {
           validationState = 'Approved'
           step = def.flow.steps.length - 1
-          if (vendorFlow) history.push({ timestamp: '2026-10-08T10:00:00Z', persona: 'Vendor', action: 'Submitted' })
-          history.push({ timestamp: '2026-10-09T10:00:00Z', persona: 'PIC', actorName: part.pic, action: 'Approved' })
+          // Spread the completion dates over the past weeks (so progress-over-time charts have a shape).
+          const done = addDays('2026-10-14', -(((pi * 7 + ri * 3) % 28) + 1))
+          if (vendorFlow) history.push({ timestamp: `${addDays(done, -2)}T10:00:00Z`, persona: 'Vendor', action: 'Submitted' })
+          history.push({ timestamp: `${done}T10:00:00Z`, persona: 'PIC', actorName: part.pic, action: 'Approved' })
         } else if (scenario === 1 && vendorFlow) {
           validationState = 'Submitted'
           step = 1

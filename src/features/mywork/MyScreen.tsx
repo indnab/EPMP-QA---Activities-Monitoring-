@@ -6,11 +6,11 @@
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Icon as FbIcon } from '../../components/Icon'
-import { pendencyOf, workBucket, WORK_BUCKET_COLORS } from '../../engine'
+import { pendencyOf, taskOf, workBucket, WORK_BUCKET_COLORS } from '../../engine'
 import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY, fmtDate } from '../scope'
@@ -300,8 +300,11 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
       ) : groupBy === 'list' ? (
         <ActivityList items={items} onOpen={onOpen} />
       ) : (
-        <PanelChart items={items} bars={bars} dimLabel={DIM_LABEL[groupBy]}
-          onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
+        <>
+          <PanelInsights items={items} groupBy={groupBy} onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
+          <PanelChart items={items} bars={bars} dimLabel={DIM_LABEL[groupBy]}
+            onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
+        </>
       )}
     </section>
   )
@@ -425,6 +428,249 @@ function PanelChart({ items, bars, dimLabel, onDrill }: {
             {all ? `Show top ${TOP}` : `Show all ${bars.length}`}
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Insights: findings, KPIs and the analysis charts ─────────────────────────────────────────────────────────────────
+const DAY_MS = 86_400_000
+const dnum = (d: string) => Date.parse(`${d}T00:00:00Z`)
+const dstr = (t: number) => new Date(t).toISOString().slice(0, 10)
+const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+/** When an activity was approved (its last "Approved" history entry). */
+const approvedOn = (i: FilteredInstance) => [...(i.entry?.history ?? [])].reverse().find((h) => h.action === 'Approved')?.timestamp.slice(0, 10)
+const plannedEnd = (i: FilteredInstance) => (i.dates.status === 'resolved' ? i.dates.end : undefined)
+type Tone = 'risk' | 'watch' | 'good' | 'info'
+const TONE: Record<Tone, string> = {
+  risk: 'border-red-200 bg-red-50 text-red-900',
+  watch: 'border-amber-200 bg-amber-50 text-amber-900',
+  good: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  info: 'border-blue-200 bg-blue-50 text-blue-900',
+}
+
+/**
+ * What the selection says: rule-based findings (schedule adherence, where overdue and NG concentrate, the bottleneck
+ * task, upcoming load, the oldest overdue item), KPIs, and four charts: progress vs plan over time, where open work
+ * waits (current task), overdue ageing, and what falls due in the coming weeks. Findings about a group drill into it.
+ */
+function PanelInsights({ items, groupBy, onDrill }: {
+  items: FilteredInstance[]
+  /** The breakdown in use (findings name its groups). */
+  groupBy: Dim
+  onDrill: (key: string) => void
+}) {
+  const { partReleases, partAcks } = useQAStore()
+  const today = DEMO_TODAY
+  const t0 = dnum(today)
+  const a = useMemo(() => {
+    const bucket = (i: FilteredInstance) => workBucket(i)
+    const open = items.filter((i) => !i.notApplicable && i.status !== 'Approved')
+    const done = items.filter((i) => i.status === 'Approved')
+    const overdue = items.filter((i) => bucket(i) === 'Delayed')
+    const ng = items.filter((i) => bucket(i) === 'NG')
+    const dueByToday = items.filter((i) => { const e = plannedEnd(i); return e && e <= today })
+    const doneOfDue = dueByToday.filter((i) => i.status === 'Approved').length
+    const late = (i: FilteredInstance) => { const e = plannedEnd(i); return e ? Math.round((t0 - dnum(e)) / DAY_MS) : 0 }
+    const avgLate = overdue.length ? Math.round(overdue.reduce((n, i) => n + late(i), 0) / overdue.length) : 0
+    const in30 = open.filter((i) => { const e = plannedEnd(i); return e && e > today && dnum(e) <= t0 + 30 * DAY_MS })
+    // Approved on time = approved on or before the planned end.
+    const onTime = done.filter((i) => { const e = plannedEnd(i), d = approvedOn(i); return e && d && d <= e }).length
+
+    // By the panel's breakdown.
+    const groups = new Map<string, FilteredInstance[]>()
+    for (const i of items) { const k = keyOf(i, groupBy); groups.set(k, [...(groups.get(k) ?? []), i]) }
+    const g = [...groups.entries()].map(([k, xs]) => ({
+      k, label: labelOf(groupBy, k, xs), n: xs.length,
+      overdue: xs.filter((i) => bucket(i) === 'Delayed').length, ng: xs.filter((i) => bucket(i) === 'NG').length,
+      done: xs.filter((i) => i.status === 'Approved').length,
+    }))
+
+    // Where open work waits now (the flow task).
+    const tasks = new Map<string, { n: number; overdue: number }>()
+    for (const i of open) {
+      const t = taskOf(i, { releases: partReleases, acks: partAcks }) ?? 'Not started'
+      const r = tasks.get(t) ?? { n: 0, overdue: 0 }
+      r.n += 1
+      if (bucket(i) === 'Delayed') r.overdue += 1
+      tasks.set(t, r)
+    }
+    const taskRows = [...tasks.entries()].map(([task, r]) => ({ task, onTime: r.n - r.overdue, overdue: r.overdue, n: r.n })).sort((x, y) => y.n - x.n).slice(0, 8)
+
+    // Overdue ageing.
+    const ages = [
+      { band: '1–7 d', min: 1, max: 7 }, { band: '8–14 d', min: 8, max: 14 }, { band: '15–30 d', min: 15, max: 30 }, { band: '> 30 d', min: 31, max: 1e9 },
+    ].map((b) => ({ band: b.band, n: overdue.filter((i) => { const d = late(i); return d >= b.min && d <= b.max }).length }))
+
+    // Coming weeks: open activities by the week their planned end falls in (overdue shown as "Late").
+    const weeks = Array.from({ length: 6 }, (_, w) => {
+      const from = t0 + w * 7 * DAY_MS, to = from + 7 * DAY_MS
+      return { week: `w/c ${shortDate(dstr(from))}`, n: open.filter((i) => { const e = plannedEnd(i); return e && dnum(e) > from && dnum(e) <= to }).length }
+    })
+
+    // Progress vs plan: cumulative planned (by planned end) and completed (by approval date), weekly.
+    const ends = items.map(plannedEnd).filter((d): d is string => !!d)
+    const firsts = [...ends, ...done.map(approvedOn).filter((d): d is string => !!d)]
+    let curve: { date: string; planned: number; completed: number | null }[] = []
+    if (firsts.length) {
+      const start = Math.min(...firsts.map(dnum)) - 7 * DAY_MS
+      const end = Math.max(...ends.map(dnum), t0) + 7 * DAY_MS
+      const doneDates = done.map(approvedOn).filter((d): d is string => !!d).map(dnum)
+      const endNums = ends.map(dnum)
+      for (let t = start; t <= end; t += 7 * DAY_MS) {
+        curve.push({
+          date: shortDate(dstr(t)),
+          planned: endNums.filter((x) => x <= t).length,
+          completed: t <= t0 + 6 * DAY_MS ? doneDates.filter((x) => x <= Math.min(t, t0)).length : null,
+        })
+      }
+      if (curve.length > 40) curve = curve.filter((_, k) => k % Math.ceil(curve.length / 40) === 0 || k === curve.length - 1)
+    }
+
+    // Findings.
+    const pct = (x: number, y: number) => (y ? Math.round((x / y) * 100) : 0)
+    const findings: { tone: Tone; text: string; drill?: string }[] = []
+    if (dueByToday.length) {
+      const p = pct(doneOfDue, dueByToday.length)
+      findings.push({ tone: p >= 80 ? 'good' : p >= 50 ? 'watch' : 'risk', text: `Schedule: ${doneOfDue} of ${dueByToday.length} activities due by today are completed (${p}%).` })
+    }
+    const topOver = [...g].sort((x, y) => y.overdue - x.overdue)[0]
+    if (topOver && topOver.overdue > 0 && g.length > 1) {
+      findings.push({ tone: 'risk', drill: topOver.k, text: `${topOver.label} holds ${topOver.overdue} of ${overdue.length} overdue activities (${pct(topOver.overdue, overdue.length)}%).` })
+    }
+    const ngRated = g.filter((x) => x.n >= 5).map((x) => ({ ...x, rate: x.ng / x.n })).sort((x, y) => y.rate - x.rate)[0]
+    if (ngRated && ngRated.ng > 0 && g.length > 1) {
+      findings.push({ tone: ngRated.rate >= 0.2 ? 'risk' : 'watch', drill: ngRated.k, text: `Highest NG rate: ${ngRated.label} at ${pct(ngRated.ng, ngRated.n)}% (${ngRated.ng} of ${ngRated.n}).` })
+    }
+    const bottleneck = taskRows[0]
+    if (bottleneck) findings.push({ tone: bottleneck.overdue > 0 ? 'watch' : 'info', text: `Most open work waits at ${bottleneck.task}: ${bottleneck.n} activities${bottleneck.overdue ? `, ${bottleneck.overdue} of them overdue` : ''}.` })
+    if (in30.length) {
+      const peak = [...weeks].sort((x, y) => y.n - x.n)[0]
+      findings.push({ tone: 'info', text: `${in30.length} activities fall due in the next 30 days${peak?.n ? `; the busiest week is ${peak.week.replace('w/c ', 'starting ')} (${peak.n})` : ''}.` })
+    }
+    const oldest = [...overdue].sort((x, y) => late(y) - late(x))[0]
+    if (oldest) findings.push({ tone: 'risk', text: `Oldest overdue: ${oldest.activity.name} on ${oldest.part.partNo} (${oldest.part.model}), ${late(oldest)} days past its planned end.` })
+    if (!overdue.length && items.length) findings.push({ tone: 'good', text: 'Nothing is overdue in this selection.' })
+
+    return {
+      n: items.length, done: done.length, overdue: overdue.length, ng: ng.length, avgLate, in30: in30.length,
+      adherence: pct(doneOfDue, dueByToday.length), dueByToday: dueByToday.length, onTime, completion: pct(done.length, items.length),
+      onTimeRate: pct(onTime, done.length), taskRows, ages, weeks, curve, findings: findings.slice(0, 6),
+    }
+  }, [items, groupBy, partReleases, partAcks, today, t0])
+  const todayTick = useMemo(() => {
+    // The weekly point closest to today, for the reference line.
+    const c = a.curve.findIndex((p) => p.completed === null)
+    return c > 0 ? a.curve[c - 1].date : a.curve.at(-1)?.date
+  }, [a.curve])
+
+  const kpi = (label: string, value: string, sub: string, color: string) => (
+    <div className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-2">
+      <div className="text-[9.5px] font-medium uppercase tracking-wide text-[var(--color-muted)]">{label}</div>
+      <div className="text-[17px] font-bold leading-tight tabular-nums" style={{ color }}>{value}</div>
+      <div className="text-[9.5px] text-[var(--color-muted)]">{sub}</div>
+    </div>
+  )
+  const card = (title: string, children: React.ReactNode, hint?: string) => (
+    <div className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white p-2">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">{title}</span>
+        {hint && <span className="ml-auto text-[9.5px] text-[var(--color-muted)]">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  )
+  const tip = { contentStyle: { fontSize: 11, borderRadius: 8 }, cursor: { fill: '#f1f5f9' } }
+
+  return (
+    <div className="mb-3 space-y-3">
+      {/* Findings */}
+      {a.findings.length > 0 && (
+        <div className="grid grid-cols-1 gap-1.5 @[700px]:grid-cols-2">
+          {a.findings.map((f, k) => {
+            const body = <><span className="mr-1 font-semibold">{f.tone === 'risk' ? 'Risk' : f.tone === 'watch' ? 'Watch' : f.tone === 'good' ? 'Good' : 'Note'}:</span>{f.text}</>
+            return f.drill ? (
+              <button key={k} type="button" onClick={() => onDrill(f.drill!)} title="Drill into it"
+                className={`rounded-lg border px-2.5 py-1.5 text-left text-[11px] leading-snug hover:brightness-95 ${TONE[f.tone]}`}>{body} <span className="font-semibold underline">Drill in →</span></button>
+            ) : (
+              <div key={k} className={`rounded-lg border px-2.5 py-1.5 text-[11px] leading-snug ${TONE[f.tone]}`}>{body}</div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-1.5 @[520px]:grid-cols-3 @[860px]:grid-cols-6">
+        {kpi('Completion', `${a.completion}%`, `${a.done} of ${a.n} approved`, '#10b981')}
+        {kpi('Schedule adherence', `${a.adherence}%`, `of ${a.dueByToday} due by today`, a.adherence >= 80 ? '#10b981' : a.adherence >= 50 ? '#d97706' : '#dc2626')}
+        {kpi('On-time approvals', `${a.onTimeRate}%`, `${a.onTime} of ${a.done} by planned end`, '#2153f5')}
+        {kpi('Overdue', String(a.overdue), a.overdue ? `avg ${a.avgLate} days late` : 'none late', WORK_BUCKET_COLORS.Delayed)}
+        {kpi('NG / rework', String(a.ng), `${a.n ? Math.round((a.ng / a.n) * 100) : 0}% of activities`, WORK_BUCKET_COLORS.NG)}
+        {kpi('Due in 30 days', String(a.in30), 'open, not yet late', '#6d28d9')}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-3 @[860px]:grid-cols-2">
+        {card('Progress vs plan', a.curve.length ? (
+          <div className="h-[190px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={a.curve} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
+                <XAxis dataKey="date" fontSize={9.5} stroke="#98a2b3" tickLine={false} interval="preserveStartEnd" minTickGap={18} />
+                <YAxis fontSize={9.5} stroke="#98a2b3" allowDecimals={false} tickLine={false} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                <Area type="monotone" dataKey="planned" name="Planned (due)" stroke="#94a3b8" fill="#e2e8f0" strokeDasharray="4 3" isAnimationActive={false} />
+                <Area type="monotone" dataKey="completed" name="Completed" stroke="#10b981" fill="#10b98133" strokeWidth={2} connectNulls={false} isAnimationActive={false} />
+                {todayTick && <ReferenceLine x={todayTick} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Today', position: 'insideTopRight', fontSize: 9.5, fill: '#ef4444' }} />}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : <p className="py-8 text-center text-[11px] text-[var(--color-muted)]">No planned dates yet.</p>, 'cumulative · gap = behind plan')}
+
+        {card('Where open work waits', a.taskRows.length ? (
+          <div style={{ height: Math.max(150, a.taskRows.length * 24 + 30) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={a.taskRows} layout="vertical" margin={{ top: 2, right: 10, left: 0, bottom: 0 }} barCategoryGap={5}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
+                <XAxis type="number" fontSize={9.5} stroke="#98a2b3" allowDecimals={false} tickLine={false} />
+                <YAxis type="category" dataKey="task" width={124} fontSize={10} stroke="#475467" tickLine={false} axisLine={false} interval={0} />
+                <Tooltip {...tip} />
+                <Bar dataKey="onTime" name="On time" stackId="t" fill="#3b82f6" maxBarSize={18} isAnimationActive={false} />
+                <Bar dataKey="overdue" name="Overdue" stackId="t" fill={WORK_BUCKET_COLORS.Delayed} radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : <p className="py-8 text-center text-[11px] text-[var(--color-muted)]">No open work.</p>, 'current task in the flow')}
+
+        {card('Overdue ageing', (
+          <div className="h-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={a.ages} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                <XAxis dataKey="band" fontSize={10} stroke="#98a2b3" tickLine={false} />
+                <YAxis fontSize={9.5} stroke="#98a2b3" allowDecimals={false} tickLine={false} />
+                <Tooltip {...tip} />
+                <Bar dataKey="n" name="Overdue activities" radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false} label={{ position: 'top', fontSize: 10, fill: '#344054' }}>
+                  {a.ages.map((x, k) => <Cell key={x.band} fill={['#fbbf24', '#f59e0b', '#ea580c', '#dc2626'][k]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ), 'days past planned end')}
+
+        {card('Coming due', (
+          <div className="h-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={a.weeks} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                <XAxis dataKey="week" fontSize={9.5} stroke="#98a2b3" tickLine={false} interval={0} />
+                <YAxis fontSize={9.5} stroke="#98a2b3" allowDecimals={false} tickLine={false} />
+                <Tooltip {...tip} />
+                <Bar dataKey="n" name="Open activities due" fill="#6d28d9" radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false} label={{ position: 'top', fontSize: 10, fill: '#344054' }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ), 'next 6 weeks, by planned end')}
       </div>
     </div>
   )
