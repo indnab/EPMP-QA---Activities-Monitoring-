@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
-import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
-import type { PartAttrValues } from '../partAttrFilters'
+import { ALL_MARKETS, EMPTY_ATTR_SEL, MARKETS, PartAttrFilters, hasAttrSel, isAllMarkets, matchMarket, matchPartAttrs } from '../partAttrFilters'
+import type { PartAttrSel } from '../partAttrFilters'
+import { MultiSelect } from '../intake/MultiSelect'
+import { picLabel } from '../../domain/people'
 import { PageHeader, Card } from '../../components'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
 import { buildVendorScores, buildInsights, pct, buildActivityHeatMap, buildVendorActivityHeatMap, predictRisk } from './insights'
 import type { InsightTone, VendorScore, HeatMap, HeatLevel, RiskLevel } from './insights'
 import { TECHNICAL_CATEGORIES } from '../../domain/timelineCatalog'
-import { getFilteredData } from '../../engine'
+import { getFilteredData, getPicOn, workBucket, WORK_BUCKETS } from '../../engine'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import { DEMO_TODAY } from '../scope'
 
@@ -107,45 +109,90 @@ function VendorCard({ s }: { s: VendorScore }) {
   )
 }
 
+/** The same filters as My Work (plus Technical category). Empty = all; Market starts with both ticked. */
+interface LessonFilters {
+  status: string[]; model: string[]; trial: string[]; partNo: string[]; dept: string[]; vendorCode: string[]
+  activity: string[]; pic: string[]; cat: string[]; attrs: PartAttrSel; market: string[]
+}
+const NO_FILTERS: LessonFilters = {
+  status: [], model: [], trial: [], partNo: [], dept: [], vendorCode: [], activity: [], pic: [], cat: [], attrs: EMPTY_ATTR_SEL, market: ALL_MARKETS,
+}
+
 export function LessonsPage() {
-  const { entries, activities, templateRows, models } = useQAStore()
+  const { entries, activities, templateRows, models, picAssignments } = useQAStore()
   const parts = useWorkParts()
 
-  // One common filter for the whole page: Vendor + Technical category. Everything below respects it.
-  const [vendorFilter, setVendorFilter] = useState('All')
-  const [catFilter, setCatFilter] = useState('All')
-  const [attrFilter, setAttrFilter] = useState<PartAttrValues>({}) // Part Category / Fuel Type
+  // One common filter bar for the whole page (same filters as My Work). Everything below respects it.
+  const [f, setF] = useState<LessonFilters>(NO_FILTERS)
+  const [more, setMore] = useState(false)
+  const set = <K extends keyof LessonFilters>(k: K) => (v: LessonFilters[K]) => setF((prev) => ({ ...prev, [k]: v }))
+  const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
+  const picOf = (p: (typeof parts)[number]) => getPicOn(p, picAssignments, DEMO_TODAY).name
 
-  // Parts narrowed by the category filter — fed to every section so scorecards/insights/forecast/heat map agree.
+  // Part-level filters.
   const catParts = useMemo(
-    () => parts.filter((p) => (catFilter === 'All' || (p.technicalCategory ?? 'OtherAssy') === catFilter) && matchAttrValues(p, attrFilter)),
-    [parts, catFilter, attrFilter]
+    () => parts.filter((p) =>
+      inSel(f.model, p.model) && inSel(f.partNo, p.partNo) && inSel(f.dept, p.department || 'Other') &&
+      inSel(f.vendorCode, p.vendorCode) && inSel(f.pic, picOf(p)) && inSel(f.cat, p.technicalCategory ?? 'OtherAssy') &&
+      matchPartAttrs(p, f.attrs) && matchMarket(p, f.market)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parts, f, picAssignments]
   )
-  const ctx = useMemo(() => ({ entries, parts: catParts, activities, templateRows }), [entries, catParts, activities, templateRows])
+  // Activity-level filters (Trial, Activity, Status): keep the part × activity items that pass, and only their entries.
+  const allInstances = useMemo(
+    () => getFilteredData(entries, activities, catParts, templateRows, models, { ...EMPTY_FILTERS }, 'overview', DEMO_TODAY),
+    [entries, activities, catParts, templateRows, models]
+  )
+  const instances = useMemo(
+    () => allInstances.filter((i) => inSel(f.trial, i.row.milestoneId) && inSel(f.activity, i.activity.name) && inSel(f.status, workBucket(i) ?? '')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allInstances, f.trial, f.activity, f.status]
+  )
+  const itemFilter = f.trial.length > 0 || f.activity.length > 0 || f.status.length > 0
+  const shownEntries = useMemo(() => {
+    if (!itemFilter) return entries
+    const keep = new Set(instances.map((i) => `${i.row.id}|${i.part.partNo}`))
+    return entries.filter((e) => keep.has(`${e.templateRowId}|${e.partNo}`))
+  }, [entries, instances, itemFilter])
+  const ctx = useMemo(() => ({ entries: shownEntries, parts: catParts, activities, templateRows }), [shownEntries, catParts, activities, templateRows])
 
   const scores = useMemo(() => buildVendorScores(ctx), [ctx])
   const insights = useMemo(() => buildInsights(scores), [scores])
 
   // Rule-based forecast of at-risk parts (open activities ranked by projected delay/quality risk).
   const predictions = useMemo(() => {
-    const instances = getFilteredData(entries, activities, catParts, templateRows, models, { ...EMPTY_FILTERS }, 'overview', DEMO_TODAY)
     const rygList = instances.map((i) => ({ partNo: i.part.partNo, activityId: i.activity.id, templateRowId: i.row.id, ryg: String(i.ryg) }))
     return predictRisk(ctx, rygList)
-  }, [ctx, entries, activities, catParts, templateRows, models])
-  const shownPredictions = vendorFilter === 'All' ? predictions : predictions.filter((p) => p.vendorName === vendorFilter)
+  }, [ctx, instances])
+  const shownPredictions = predictions
 
-  // Heat map honours the same common filter: 'All' vendors → vendor × activity; a vendor → activities as rows.
+  // Heat map: one vendor picked → that vendor's activities as rows; otherwise vendor × activity.
+  const oneVendor = f.vendorCode.length === 1 ? parts.find((p) => p.vendorCode === f.vendorCode[0])?.vendorName : undefined
   const heatMap = useMemo<HeatMap>(
-    () =>
-      vendorFilter === 'All'
-        ? buildActivityHeatMap(ctx, 'All')
-        : buildVendorActivityHeatMap(ctx, vendorFilter, 'All'),
-    [ctx, vendorFilter]
+    () => (oneVendor ? buildVendorActivityHeatMap(ctx, oneVendor, 'All') : buildActivityHeatMap(ctx, 'All')),
+    [ctx, oneVendor]
   )
+  const shownScores = scores
+  const shownInsights = insights
 
-  const vendors = useMemo(() => buildVendorScores({ entries, parts, activities, templateRows }).map((s) => s.vendorName), [entries, parts, activities, templateRows])
-  const shownScores = vendorFilter === 'All' ? scores : scores.filter((s) => s.vendorName === vendorFilter)
-  const shownInsights = vendorFilter === 'All' ? insights : insights.filter((i) => i.vendorName === vendorFilter)
+  // Filter options (from all the user's parts, so they don't disappear while filtering).
+  const opts = useMemo(() => {
+    const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))].sort().map((value) => ({ value }))
+    const labeled = (pairs: [string, string][]) => [...new Map(pairs.filter(([v]) => v)).entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+    const inst = getFilteredData(entries, activities, parts, templateRows, models, { ...EMPTY_FILTERS }, 'overview', DEMO_TODAY)
+    return {
+      model: uniq(parts.map((p) => p.model)),
+      trial: uniq(inst.map((i) => i.row.milestoneId)),
+      part: labeled(parts.filter((p) => f.model.length === 0 || f.model.includes(p.model)).map((p) => [p.partNo, `${p.partNo}: ${p.partName}`])),
+      dept: uniq(parts.map((p) => p.department || 'Other')),
+      vendor: labeled(parts.map((p) => [p.vendorCode, `${p.vendorCode}: ${p.vendorName}`])),
+      activity: uniq(inst.map((i) => i.activity.name)),
+      pic: labeled(parts.map((p) => { const n = picOf(p); return [n, picLabel(n)] })),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, activities, parts, templateRows, models, picAssignments, f.model])
+  const hasFilters = (['status', 'model', 'trial', 'partNo', 'dept', 'vendorCode', 'activity', 'pic', 'cat'] as const).some((k) => f[k].length > 0) ||
+    hasAttrSel(f.attrs) || !isAllMarkets(f.market)
 
   return (
     <div>
@@ -155,42 +202,33 @@ export function LessonsPage() {
         description="Vendor track records and AI-generated insights from this system's own data — approvals, send-backs, inspections, OTOP and deviations."
       />
 
-      {/* One common filter for the whole page */}
-      <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          Vendor
-          <select
-            value={vendorFilter}
-            onChange={(e) => setVendorFilter(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]"
-          >
-            <option value="All">All vendors</option>
-            {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          Technical category
-          <select
-            value={catFilter}
-            onChange={(e) => setCatFilter(e.target.value)}
-            className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] font-normal normal-case text-[#344054]"
-          >
-            <option value="All">All categories</option>
-            {TECHNICAL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-        </label>
-        <PartAttrSelects value={attrFilter} onChange={setAttrFilter} className="h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[11.5px] text-[#344054]" />
-        {(vendorFilter !== 'All' || catFilter !== 'All' || hasAttrValues(attrFilter)) && (
-          <button
-            onClick={() => { setVendorFilter('All'); setCatFilter('All'); setAttrFilter({}) }}
-            className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline"
-          >
-            Clear
+      {/* One common filter bar for the whole page (same filters as My Work) */}
+      <section className="epmp-card mb-4 px-3 py-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-2">
+          <span className="text-[10.5px] text-[var(--color-muted)]">Filters apply to every section · insights are rule-based, not a trained model.</span>
+          <button type="button" onClick={() => setMore((v) => !v)}
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}>
+            More filters
           </button>
+          {hasFilters && <button type="button" onClick={() => setF(NO_FILTERS)} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MultiSelect label="Status" options={WORK_BUCKETS.map((value) => ({ value }))} selected={f.status} onChange={set('status')} />
+          <MultiSelect label="Model" options={opts.model} selected={f.model} onChange={set('model')} />
+          <MultiSelect label="Trial" options={opts.trial} selected={f.trial} onChange={set('trial')} />
+          <MultiSelect label="Part" options={opts.part} selected={f.partNo} onChange={set('partNo')} />
+          <MultiSelect label="Dept" options={opts.dept} selected={f.dept} onChange={set('dept')} />
+          <MultiSelect label="Vendor" options={opts.vendor} selected={f.vendorCode} onChange={set('vendorCode')} />
+          <PartAttrFilters value={f.attrs} onChange={set('attrs')} />
+          <MultiSelect label="Market" options={MARKETS.map((value) => ({ value }))} selected={f.market} onChange={set('market')} />
+          <MultiSelect label="Technical category" options={TECHNICAL_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))} selected={f.cat} onChange={set('cat')} />
+        </div>
+        {more && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
+            <MultiSelect label="Activity" options={opts.activity} selected={f.activity} onChange={set('activity')} />
+            <MultiSelect label="PIC" options={opts.pic} selected={f.pic} onChange={set('pic')} />
+          </div>
         )}
-        <span className="ml-auto text-[10.5px] font-normal normal-case text-[var(--color-muted)]">
-          Filters apply to every section · insights are rule-based, not a trained model.
-        </span>
       </section>
 
       {/* Insight cards */}
@@ -260,7 +298,7 @@ export function LessonsPage() {
       {/* Heat map (honours the page filter above) */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 className="m-0 text-[12px] font-semibold text-[#101828]">
-          {vendorFilter === 'All' ? 'Vendor heat map' : `${vendorFilter} — activity heat map`}
+          {oneVendor ? `${oneVendor} — activity heat map` : 'Vendor heat map'}
         </h2>
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-4 text-[10px] text-[var(--color-muted)]">
