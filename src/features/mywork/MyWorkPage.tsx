@@ -739,6 +739,19 @@ function MyWorkPageInner() {
   )
 
   const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity, fStatus].some((v) => v.length > 0) || hasAttrSel(fAttrs) || !isAllMarkets(fMarket)
+  // The filters in force as short labels (My Screen shows insights for them).
+  const filterChips = useMemo(() => {
+    const chip = (label: string, vals: string[], show: (v: string) => string = (v) => v) =>
+      vals.length === 0 ? [] : [`${label}: ${vals.length <= 2 ? vals.map(show).join(', ') : `${vals.length} selected`}`]
+    // A model choice ticks all its parts; then the Part filter isn't a separate choice.
+    const allPartsOfModels = fModel.length > 0 && allInstances.filter((i) => fModel.includes(i.part.model)).every((i) => fPartNo.includes(i.part.partNo))
+    return [
+      ...chip('Status', fStatus), ...chip('Model', fModel), ...chip('Trial', fMilestone, trialLabelOf),
+      ...(allPartsOfModels ? [] : chip('Part', fPartNo)), ...chip('Dept', fDept), ...chip('Vendor', fVendorCode),
+      ...PART_ATTR_FIELDS.flatMap((af) => chip(af.label, fAttrs[af.key])),
+      ...(isAllMarkets(fMarket) ? [] : chip('Market', fMarket)), ...chip('Activity', fActivity), ...chip('PIC', fPic),
+    ]
+  }, [fStatus, fModel, fMilestone, fPartNo, fDept, fVendorCode, fAttrs, fMarket, fActivity, fPic, allInstances])
   function clearFilters() {
     setFModel([]); setFDept([]); setFMilestone([]); setFPic([])
     setFPartNo([]); setFVendorCode([]); setFActivity([]); setFStatus([]); setFAttrs(EMPTY_ATTR_SEL); setFMarket(ALL_MARKETS)
@@ -1013,7 +1026,7 @@ function MyWorkPageInner() {
           }
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
-        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} /></ExportSection>
+        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} /></ExportSection>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (

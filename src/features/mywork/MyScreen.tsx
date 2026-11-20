@@ -5,7 +5,7 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -85,7 +85,13 @@ const labelOf = (d: Dim, v: string, items: FilteredInstance[]): string => {
   return v
 }
 
-export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInstance[]; parts: PartRecord[]; onOpen: (i: FilteredInstance) => void }) {
+export function MyScreen({ instances, parts, onOpen, filters = [] }: {
+  instances: FilteredInstance[]
+  parts: PartRecord[]
+  onOpen: (i: FilteredInstance) => void
+  /** The page filters in force, e.g. ["Model: Swift", "Status: NG"]. Any filter shows the Insights panel automatically. */
+  filters?: string[]
+}) {
   const { picAssignments, partReleases, partAcks } = useQAStore()
   const { panels, setPanels } = useScreen()
   const stageOf = useModelStages(parts)
@@ -132,6 +138,13 @@ export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInst
     setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
   }
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
+  // Insights for the filters: shown by itself whenever a filter is selected (and on an empty screen); it starts
+  // again from the top whenever the filters change.
+  const filterSig = filters.join('|')
+  const [auto, setAuto] = useState<Panel>({ key: 'auto', tile: 'all', drill: [] })
+  useEffect(() => { setAuto({ key: 'auto', tile: 'all', drill: [] }) }, [filterSig])
+  const [autoHidden, setAutoHidden] = useState<string | null>(null)
+  const showAuto = (filters.length > 0 || panels.length === 0) && autoHidden !== filterSig
 
   return (
     <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[250px_minmax(0,1fr)]">
@@ -176,13 +189,23 @@ export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInst
 
       {/* Right: the interactive dashboard */}
       <div id="my-screen-canvas" className="min-w-0 scroll-mt-2">
-        {panels.length === 0 ? (
+        {showAuto && (
+          <div className="mb-3">
+            <ScreenPanel panel={auto} items={tagged.map((x) => x.i)} onChange={(x) => setAuto((a) => ({ ...a, ...x }))}
+              onRemove={() => setAutoHidden(filterSig)} onOpen={onOpen}
+              tile={{ id: 'all', group: '', title: filters.length ? 'Insights · your filters' : 'Insights · all my activities', color: '#2153f5', icon: 'chart-mixed', test: () => true }}
+              note={filters.length
+                ? <span className="flex flex-wrap gap-1">{filters.map((f) => <span key={f} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-primary">{f}</span>)}</span>
+                : <span className="text-[10.5px] text-[var(--color-muted)]">Select any filter above and the insights follow it; click a tile on the left to add more dashboards.</span>} />
+          </div>
+        )}
+        {panels.length === 0 && !showAuto ? (
           <div className="flex min-h-[460px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-white/50 px-6 text-center">
             <FbIcon name="grid" size={28} className="mb-2 text-[var(--color-muted)]" />
             <p className="text-[12.5px] font-semibold text-[#344054]">Your screen is empty</p>
             <p className="mt-1 max-w-md text-[11px] text-[var(--color-muted)]">Click any tile on the left to open its dashboard here. Each breaks down by Model, then Trial, Vendor and Part; click a bar to go one level deeper.</p>
           </div>
-        ) : (
+        ) : panels.length === 0 ? null : (
           <div className={`grid grid-cols-1 gap-3 ${panels.length > 1 ? 'min-[1800px]:grid-cols-2' : ''}`}>
             {panels.map((p) => (
               <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
@@ -194,9 +217,11 @@ export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInst
   )
 }
 
-function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpen }: {
+function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpen, note }: {
   panel: Panel
   tile: TileDef | undefined
+  /** Shown under the title (e.g. the filters behind the automatic Insights panel). */
+  note?: React.ReactNode
   items: FilteredInstance[]
   onChange: (p: Partial<Panel>) => void
   onRemove: () => void
@@ -207,7 +232,9 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
   const items = all.filter((i) => panel.drill.every((d) => keyOf(i, d.dim) === d.value))
   const used = panel.drill.map((d) => d.dim)
   const free = (Object.keys(DIM_LABEL) as Dim[]).filter((d) => !used.includes(d))
-  const nextDefault = PATH.find((d) => !used.includes(d))
+  // Next breakdown on the path, skipping one the filters already narrow to a single value (e.g. one model picked).
+  const open = PATH.filter((d) => !used.includes(d))
+  const nextDefault = open.find((d) => new Set(items.map((i) => keyOf(i, d))).size > 1) ?? open[0]
   // At the bottom of the path (or after choosing "List"), show the activities themselves.
   const groupBy: Dim | 'list' = panel.groupBy === 'list' ? 'list' : panel.groupBy && !used.includes(panel.groupBy) ? panel.groupBy : nextDefault ?? 'list'
   const bars = useMemo(() => {
@@ -233,6 +260,7 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
         <button type="button" onClick={onRemove} aria-label={`Remove ${tile.title}`} title="Remove from my screen"
           className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"><FbIcon name="close" size={13} /></button>
       </div>
+      {note && <div className="-mt-1 mb-2">{note}</div>}
 
       {/* Breadcrumb */}
       <nav className="mb-2 flex flex-wrap items-center gap-1 text-[10.5px]" aria-label="Drill path">
