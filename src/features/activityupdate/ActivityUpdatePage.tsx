@@ -44,7 +44,12 @@ function rollup(items: FilteredInstance[]): { label: string; cls: string } {
  * The activity list of the given items (grouped by trial) and the update form, which opens in a right-side drawer.
  * Shared by the Activity Update page and the My Work Overview, which pass the items their filters select.
  */
-export function ActivityUpdatePanel({ instances, partCount }: { instances: FilteredInstance[]; partCount: number }) {
+export function ActivityUpdatePanel({ instances, partCount, trials }: {
+  instances: FilteredInstance[]
+  partCount: number
+  /** Trials (milestone ids) to list, in order, even when they have no activities. Default: every trial. */
+  trials?: string[]
+}) {
   const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState, entries, documents } = useQAStore()
   const { currentPersona: role } = usePersonaStore()
   const [activeKey, setActiveKey] = useState<string | null>(null) // `${activityId}|${milestoneId}`
@@ -64,6 +69,8 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
       ms.set(i.activity.id, [...(ms.get(i.activity.id) ?? []), i])
       byMs.set(i.row.milestoneId, ms)
     }
+    // Every trial is listed (PP, MPP, Pilot, SOP …), also one with no activities for this selection.
+    for (const ms of trials ?? milestones.map((m) => m.id)) if (!byMs.has(ms)) byMs.set(ms, new Map())
     return [...byMs.entries()]
       .sort(([a], [b]) => msOrder(a) - msOrder(b))
       .map(([ms, acts]) => {
@@ -71,7 +78,7 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
         const all = list.flatMap((a) => a.items)
         return { ms, label: milestones.find((m) => m.id === ms)?.label ?? ms, list, done: all.filter((i) => i.status === 'Approved').length, total: all.length }
       })
-  }, [instances]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [instances, trials?.join(), milestones]) // eslint-disable-line react-hooks/exhaustive-deps
   const activityCount = groups.reduce((n, g) => n + g.list.length, 0)
 
   const active = groups.flatMap((g) => g.list).find((a) => a.key === activeKey)
@@ -191,13 +198,13 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
 
   return (
     <>
-      {/* Activities of the selection, grouped by trial. Picking one opens its update form on the right. */}
+      {/* Activities of the selection, grouped by trial, on the left. Picking one opens its update form on the right. */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(380px,1fr)_minmax(0,1fr)]">
       <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
         <h2 className="m-0 flex flex-wrap items-center gap-2 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">
           Activities ({activityCount}) · grouped by trial
-          <span className="ml-auto text-[10.5px] font-normal text-white/80">Pick an activity to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}</span>
         </h2>
-        <div className="grid max-h-[calc(100vh-300px)] grid-cols-1 items-start gap-2 overflow-y-auto p-2.5 xl:grid-cols-2">
+        <div className="max-h-[calc(100vh-300px)] space-y-2 overflow-y-auto p-2.5">
           {groups.map((g) => {
             const open = !closedGroups.has(g.ms)
             const pct = g.total ? Math.round((g.done / g.total) * 100) : 0
@@ -212,7 +219,12 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
                     <span className="text-[10px] text-[var(--color-muted)]">{g.done} / {g.total} approved ({pct}%)</span>
                   </span>
                 </button>
-                {open && (
+                {open && g.list.length === 0 && (
+                  <p className="border-t border-[var(--color-border)] px-3 py-2.5 text-[10.5px] text-[var(--color-muted)]">
+                    No activities for {g.label} in this selection (none set up for this trial in the section template, or none match the filters).
+                  </p>
+                )}
+                {open && g.list.length > 0 && (
                   <ul className="border-t border-[var(--color-border)] p-1">
                     {g.list.map((a, n) => {
                       const rs = rollup(a.items)
@@ -234,9 +246,14 @@ export function ActivityUpdatePanel({ instances, partCount }: { instances: Filte
               </div>
             )
           })}
-          {groups.length === 0 && <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)] xl:col-span-2">No activities for this selection.</p>}
+          {groups.length === 0 && <p className="py-6 text-center text-[11.5px] text-[var(--color-muted)]">No activities for this selection.</p>}
         </div>
       </section>
+      {/* Right: where the update form opens */}
+      <div className="hidden min-h-[240px] items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-6 text-center text-[11.5px] text-[var(--color-muted)] lg:flex">
+        Pick an activity on the left to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}. The form opens here, on the right.
+      </div>
+      </div>
 
       {/* Update form: a drawer on the right, same frame as the part form. */}
       {active && st && (
@@ -438,7 +455,7 @@ export function ActivityUpdatePage() {
           Select one or more <strong>models</strong>, then the <strong>parts</strong> to update. Pick several to update them together.
         </div>
       ) : (
-        <ActivityUpdatePanel instances={instances} partCount={selectedParts.length} />
+        <ActivityUpdatePanel instances={instances} partCount={selectedParts.length} trials={trial === 'All' ? undefined : [trial]} />
       )}
     </div>
   )

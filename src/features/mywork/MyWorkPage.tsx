@@ -508,7 +508,7 @@ export function MyWorkPage() {
 }
 
 function MyWorkPageInner() {
-  const { activities, entries, templateRows, models, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
+  const { activities, entries, templateRows, models, milestones, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
   const parts = useWorkParts()
   // Parts SAP / ENOVIA deleted: off the work screens (useWorkParts), listed under "Part Deleted".
   const storeParts = useQAStore((s) => s.parts)
@@ -635,7 +635,12 @@ function MyWorkPageInner() {
   const opt = (vals: string[]) => Array.from(new Set(vals.filter(Boolean))).sort()
   const modelOptions = useMemo(() => opt(allInstances.map((i) => i.part.model)), [allInstances])
   const deptOptions = useMemo(() => opt(allInstances.map((i) => i.part.department || 'Other')), [allInstances])
-  const milestoneOptions = useMemo(() => opt(allInstances.map((i) => i.row.milestoneId)), [allInstances])
+  // Every trial (PP, MPP, Pilot, SOP …) in trial order, also one with no activities yet.
+  const milestoneOptions = useMemo(() => {
+    const ids = [...new Set([...milestones.map((m) => m.id), ...allInstances.map((i) => i.row.milestoneId)])]
+    const k = (id: string) => { const n = milestones.findIndex((m) => m.id === id); return n < 0 ? 99 : n }
+    return ids.sort((a, b) => k(a) - k(b))
+  }, [allInstances, milestones])
   const activityOptions = useMemo(() => opt(allInstances.map((i) => i.activity.name)), [allInstances])
   // Merged "code: name" pickers — one row per distinct code, value = code (or name for PIC).
   const uniqBy = <T,>(rows: T[], key: (r: T) => string) => {
@@ -989,7 +994,7 @@ function MyWorkPageInner() {
                 Select one or more <strong>models</strong> and <strong>parts</strong> in the filters above (and optionally a <strong>trial</strong>) to update their activities together.
               </p>
             ) : (
-              <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} />
+              <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} trials={fMilestone.length ? fMilestone : undefined} />
             ))}
           </section>
           ) },
