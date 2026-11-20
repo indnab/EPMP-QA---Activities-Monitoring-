@@ -8,6 +8,7 @@ import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
 import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, OVERDUE_TILES, mineBucket, useKpiCardsLayout } from './OverviewTab'
 import { SortableSections, useSortable } from '../sortable'
 import { UpcomingMilestones } from './UpcomingMilestones'
+import { MyScreen } from './MyScreen'
 import { activeModelNames } from '../../domain/projects'
 import type { PendRole, MineKey } from './OverviewTab'
 const MINE_LABEL: Record<MineKey, string> = {
@@ -62,7 +63,8 @@ const thCls = 'text-left px-3 py-2.5 font-medium text-[var(--color-muted)] white
 // Pending with = staff / vendor ID + name + role. Task = the next step from the activity's flow.
 type TableColKey = 'status' | 'part' | 'model' | 'vendor' | 'activity' | 'task' | 'dates' | 'pending'
 /** Overview sections in their default order (the user can drag them into another order). */
-const OV_SECTIONS = ['kpis', 'priority', 'update', 'list', 'insights']
+// Activity Update is the default (first) section; it fills in whenever any filter is selected.
+const OV_SECTIONS = ['update', 'kpis', 'priority', 'list', 'insights']
 
 const TABLE_COLS: { key: TableColKey; label: string }[] = [
   { key: 'status', label: 'Status' },
@@ -543,7 +545,7 @@ function MyWorkPageInner() {
 
   // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
   // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
-  type MwTab = 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar'
+  type MwTab = 'overview' | 'actions' | 'worklist' | 'insights' | 'calendar' | 'myscreen'
   // The tab and the Insights status live in the URL, so the browser / app Back button returns to where you were.
   const [searchParams, setSearchParams] = useSearchParams()
   const viewParam = searchParams.get('view')
@@ -551,6 +553,7 @@ function MyWorkPageInner() {
     viewParam === 'worklist' || viewParam === 'approvals' ? 'worklist'
       : viewParam === 'actions' ? 'actions'
       : viewParam === 'calendar' ? 'calendar'
+      : viewParam === 'myscreen' ? 'myscreen'
       : 'overview'
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
   const setView = (t: MwTab, bucket?: WorkBucket, seg?: string) =>
@@ -884,6 +887,8 @@ function MyWorkPageInner() {
     else { setSortKey(key); setSortDir('asc') }
   }
   const anyColFilter = Object.values(colFilters).some(Boolean)
+  // Activity Update lists the same items as the parts list, once any filter is selected (bar, search, tile or column).
+  const updateActive = hasFilters || anyColFilter || !!(selectedBucket || returnedFilter || pendFilter || mineFilter || selectedGroup)
 
   // Approvals follow the quick filter: entry / validation items by their activity, other items by their part.
   const inRangeKeys = useMemo(() => new Set(allInstances.map((i) => `${i.row.id}|${i.part.partNo}`)), [allInstances])
@@ -947,7 +952,8 @@ function MyWorkPageInner() {
             { id: 'overview', label: 'My Work' },
             { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
-            { id: 'calendar', label: 'My Calendar' }
+            { id: 'calendar', label: 'My Calendar' },
+            { id: 'myscreen', label: 'My Screen' }
           ]}
         />
         </div>
@@ -964,12 +970,12 @@ function MyWorkPageInner() {
             <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
               className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
           )}
-          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Parts', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar' }[effectiveView]}`} />
+          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Parts', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Screen' }[effectiveView]}`} />
         </div>
       </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
-      {effectiveView === 'overview' && (
+      {(effectiveView === 'overview' || effectiveView === 'myscreen') && (
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
         <CompactFilterBar
           model={fModel} setModel={chooseModels} modelOptions={modelOptions}
@@ -980,7 +986,7 @@ function MyWorkPageInner() {
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
-          leading={<BackButton />}
+          leading={effectiveView === 'overview' ? <BackButton /> : undefined}
           attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
@@ -1006,6 +1012,8 @@ function MyWorkPageInner() {
             />
           }
         /></ExportSection>
+      ) : effectiveView === 'myscreen' ? (
+        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (
@@ -1051,15 +1059,15 @@ function MyWorkPageInner() {
           <section id="mw-update" className="epmp-card p-3" aria-label="Activity Update">
             <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
               <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
-              {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Uses the Model, Trial and Part filters above</span>}
+              {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Shows the activities of whatever the filters above select (and any KPI tile you click)</span>}
               <span className="ml-auto"><CollapseButton collapsed={updateClosed} onToggle={toggleUpdate} label="Activity Update" /></span>
             </div>
-            {!updateClosed && (fModel.length === 0 || fPartNo.length === 0 ? (
+            {!updateClosed && (!updateActive ? (
               <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
-                Select one or more <strong>models</strong> and <strong>parts</strong> in the filters above (and optionally a <strong>trial</strong>) to update their activities together.
+                Select <strong>any filter</strong> above (model, part, vendor, trial, status… or use the search), or click a KPI tile, to list those activities here and update them together.
               </p>
             ) : (
-              <ActivityUpdatePanel instances={instances} partCount={new Set(instances.map((i) => i.part.partNo)).size} trials={fMilestone.length ? fMilestone : undefined} />
+              <ActivityUpdatePanel instances={tableRows} partCount={new Set(tableRows.map((i) => i.part.partNo)).size} trials={fMilestone.length ? fMilestone : undefined} />
             ))}
           </section>
           ) },

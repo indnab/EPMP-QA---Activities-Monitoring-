@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { PartAttrSelects, hasAttrValues, matchAttrValues } from '../partAttrFilters'
 import type { PartAttrValues } from '../partAttrFilters'
-import { PageHeader, Card } from '../../components'
+import { PageHeader, Card, Tabs } from '../../components'
+import { useSearchParams } from 'react-router-dom'
+import { trialLabelOf } from '../trialLabel'
+import { GanttChart } from './GanttChart'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
 import { getFilteredData } from '../../engine'
@@ -11,9 +14,9 @@ import { DEMO_TODAY, fmtDate } from '../scope'
 
 const MS_ORDER = ['PP', 'MPP', 'Pilot', 'SOP']
 
-type NodeKind = 'milestone' | 'part' | 'activity'
+export type NodeKind = 'milestone' | 'part' | 'activity'
 
-interface WbsNode {
+export interface WbsNode {
   id: string            // WBS id, e.g. '100', '100.1', '100.1.1'
   kind: NodeKind
   label: string
@@ -54,7 +57,10 @@ function daySpan(start?: string, end?: string): number {
 }
 
 export function WbsPage() {
-  const { entries, activities, templateRows, models } = useQAStore()
+  const { entries, activities, templateRows, models, milestones: msDefs } = useQAStore()
+  // ?tab=gantt opens the Gantt chart.
+  const [params, setParams] = useSearchParams()
+  const view: 'table' | 'gantt' = params.get('tab') === 'gantt' ? 'gantt' : 'table'
   const parts = useWorkParts()
 
   const modelNames = useMemo(() => models.map((m) => m.name), [models])
@@ -78,7 +84,9 @@ export function WbsPage() {
       partMap.set(inst.part.partNo, arr)
       byMs.set(ms, partMap)
     }
-    const milestones = Array.from(byMs.keys()).sort((a, b) => (MS_ORDER.indexOf(a) + 1 || 99) - (MS_ORDER.indexOf(b) + 1 || 99))
+    // Trial order: the archetype's milestones (Pre-PP, PP, MPP, Pilot …), then any others.
+    const k = (id: string) => { const n = msDefs.findIndex((m) => m.id === id); return n >= 0 ? n : 50 + (MS_ORDER.indexOf(id) + 1 || 49) }
+    const milestones = Array.from(byMs.keys()).sort((a, b) => k(a) - k(b))
     const nodes: WbsNode[] = []
     milestones.forEach((ms, mi) => {
       const partMap = byMs.get(ms)!
@@ -112,7 +120,7 @@ export function WbsPage() {
       const starts = partNodes.map((p) => p.start).filter(Boolean).sort()
       const ends = partNodes.map((p) => p.end).filter(Boolean).sort()
       nodes.push({
-        id: msId, kind: 'milestone', label: `${ms} Milestone`,
+        id: msId, kind: 'milestone', label: `${trialLabelOf(ms)} Milestone`,
         weight: partNodes.reduce((n, p) => n + p.weight, 0),
         effort: partNodes.reduce((n, p) => n + p.effort, 0),
         start: starts[0], end: ends[ends.length - 1],
@@ -121,7 +129,7 @@ export function WbsPage() {
       })
     })
     return nodes
-  }, [instances])
+  }, [instances, msDefs])
 
   // Flatten respecting collapse state.
   const flat = useMemo<WbsNode[]>(() => {
@@ -184,8 +192,13 @@ export function WbsPage() {
         </div>
       </section>
 
+      <Tabs className="mb-3" activeId={view} onChange={(id) => setParams(id === 'gantt' ? { tab: 'gantt' } : {}, { replace: true })}
+        items={[{ id: 'table', label: 'WBS table' }, { id: 'gantt', label: 'Gantt chart' }]} />
+
       {flat.length === 0 ? (
         <Card><p className="py-10 text-center text-sm text-[var(--color-muted)]">No activities for this model yet.</p></Card>
+      ) : view === 'gantt' ? (
+        <GanttChart rows={flat} collapsed={collapsed} onToggle={toggle} today={DEMO_TODAY} />
       ) : (
         <Card flush>
           <div className="table-scroll">
