@@ -14,7 +14,8 @@ import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY, fmtDate } from '../scope'
 import { trialLabelOf } from '../trialLabel'
-import { mineBucket } from './OverviewTab'
+import { mineBucket, useModelStages } from './OverviewTab'
+import type { PartRecord } from '../../domain'
 import type { MineKey } from './OverviewTab'
 
 type Dim = 'model' | 'trial' | 'vendor' | 'part' | 'activity' | 'status' | 'dept'
@@ -22,10 +23,30 @@ const DIM_LABEL: Record<Dim, string> = { model: 'Model', trial: 'Trial', vendor:
 /** Default drill path. */
 const PATH: Dim[] = ['model', 'trial', 'vendor', 'part']
 
-interface TileDef { id: string; group: string; title: string; color: string; icon: string; test: (i: FilteredInstance, ctx: { mine: MineKey | null; bucket: WorkBucket | null }) => boolean }
-const TILES: TileDef[] = [
+type Ctx = { mine: MineKey | null; bucket: WorkBucket | null; stage: 'under' | 'developed' | 'past' | undefined }
+interface TileDef {
+  id: string; group: string; title: string; color: string; icon: string
+  test: (i: FilteredInstance, ctx: Ctx) => boolean
+  /** What the count on the button counts (default: activities). */
+  counts?: 'models' | 'vendors' | 'parts'
+  /** Opens already drilled to this (e.g. one model). */
+  drill?: { dim: Dim; value: string }[]
+  /** First breakdown (default: the drill path). */
+  groupBy?: Dim
+}
+const UNDER = 'Scope · Under Development'
+const DEV = 'Scope · Developed (< SOP + 3 months)'
+const scopeTiles = (group: string, stage: 'under' | 'developed', color: string, withVendors: boolean): TileDef[] => [
+  { id: `${stage}.models`, group, title: 'Unique models', color, icon: 'grid', counts: 'models', groupBy: 'model', test: (_i, c) => c.stage === stage },
+  ...(withVendors ? [{ id: `${stage}.vendors`, group, title: 'Unique vendors', color, icon: 'users', counts: 'vendors' as const, groupBy: 'vendor' as Dim, test: (_i: FilteredInstance, c: Ctx) => c.stage === stage }] : []),
+  { id: `${stage}.parts`, group, title: 'Unique parts', color, icon: 'tools', counts: 'parts', groupBy: 'part', test: (_i, c) => c.stage === stage },
+  { id: `${stage}.ng`, group, title: 'Unique NG parts', color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', counts: 'parts', test: (_i, c) => c.stage === stage && c.bucket === 'NG' },
+]
+const STATIC_TILES: TileDef[] = [
   { id: 'all', group: 'Scope', title: 'All activities', color: '#2153f5', icon: 'list', test: () => true },
-  { id: 'ngparts', group: 'Scope', title: 'NG parts', color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', test: (_i, c) => c.bucket === 'NG' },
+  { id: 'ngparts', group: 'Scope', title: 'NG parts', color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', counts: 'parts', test: (_i, c) => c.bucket === 'NG' },
+  ...scopeTiles(UNDER, 'under', '#2153f5', true),
+  ...scopeTiles(DEV, 'developed', '#10b981', false),
   { id: 'upcoming', group: 'Status', title: 'Upcoming', color: WORK_BUCKET_COLORS.Upcoming, icon: 'calendar-month', test: (_i, c) => c.bucket === 'Upcoming' },
   { id: 'completed', group: 'Status', title: 'Completed', color: WORK_BUCKET_COLORS.Completed, icon: 'check-circle', test: (_i, c) => c.bucket === 'Completed' },
   { id: 'overdue', group: 'Status', title: 'Overdue', color: WORK_BUCKET_COLORS.Delayed, icon: 'exclamation-circle', test: (_i, c) => c.bucket === 'Delayed' },
@@ -63,25 +84,40 @@ const labelOf = (d: Dim, v: string, items: FilteredInstance[]): string => {
   return v
 }
 
-export function MyScreen({ instances, onOpen }: { instances: FilteredInstance[]; onOpen: (i: FilteredInstance) => void }) {
+export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInstance[]; parts: PartRecord[]; onOpen: (i: FilteredInstance) => void }) {
   const { picAssignments, partReleases, partAcks } = useQAStore()
   const { panels, setPanels } = useScreen()
-  // Status bucket and "who acts next" per item, once.
+  const stageOf = useModelStages(parts)
+  // One button per model (opens that model's dashboard, by trial).
+  const TILES = useMemo<TileDef[]>(() => [
+    ...STATIC_TILES,
+    ...[...new Set(instances.map((i) => i.part.model))].sort().map((m): TileDef => ({
+      id: `model:${m}`, group: 'Models', title: m, color: stageOf.get(m) === 'developed' ? '#10b981' : '#2153f5', icon: 'grid',
+      drill: [{ dim: 'model', value: m }], test: (i) => i.part.model === m,
+    })),
+  ], [instances, stageOf])
+  // Status bucket, "who acts next" and the model's development stage per item, once.
   const tagged = useMemo(() => instances.map((i) => {
     const pend = pendencyOf(i, { picAssignments, releases: partReleases, acks: partAcks, today: DEMO_TODAY })
-    return { i, ctx: { mine: mineBucket(pend, i.status), bucket: workBucket(i) } }
-  }), [instances, picAssignments, partReleases, partAcks])
+    return { i, ctx: { mine: mineBucket(pend, i.status), bucket: workBucket(i), stage: stageOf.get(i.part.model) } }
+  }), [instances, picAssignments, partReleases, partAcks, stageOf])
   const itemsOf = (tileId: string) => {
     const t = TILES.find((x) => x.id === tileId)
     return t ? tagged.filter((x) => t.test(x.i, x.ctx)).map((x) => x.i) : []
   }
   const counts = useMemo(() => Object.fromEntries(TILES.map((t) => {
     const items = tagged.filter((x) => t.test(x.i, x.ctx)).map((x) => x.i)
-    // "NG parts" counts parts; the rest count activities.
-    return [t.id, t.id === 'ngparts' ? new Set(items.map((i) => i.part.partNo)).size : items.length]
-  })), [tagged])
+    const n = t.counts === 'models' ? new Set(items.map((i) => i.part.model)).size
+      : t.counts === 'vendors' ? new Set(items.map((i) => i.part.vendorCode || i.part.vendorName)).size
+        : t.counts === 'parts' ? new Set(items.map((i) => i.part.partNo)).size
+          : items.length
+    return [t.id, n]
+  })), [tagged, TILES])
 
-  const add = (tile: string) => setPanels([{ key: `${tile}-${Date.now().toString(36)}`, tile, drill: [] }, ...panels])
+  const add = (tile: string) => {
+    const t = TILES.find((x) => x.id === tile)
+    setPanels([{ key: `${tile}-${Date.now().toString(36)}`, tile, drill: t?.drill ?? [], groupBy: t?.groupBy }, ...panels])
+  }
   const update = (key: string, p: Partial<Panel>) => setPanels(panels.map((x) => (x.key === key ? { ...x, ...p } : x)))
   const remove = (key: string) => setPanels(panels.filter((x) => x.key !== key))
   const groups = [...new Set(TILES.map((t) => t.group))]
@@ -100,7 +136,7 @@ export function MyScreen({ instances, onOpen }: { instances: FilteredInstance[];
         <div className="space-y-2">
           {groups.map((g) => (
             <div key={g} className="flex flex-wrap items-center gap-1.5">
-              <span className="w-[112px] flex-none text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">{g}</span>
+              <span className="w-[150px] flex-none text-[10px] font-semibold uppercase leading-tight tracking-wide text-[var(--color-muted)]">{g}</span>
               {TILES.filter((t) => t.group === g).map((t) => (
                 <button key={t.id} type="button" onClick={() => add(t.id)} data-screen-tile={t.id}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe] hover:bg-[var(--color-surface)]">
@@ -123,7 +159,7 @@ export function MyScreen({ instances, onOpen }: { instances: FilteredInstance[];
       ) : (
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {panels.map((p) => (
-            <ScreenPanel key={p.key} panel={p} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
+            <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
           ))}
         </div>
       )}
@@ -131,14 +167,16 @@ export function MyScreen({ instances, onOpen }: { instances: FilteredInstance[];
   )
 }
 
-function ScreenPanel({ panel, items: all, onChange, onRemove, onOpen }: {
+function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpen }: {
   panel: Panel
+  tile: TileDef | undefined
   items: FilteredInstance[]
   onChange: (p: Partial<Panel>) => void
   onRemove: () => void
   onOpen: (i: FilteredInstance) => void
 }) {
-  const tile = TILES.find((t) => t.id === panel.tile)!
+  // A model tile whose model is no longer in view still shows (empty).
+  const tile: TileDef = given ?? { id: panel.tile, group: '', title: panel.tile.replace(/^model:/, ''), color: '#2153f5', icon: 'grid', test: () => false }
   const items = all.filter((i) => panel.drill.every((d) => keyOf(i, d.dim) === d.value))
   const used = panel.drill.map((d) => d.dim)
   const free = (Object.keys(DIM_LABEL) as Dim[]).filter((d) => !used.includes(d))
@@ -172,7 +210,7 @@ function ScreenPanel({ panel, items: all, onChange, onRemove, onOpen }: {
 
       {/* Breadcrumb */}
       <nav className="mb-2 flex flex-wrap items-center gap-1 text-[10.5px]" aria-label="Drill path">
-        <button type="button" onClick={() => onChange({ drill: [], groupBy: undefined })} className={panel.drill.length ? 'text-[var(--color-accent)] hover:underline' : 'font-semibold text-[#101828]'}>All</button>
+        <button type="button" onClick={() => onChange({ drill: tile.drill ?? [], groupBy: tile.groupBy })} className={panel.drill.length ? 'text-[var(--color-accent)] hover:underline' : 'font-semibold text-[#101828]'}>All</button>
         {panel.drill.map((d, n) => (
           <span key={n} className="inline-flex items-center gap-1">
             <span className="text-[var(--color-muted)]">›</span>

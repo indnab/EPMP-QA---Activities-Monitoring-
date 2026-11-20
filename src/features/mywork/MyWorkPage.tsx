@@ -1013,7 +1013,7 @@ function MyWorkPageInner() {
           }
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
-        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} onOpen={setOpenInstance} /></ExportSection>
+        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (

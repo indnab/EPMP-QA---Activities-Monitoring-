@@ -211,7 +211,7 @@ const addMonths = (d: string, n: number) => {
 }
 
 /** Development stage per model (see the file comment). */
-function useModelStages(parts: PartRecord[]) {
+export function useModelStages(parts: PartRecord[]) {
   const { models, projects, archetypes } = useQAStore()
   return useMemo(() => {
     const out = new Map<string, 'under' | 'developed' | 'past'>()
