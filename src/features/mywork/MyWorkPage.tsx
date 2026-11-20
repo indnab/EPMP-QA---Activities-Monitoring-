@@ -951,6 +951,14 @@ function MyWorkPageInner() {
               instances={instances}
               parts={overviewParts}
               deletedParts={deletedParts.length}
+              onScope={(pick) => {
+                // Select them in the filters, then open Activity Update on those parts.
+                setFModel(pick.models)
+                setFPartNo(pick.parts)
+                setFStatus(pick.status ? [pick.status] : [])
+                if (updateClosed) toggleUpdate()
+                setTimeout(() => document.getElementById('mw-update')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+              }}
               onShowDeleted={() => {
                 // Deleted parts live in My Parts (recalled from the vendor automatically).
                 setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('view', 'actions'); n.set('slice', 'deleted'); return n })
@@ -970,7 +978,7 @@ function MyWorkPageInner() {
           ) },
           // Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above).
           { id: 'update', label: 'Activity Update', node: (
-          <section className="epmp-card p-3" aria-label="Activity Update">
+          <section id="mw-update" className="epmp-card p-3" aria-label="Activity Update">
             <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
               <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
               {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Uses the Model, Trial and Part filters above</span>}

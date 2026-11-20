@@ -236,7 +236,7 @@ export const OVERDUE_TILES: [MineKey, string][] = [
 ]
 
 /** Parts / Activities / Models KPI segments, compact, for the left of the "Workspace by" chart. */
-export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, delayReviews, onGo }: {
+export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, onScope, delayReviews, onGo }: {
   /** The role's activity instances (part × activity), after the page filters. */
   instances: FilteredInstance[]
   /** The role's parts, after the page filters. */
@@ -244,6 +244,8 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, de
   /** Parts SAP / ENOVIA deleted (off the work screens), after the page filters. */
   deletedParts: number
   onShowDeleted: () => void
+  /** Scope tile click: select these models / parts (and status) in the page filters and open Activity Update. */
+  onScope: (pick: { models: string[]; parts: string[]; status?: WorkBucket }) => void
   delayReviews: number
   onGo: OverviewGo
 }) {
@@ -255,16 +257,25 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, de
   const totals = useMemo(() => bucketTotals(counted), [counted])
   // Scope: unique models / vendors / parts, under development vs developed (up to SOP + 3 months).
   const scope = useMemo(() => {
+    // Parts with at least one NG / rework activity (among the counted activities).
+    const ngNos = new Set(counted.filter((i) => workBucket(i) === 'NG').map((i) => i.part.partNo))
     const of = (stage: 'under' | 'developed') => {
       const ps = parts.filter((p) => stageOf.get(p.model) === stage)
+      const models = [...new Set(ps.map((p) => p.model))]
+      const partNos = [...new Set(ps.map((p) => p.partNo))]
+      const ng = partNos.filter((n) => ngNos.has(n))
       return {
-        models: new Set(ps.map((p) => p.model)).size,
+        models: models.length,
         vendors: new Set(ps.map((p) => p.vendorCode || p.vendorName).filter(Boolean)).size,
-        parts: new Set(ps.map((p) => p.partNo)).size,
+        parts: partNos.length,
+        ng: ng.length,
+        // What a click selects in the page filters (then Activity Update opens on them).
+        pickAll: { models, parts: partNos },
+        pickNg: { models: [...new Set(ps.filter((p) => ngNos.has(p.partNo)).map((p) => p.model))], parts: ng, status: 'NG' as const },
       }
     }
     return { under: of('under'), developed: of('developed') }
-  }, [parts, stageOf])
+  }, [parts, stageOf, counted])
   const act = useMemo(() => {
     const toVendor = counted.filter(isReturnedToVendor)
     // Where each open activity is pending right now.
@@ -288,11 +299,13 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, de
 
   const cards: { id: string; title: string; icon: string; className: string; tiles: Tile[] }[] = [
     { id: 'ov-parts', title: 'Scope', icon: 'list', className: 'min-w-[280px] flex-[3_1_380px]', tiles: [
-      { id: 'scope.under.models', group: 'Under Development', title: 'Total unique models', value: scope.under.models, color: '#2153f5', icon: 'grid', hint: 'Models before SOP' },
-      { id: 'scope.under.vendors', group: 'Under Development', title: 'Total unique vendors', value: scope.under.vendors, color: '#2153f5', icon: 'users', hint: 'Vendors of parts of models before SOP' },
-      { id: 'scope.under.parts', group: 'Under Development', title: 'Total unique parts', value: scope.under.parts, color: '#2153f5', icon: 'tools', hint: 'Parts of models before SOP' },
-      { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months' },
-      { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months' },
+      { id: 'scope.under.models', group: 'Under Development', title: 'Total unique models', value: scope.under.models, color: '#2153f5', icon: 'grid', hint: 'Models before SOP', onClick: () => onScope(scope.under.pickAll) },
+      { id: 'scope.under.vendors', group: 'Under Development', title: 'Total unique vendors', value: scope.under.vendors, color: '#2153f5', icon: 'users', hint: 'Vendors of parts of models before SOP', onClick: () => onScope(scope.under.pickAll) },
+      { id: 'scope.under.parts', group: 'Under Development', title: 'Total unique parts', value: scope.under.parts, color: '#2153f5', icon: 'tools', hint: 'Parts of models before SOP', onClick: () => onScope(scope.under.pickAll) },
+      { id: 'scope.under.ng', group: 'Under Development', title: 'Total unique NG parts', value: scope.under.ng, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', hint: 'Parts with at least one NG / rework activity', onClick: () => onScope(scope.under.pickNg) },
+      { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months', onClick: () => onScope(scope.developed.pickAll) },
+      { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months', onClick: () => onScope(scope.developed.pickAll) },
+      { id: 'scope.dev.ng', group: 'Developed (< SOP + 3 months)', title: 'Total unique NG parts', value: scope.developed.ng, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', hint: 'Parts with at least one NG / rework activity', onClick: () => onScope(scope.developed.pickNg) },
       { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA (recalled from the vendor; listed in My Parts). Their data is kept and comes back if the part is activated again.' },
     ] },
     { id: 'ov-activities', title: 'Activities', icon: 'clipboard-list', className: 'min-w-[280px] flex-[6_1_560px]', tiles: [
