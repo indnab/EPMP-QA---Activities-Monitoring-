@@ -2259,3 +2259,58 @@ export function taskOf(
   // The first step is MSIL's own entry (e.g. PIC confirmation).
   return status === 'Sent back' ? `${first.role} Rework` : `${first.role} Data Entry`
 }
+
+/** One task of an activity, from its flow (see flowTasks). */
+export interface FlowTask {
+  /** e.g. "PIC Release", "Vendor Acknowledge", "Vendor Submit", "PIC Review", "PIC Approve", "SIC Approve". */
+  label: string
+  role: string
+  state: 'done' | 'current' | 'pending' | 'na'
+  /** Planned window: the activity's planned span split evenly across its tasks, in order. */
+  start?: string
+  end?: string
+}
+
+/**
+ * The tasks an activity's flow creates for a part, in order, with where the item stands (the current task is the
+ * one My Work shows in its Task column, see taskOf):
+ *  - a vendor-first flow starts with the part handshake: PIC Release, Vendor Acknowledge, then Vendor Submit;
+ *  - an MSIL-first flow starts with "<role> Data Entry";
+ *  - every later step is "<role> Review", the last one "<role> Approve" (a one-step flow ends with "<role> Approve").
+ */
+export function flowTasks(
+  inst: { activity: ActivityDefinition; entry?: ActivityEntry; part: PartRecord; status: string; notApplicable?: boolean; dates?: ResolvedDates },
+  ctx: { releases: PartRelease[]; acks: PartAck[] }
+): FlowTask[] {
+  const steps = inst.activity.flow.steps
+  if (!steps.length) return []
+  const vendorFirst = steps[0].role === 'Vendor'
+  const tasks: { label: string; role: string }[] = [
+    ...(vendorFirst ? [{ label: 'PIC Release', role: 'PIC' }, { label: 'Vendor Acknowledge', role: 'Vendor' }] : []),
+    { label: vendorFirst ? 'Vendor Submit' : `${steps[0].role} Data Entry`, role: steps[0].role },
+    ...steps.slice(1).map((s, k) => ({ label: `${s.role} ${k === steps.length - 2 ? 'Approve' : 'Review'}`, role: s.role })),
+    ...(steps.length === 1 ? [{ label: `${steps[0].role} Approve`, role: steps[0].role }] : []),
+  ]
+  const entryAt = vendorFirst ? 2 : 0
+  // Where the item is now.
+  let current = -1
+  const now = taskOf(inst, ctx)
+  if (inst.notApplicable) current = -2
+  else if (inst.status === 'Approved') current = tasks.length
+  else if (now === 'PIC Release') current = 0
+  else if (now === 'Vendor Acknowledge') current = 1
+  else if (inst.status === 'Submitted') current = steps.length === 1 ? entryAt + 1 : entryAt + Math.max(1, inst.entry?.currentStepIndex ?? 1)
+  else current = entryAt
+  const reworking = inst.status === 'Sent back'
+  // Planned windows: split the activity's span evenly.
+  const d = inst.dates
+  const span = d && d.status === 'resolved' ? { a: Date.parse(`${d.start}T00:00:00Z`), b: Date.parse(`${d.end}T00:00:00Z`) } : null
+  const at = (k: number) => (span ? new Date(span.a + Math.round(((span.b - span.a) / 86_400_000) * k / tasks.length) * 86_400_000).toISOString().slice(0, 10) : undefined)
+  return tasks.map((t, k) => ({
+    label: k === entryAt && reworking ? (vendorFirst ? 'Vendor Resubmit' : `${t.role} Rework`) : t.label,
+    role: t.role,
+    state: current === -2 ? 'na' : k < current ? 'done' : k === current ? 'current' : 'pending',
+    start: at(k),
+    end: span ? (k === tasks.length - 1 ? at(tasks.length) : at(k + 1)) : undefined,
+  }))
+}

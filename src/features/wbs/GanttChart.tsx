@@ -23,6 +23,7 @@ const KIND_TAG: Record<WbsNode['kind'], string> = {
   milestone: 'bg-indigo-100 text-indigo-700',
   part: 'bg-sky-100 text-sky-700',
   activity: 'bg-slate-100 text-slate-600',
+  task: 'bg-violet-100 text-violet-700',
 }
 
 const toMs = (d: string) => Date.parse(`${d}T00:00:00Z`)
@@ -91,6 +92,7 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
             <span key={k} className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: v.fill }} />{k}</span>
           ))}
           <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm bg-[#1e1b4b]" />Milestone / part (summary)</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-4 rounded-sm bg-[#3b82f6] ring-2 ring-[#2563eb] ring-offset-1" />Current task</span>
           <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-px bg-red-500" />Today {fmtDate(today)}</span>
         </span>
         {undated > 0 && <span className="ml-auto text-[10px] text-[var(--color-muted)]">{undated} row{undated === 1 ? '' : 's'} without planned dates (awaiting MRD)</span>}
@@ -101,7 +103,7 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
           {/* Header */}
           <div className="sticky top-0 z-20 flex border-b border-[var(--color-border)] bg-[#dce8fb]">
             <div className="sticky left-0 z-30 flex-none border-r border-[var(--color-border)] bg-[#dce8fb] px-3 py-2 text-[10.5px] font-medium text-[#344054]" style={{ width: LEFT_W }}>
-              WBS · Milestone / Part / Activity
+              WBS · Milestone / Part / Activity / Task
             </div>
             <div className="relative" style={{ width, height: zoom === 'quarter' ? 26 : 40 }}>
               {months.map((m) => (
@@ -117,7 +119,8 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
           {rows.map((n) => {
             const hasKids = !!n.children?.length
             const open = !collapsed.has(n.id)
-            const summary = n.kind !== 'activity'
+            const summary = n.kind === 'milestone' || n.kind === 'part'
+            const isTask = n.kind === 'task'
             const color = BAR[n.status] ?? BAR.Open
             const left = n.start ? x(n.start) : 0
             const barW = n.start && n.end ? Math.max(summary ? 4 : 6, x(iso(toMs(n.end) + DAY)) - left) : 0
@@ -144,11 +147,12 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
                       className={`absolute flex items-center overflow-hidden whitespace-nowrap ${summary ? 'rounded-sm' : 'rounded-md'}`}
                       style={{
                         left, width: barW,
-                        top: summary ? ROW_H / 2 - 4 : 6, height: summary ? 8 : ROW_H - 12,
+                        top: summary ? ROW_H / 2 - 4 : isTask ? 9 : 6, height: summary ? 8 : isTask ? ROW_H - 18 : ROW_H - 12,
                         background: summary ? '#1e1b4b' : color.fill,
                         opacity: summary ? 0.85 : 1,
+                        boxShadow: n.current ? '0 0 0 2px #fff, 0 0 0 3.5px #2563eb' : undefined,
                       }}>
-                      {!summary && barW > 70 && <span className="px-1.5 text-[9.5px] font-medium text-white">{fmtDate(n.start!)} → {fmtDate(n.end!)}</span>}
+                      {!summary && barW > 70 && <span className="px-1.5 text-[9.5px] font-medium text-white">{isTask ? n.label : `${fmtDate(n.start!)} → ${fmtDate(n.end!)}`}</span>}
                     </div>
                   ) : (
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9.5px] italic text-[var(--color-muted)]">No planned dates</span>

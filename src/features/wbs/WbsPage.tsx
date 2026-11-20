@@ -7,14 +7,14 @@ import { trialLabelOf } from '../trialLabel'
 import { GanttChart } from './GanttChart'
 import { useQAStore } from '../../store/qaStore'
 import { useWorkParts } from '../../hooks/useWorkParts'
-import { getFilteredData } from '../../engine'
+import { flowTasks, getFilteredData } from '../../engine'
 import type { FilteredInstance, InstanceStatus } from '../../engine'
 import { EMPTY_FILTERS } from '../dashboard/drill'
 import { DEMO_TODAY, fmtDate } from '../scope'
 
 const MS_ORDER = ['PP', 'MPP', 'Pilot', 'SOP']
 
-export type NodeKind = 'milestone' | 'part' | 'activity'
+export type NodeKind = 'milestone' | 'part' | 'activity' | 'task'
 
 export interface WbsNode {
   id: string            // WBS id, e.g. '100', '100.1', '100.1.1'
@@ -27,6 +27,8 @@ export interface WbsNode {
   start?: string
   end?: string
   status: string
+  /** Task rows: this is the task the item waits at now (the Task column in My Work). */
+  current?: boolean
   children?: WbsNode[]
   depth: number
 }
@@ -57,7 +59,7 @@ function daySpan(start?: string, end?: string): number {
 }
 
 export function WbsPage() {
-  const { entries, activities, templateRows, models, milestones: msDefs } = useQAStore()
+  const { entries, activities, templateRows, models, milestones: msDefs, partReleases, partAcks } = useQAStore()
   // ?tab=gantt opens the Gantt chart.
   const [params, setParams] = useSearchParams()
   const view: 'table' | 'gantt' = params.get('tab') === 'gantt' ? 'gantt' : 'table'
@@ -100,10 +102,19 @@ export function WbsPage() {
         const actNodes: WbsNode[] = insts.map((inst, ai) => {
           const start = inst.dates.status === 'resolved' ? inst.dates.start : undefined
           const end = inst.dates.status === 'resolved' ? inst.dates.end : undefined
+          const actId = `${partId}.${ai + 1}`
+          // Tasks from the activity's flow (e.g. Vendor Submit → PIC Approve), with where the item stands.
+          const tasks: WbsNode[] = flowTasks(inst, { releases: partReleases, acks: partAcks }).map((t, ti) => ({
+            id: `${actId}.${ti + 1}`, kind: 'task', label: t.label, weight: 0, effort: daySpan(t.start, t.end),
+            start: t.start, end: t.end, depth: 3,
+            status: t.state === 'done' ? 'Completed' : t.state === 'current' ? 'Ongoing' : t.state === 'na' ? 'Not applicable' : 'Open',
+            current: t.state === 'current',
+          }))
           return {
-            id: `${partId}.${ai + 1}`, kind: 'activity', label: inst.activity.name,
+            id: actId, kind: 'activity', label: inst.activity.name,
             weight: 5, effort: daySpan(start, end), start, end,
-            status: inst.notApplicable ? 'Open' : pmStatus(inst.status), depth: 2
+            status: inst.notApplicable ? 'Open' : pmStatus(inst.status), depth: 2,
+            children: tasks,
           }
         })
         const starts = actNodes.map((a) => a.start).filter(Boolean).sort()
@@ -129,7 +140,7 @@ export function WbsPage() {
       })
     })
     return nodes
-  }, [instances, msDefs])
+  }, [instances, msDefs, partReleases, partAcks])
 
   // Flatten respecting collapse state.
   const flat = useMemo<WbsNode[]>(() => {
@@ -155,7 +166,8 @@ export function WbsPage() {
   const kindTag: Record<NodeKind, string> = {
     milestone: 'bg-indigo-100 text-indigo-700',
     part: 'bg-sky-100 text-sky-700',
-    activity: 'bg-slate-100 text-slate-600'
+    activity: 'bg-slate-100 text-slate-600',
+    task: 'bg-violet-100 text-violet-700'
   }
 
   return (
@@ -163,7 +175,7 @@ export function WbsPage() {
       <PageHeader
         title="WBS Management"
         section="Project Execution"
-        description="Work breakdown structure per model — Milestone → Part → Activity — with planned effort, dates, dependency and status."
+        description="Work breakdown structure per model — Milestone → Part → Activity → Task (from the activity flow) — with planned effort, dates, dependency and status."
       />
 
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
@@ -184,7 +196,7 @@ export function WbsPage() {
         <div className="ml-auto flex items-center gap-2 text-[10.5px]">
           <button onClick={() => setCollapsed(new Set())} className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]">Expand all</button>
           <button
-            onClick={() => setCollapsed(new Set(tree.flatMap((m) => [m.id, ...(m.children ?? []).map((p) => p.id)])))}
+            onClick={() => setCollapsed(new Set(tree.flatMap((m) => [m.id, ...(m.children ?? []).flatMap((p) => [p.id, ...(p.children ?? []).map((x) => x.id)])])))}
             className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]"
           >
             Collapse all
@@ -206,7 +218,7 @@ export function WbsPage() {
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                   <th className="px-4 py-3 min-w-[110px]">WBS ID</th>
-                  <th className="px-4 py-3 min-w-[280px]">Milestone / Part / Activity</th>
+                  <th className="px-4 py-3 min-w-[280px]">Milestone / Part / Activity / Task</th>
                   <th className="px-4 py-3 text-right">EV Weightage (%)</th>
                   <th className="px-4 py-3 text-right">Planned Effort (d)</th>
                   <th className="px-4 py-3">Planned Start</th>
@@ -233,17 +245,17 @@ export function WbsPage() {
                           <span className={`${n.kind === 'milestone' ? 'font-semibold text-[#101828]' : n.kind === 'part' ? 'font-medium text-[#101828]' : 'text-[#344054]'}`}>{n.label}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{n.weight}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{n.kind === 'task' ? '—' : n.weight}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{n.effort || '—'}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--color-muted)]">{n.start ? fmtDate(n.start) : '—'}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--color-muted)]">{n.end ? fmtDate(n.end) : '—'}</td>
                       <td className="px-4 py-2.5">
-                        {n.kind === 'activity'
+                        {n.kind === 'activity' || (n.kind === 'task' && !n.id.endsWith('.1'))
                           ? <span className="rounded-md bg-[#eef4ff] px-2 py-0.5 text-[10px] font-medium text-primary">Finish to Start (FS)</span>
                           : <span className="text-[var(--color-muted)]">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLE[n.status] ?? STATUS_STYLE.Open}`}>{n.status}</span>
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLE[n.status] ?? STATUS_STYLE.Open}`}>{n.current ? 'Current task' : n.status}</span>
                       </td>
                     </tr>
                   )
