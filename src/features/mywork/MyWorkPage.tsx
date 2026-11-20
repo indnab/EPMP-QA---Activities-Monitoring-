@@ -15,7 +15,9 @@ const MINE_LABEL: Record<MineKey, string> = {
   approvePIC: 'Awaiting PIC approval', approveSIC: 'Awaiting SIC approval', approveDPM: 'Awaiting DPM approval',
 }
 import { CalendarTab } from './CalendarTab'
-import { ALL_MARKETS, EMPTY_ATTR_SEL, MARKETS, PartAttrFilters, hasAttrSel, isAllMarkets, matchMarket, matchPartAttrs } from '../partAttrFilters'
+import { ALL_MARKETS, EMPTY_ATTR_SEL, MARKETS, PART_ATTR_FIELDS, PartAttrFilters, hasAttrSel, isAllMarkets, matchMarket, matchPartAttrs } from '../partAttrFilters'
+import { MasterSearch } from './MasterSearch'
+import type { SearchFacet, SearchPick } from './MasterSearch'
 import type { PartAttrSel } from '../partAttrFilters'
 import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -454,6 +456,10 @@ interface FilterBarProps {
   hasFilters: boolean; clearFilters: () => void
   /** Shown at the start of the bar (e.g. the Back button). */
   leading?: React.ReactNode
+  /** Master search: every part (not only the chosen models'), and how picks are applied / removed. */
+  allPartOptions: LabeledOption[]
+  onSearchApply: (picks: SearchPick[]) => void
+  onSearchRemove: (pick: SearchPick) => void
 }
 
 /**
@@ -464,10 +470,24 @@ interface FilterBarProps {
 function CompactFilterBar(f: FilterBarProps) {
   const [more, setMore] = useState(false)
   const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
+  // Master search: every filter on the bar, searchable by value (several terms apply several filters).
+  const facets: SearchFacet[] = [
+    ...(f.showStatus ? [{ key: 'status', label: 'Status', options: plain(f.statusOptions), selected: f.status }] : []),
+    { key: 'model', label: 'Model', options: plain(f.modelOptions), selected: f.model },
+    { key: 'trial', label: 'Trial', options: f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) })), selected: f.milestone },
+    { key: 'part', label: 'Part', options: f.allPartOptions, selected: f.partNo },
+    { key: 'vendor', label: 'Vendor', options: f.vendorOptions, selected: f.vendorCode },
+    { key: 'dept', label: 'Dept', options: plain(f.deptOptions), selected: f.dept },
+    ...PART_ATTR_FIELDS.map((af) => ({ key: af.key, label: af.label, options: plain(af.options), selected: f.attrs[af.key] })),
+    { key: 'market', label: 'Market', options: plain([...MARKETS]), selected: isAllMarkets(f.market) ? [] : f.market },
+    { key: 'activity', label: 'Activity', options: plain(f.activityOptions), selected: f.activity },
+    ...(f.showPic ? [{ key: 'pic', label: 'PIC', options: f.picOptions, selected: f.pic }] : []),
+  ]
   return (
     <section className="epmp-card mb-3 px-3 py-2">
       {/* Date quick filter and whose work to show: part of the filters, for the whole page. */}
       <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-2">
+        <MasterSearch facets={facets} onApply={f.onSearchApply} onRemove={f.onSearchRemove} />
         <QuickRangeControl />
         <PicViewSelect />
         <button
@@ -663,6 +683,50 @@ function MyWorkPageInner() {
   const chooseModels = (next: string[]) => {
     setFModel(next)
     setFPartNo(next.length ? [...new Set(allInstances.filter((i) => next.includes(i.part.model)).map((i) => i.part.partNo))] : [])
+  }
+  // Master search: every part of the user's scope (the Part filter's options follow the chosen models).
+  const allPartOptions = useMemo<LabeledOption[]>(
+    () => uniqBy(allInstances, (i) => i.part.partNo).map((i) => ({ value: i.part.partNo, label: `${i.part.partNo}: ${i.part.partName} (${i.part.model})` })).sort((a, b) => a.label.localeCompare(b.label)),
+    [allInstances]
+  )
+  // Apply several search picks in one update. A picked part also selects its model and narrows the Part filter to the
+  // picked parts; a picked model (without parts) ticks all its parts, as the Model filter does.
+  const applySearch = (picks: SearchPick[]) => {
+    const by = (k: string) => picks.filter((x) => x.facet === k).map((x) => x.value)
+    const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
+    const partsPicked = by('part')
+    const modelOfPart = (no: string) => allInstances.find((i) => i.part.partNo === no)?.part.model
+    const models = union(fModel, union(by('model'), partsPicked.map(modelOfPart).filter((m): m is string => !!m)))
+    const partsOf = (ms: string[]) => [...new Set(allInstances.filter((i) => ms.includes(i.part.model)).map((i) => i.part.partNo))]
+    if (partsPicked.length) {
+      // Earlier "all parts of the model" ticks are replaced by the parts asked for; hand-picked parts stay.
+      const prevAll = fModel.length > 0 && partsOf(fModel).every((n) => fPartNo.includes(n))
+      setFModel(models)
+      setFPartNo(union(prevAll ? [] : fPartNo, partsPicked))
+    } else if (by('model').length) chooseModels(models)
+    const add = (k: string, set: (fn: (prev: string[]) => string[]) => void) => { const v = by(k); if (v.length) set((prev) => union(prev, v)) }
+    add('status', setFStatus)
+    add('trial', setFMilestone)
+    add('vendor', setFVendorCode)
+    add('dept', setFDept)
+    add('activity', setFActivity)
+    add('pic', setFPic)
+    const attrPicks = PART_ATTR_FIELDS.filter((af) => by(af.key).length)
+    if (attrPicks.length) setFAttrs((prev) => ({ ...prev, ...Object.fromEntries(attrPicks.map((af) => [af.key, union(prev[af.key], by(af.key))])) }))
+    if (by('market').length) setFMarket((prev) => (isAllMarkets(prev) ? by('market') : union(prev, by('market'))))
+  }
+  const removeSearch = ({ facet, value }: SearchPick) => {
+    const drop = (prev: string[]) => prev.filter((x) => x !== value)
+    if (facet === 'model') chooseModels(drop(fModel))
+    else if (facet === 'part') setFPartNo(drop)
+    else if (facet === 'status') setFStatus(drop)
+    else if (facet === 'trial') setFMilestone(drop)
+    else if (facet === 'vendor') setFVendorCode(drop)
+    else if (facet === 'dept') setFDept(drop)
+    else if (facet === 'activity') setFActivity(drop)
+    else if (facet === 'pic') setFPic(drop)
+    else if (facet === 'market') setFMarket((prev) => { const n = drop(prev); return n.length ? n : ALL_MARKETS })
+    else if (PART_ATTR_FIELDS.some((af) => af.key === facet)) setFAttrs((prev) => ({ ...prev, [facet]: drop(prev[facet as keyof PartAttrSel]) }))
   }
   const picOptions = useMemo<LabeledOption[]>(
     () => uniqBy(allInstances, (i) => getPicOn(i.part, picAssignments, DEMO_TODAY).name)
@@ -917,7 +981,7 @@ function MyWorkPageInner() {
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
           leading={<BackButton />}
-          attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket}
+          attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
       </div>
@@ -937,7 +1001,7 @@ function MyWorkPageInner() {
               partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
               activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
               status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]}
-              attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket}
+              attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
