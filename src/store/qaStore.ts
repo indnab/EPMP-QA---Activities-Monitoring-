@@ -1709,8 +1709,7 @@ export const useQAStore = create<QAStoreState>()(
               ]
             : []
           // One sample part deleted in ENOVIA during development (shows under "Part Deleted"; its entries are kept).
-          const withData = new Set(d.entries.map((e) => e.partNo))
-          const gone = [...d.parts].reverse().find((p) => withData.has(p.partNo))
+          const gone = d.parts.find((p) => p.partNo === '39100-M74F00')
           const deletedAt = '2026-10-12T09:30:00Z'
           return {
             parts: gone ? d.parts.map((p) => (p.partNo === gone.partNo ? { ...p, sourceDeleted: { system: 'ENOVIA' as const, at: deletedAt } } : p)) : d.parts,

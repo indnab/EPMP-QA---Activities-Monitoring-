@@ -5,7 +5,8 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Icon as FbIcon } from '../../components/Icon'
@@ -122,47 +123,73 @@ export function MyScreen({ instances, parts, onOpen }: { instances: FilteredInst
   const remove = (key: string) => setPanels(panels.filter((x) => x.key !== key))
   const groups = [...new Set(TILES.map((t) => t.group))]
 
+  const openIds = new Set(panels.map((p) => p.tile))
+  // A tile already on the screen moves to the top instead of opening twice.
+  const pick = (tile: string) => {
+    const at = panels.find((p) => p.tile === tile)
+    if (at) setPanels([at, ...panels.filter((p) => p !== at)])
+    else add(tile)
+    setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
+  }
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
+
   return (
-    <div>
-      {/* Tiles as buttons */}
-      <section className="epmp-card mb-3 p-3" aria-label="Tiles">
-        <div className="mb-2 flex items-center gap-2">
-          <h3 className="text-[12px] font-semibold text-[var(--color-text)]">Add to my screen</h3>
-          <span className="text-[10.5px] text-[var(--color-muted)]">Click a tile to open its dashboard below; click bars to drill down.</span>
+    <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[250px_minmax(0,1fr)]">
+      {/* Left: the tiles as buttons */}
+      <aside className="epmp-card p-2.5 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto" aria-label="Tiles">
+        <div className="mb-1.5 flex items-center gap-2 px-1">
+          <h3 className="text-[12px] font-semibold text-[var(--color-text)]">Tiles</h3>
           {panels.length > 0 && (
             <button type="button" onClick={() => setPanels([])} className="ml-auto text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Clear screen</button>
           )}
         </div>
-        <div className="space-y-2">
-          {groups.map((g) => (
-            <div key={g} className="flex flex-wrap items-center gap-1.5">
-              <span className="w-[150px] flex-none text-[10px] font-semibold uppercase leading-tight tracking-wide text-[var(--color-muted)]">{g}</span>
-              {TILES.filter((t) => t.group === g).map((t) => (
-                <button key={t.id} type="button" onClick={() => add(t.id)} data-screen-tile={t.id}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[10.5px] font-medium text-[#344054] hover:border-[#bfdbfe] hover:bg-[var(--color-surface)]">
-                  <FbIcon name={t.icon} size={12} style={{ color: t.color }} />{t.title}
-                  <span className="rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color: t.color, background: `${t.color}14` }}>{counts[t.id]}</span>
-                </button>
-              ))}
+        <p className="mb-2 px-1 text-[10px] text-[var(--color-muted)]">Click a tile to open its dashboard on the right.</p>
+        {groups.map((g) => {
+          const open = !closedGroups.has(g)
+          return (
+            <div key={g} className="mb-1.5">
+              <button type="button" aria-expanded={open}
+                onClick={() => setClosedGroups((prev) => { const n = new Set(prev); if (n.has(g)) n.delete(g); else n.add(g); return n })}
+                className="flex w-full items-center gap-1 rounded-md px-1 py-1 text-left text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-[var(--color-muted)] hover:bg-[var(--color-surface)]">
+                <FbIcon name="chevron-down" size={11} className={open ? '' : '-rotate-90'} />{g}
+              </button>
+              {open && (
+                <div className="mt-0.5 space-y-0.5">
+                  {TILES.filter((t) => t.group === g).map((t) => {
+                    const on = openIds.has(t.id)
+                    return (
+                      <button key={t.id} type="button" onClick={() => pick(t.id)} data-screen-tile={t.id} aria-pressed={on}
+                        className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${on ? 'border-[#bfdbfe] bg-secondary font-semibold text-[#101828]' : 'border-transparent text-[#344054] hover:border-[var(--color-border)] hover:bg-[var(--color-surface)]'}`}
+                        style={on ? { boxShadow: `inset 3px 0 0 ${t.color}` } : undefined}>
+                        <FbIcon name={t.icon} size={12} style={{ color: t.color }} />
+                        <span className="min-w-0 flex-1 truncate" title={t.title}>{t.title}</span>
+                        <span className="flex-none rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color: t.color, background: `${t.color}14` }}>{counts[t.id]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </section>
+          )
+        })}
+      </aside>
 
-      {/* Canvas */}
-      {panels.length === 0 ? (
-        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-white/50 text-center">
-          <FbIcon name="grid" size={28} className="mb-2 text-[var(--color-muted)]" />
-          <p className="text-[12.5px] font-semibold text-[#344054]">Your screen is empty</p>
-          <p className="mt-1 max-w-md text-[11px] text-[var(--color-muted)]">Click any tile above to add its dashboard here. Each one breaks down by Model, then Trial, Vendor and Part; click a bar to go one level deeper.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          {panels.map((p) => (
-            <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
-          ))}
-        </div>
-      )}
+      {/* Right: the interactive dashboard */}
+      <div id="my-screen-canvas" className="min-w-0 scroll-mt-2">
+        {panels.length === 0 ? (
+          <div className="flex min-h-[460px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-white/50 px-6 text-center">
+            <FbIcon name="grid" size={28} className="mb-2 text-[var(--color-muted)]" />
+            <p className="text-[12.5px] font-semibold text-[#344054]">Your screen is empty</p>
+            <p className="mt-1 max-w-md text-[11px] text-[var(--color-muted)]">Click any tile on the left to open its dashboard here. Each breaks down by Model, then Trial, Vendor and Part; click a bar to go one level deeper.</p>
+          </div>
+        ) : (
+          <div className={`grid grid-cols-1 gap-3 ${panels.length > 1 ? 'min-[1800px]:grid-cols-2' : ''}`}>
+            {panels.map((p) => (
+              <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -190,7 +217,6 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
     return [...m.entries()].map(([k, xs]) => ({ k, label: labelOf(groupBy, k, xs), n: xs.length, parts: new Set(xs.map((x) => x.part.partNo)).size, xs }))
       .sort((a, b) => b.n - a.n)
   }, [items, groupBy])
-  const max = Math.max(1, ...bars.map((b) => b.n))
   const stat = (label: string, v: number) => (
     <div className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5">
       <div className="text-[9.5px] font-medium uppercase tracking-wide text-[var(--color-muted)]">{label}</div>
@@ -200,7 +226,7 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
   const uniq = (f: (i: FilteredInstance) => string) => new Set(items.map(f)).size
 
   return (
-    <section className="epmp-card flex min-h-[280px] flex-col p-3" aria-label={tile.title} data-screen-panel={panel.tile}>
+    <section className="epmp-card @container flex min-h-[280px] min-w-0 flex-col p-3" aria-label={tile.title} data-screen-panel={panel.tile}>
       <div className="mb-2 flex items-center gap-2">
         <FbIcon name={tile.icon} size={14} style={{ color: tile.color }} />
         <h3 className="text-[12.5px] font-semibold text-[var(--color-text)]">{tile.title}</h3>
@@ -246,35 +272,8 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
       ) : groupBy === 'list' ? (
         <ActivityList items={items} onOpen={onOpen} />
       ) : (
-        <ul className="max-h-[300px] space-y-1 overflow-y-auto pr-1">
-          {bars.map((b) => (
-            <li key={b.k}>
-              <button type="button" onClick={() => onChange({ drill: [...panel.drill, { dim: groupBy, value: b.k }], groupBy: undefined })}
-                title={`Drill into ${b.label}`} className="group flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left hover:bg-[var(--color-surface)]">
-                <span className="w-[38%] min-w-0 truncate text-[10.5px] text-[#344054]" title={b.label}>{b.label}</span>
-                <span className="relative h-4 flex-1 overflow-hidden rounded bg-[#f1f5f9]">
-                  {/* Stacked by status */}
-                  <span className="absolute inset-y-0 left-0 flex" style={{ width: `${(b.n / max) * 100}%` }}>
-                    {(['Upcoming', 'Completed', 'Delayed', 'NG'] as WorkBucket[]).map((s) => {
-                      const c = b.xs.filter((x) => workBucket(x) === s).length
-                      return c ? <span key={s} title={`${s}: ${c}`} style={{ width: `${(c / b.n) * 100}%`, background: WORK_BUCKET_COLORS[s] }} /> : null
-                    })}
-                  </span>
-                </span>
-                <span className="w-[74px] flex-none text-right text-[10px] tabular-nums text-[#475467]"><strong className="text-[#101828]">{b.n}</strong> · {b.parts} part{b.parts === 1 ? '' : 's'}</span>
-                <FbIcon name="chevron-down" size={11} className="-rotate-90 text-[var(--color-muted)] opacity-0 group-hover:opacity-100" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {groupBy !== 'list' && items.length > 0 && (
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-[9.5px] text-[var(--color-muted)]">
-          {(['Upcoming', 'Completed', 'Delayed', 'NG'] as WorkBucket[]).map((s) => (
-            <span key={s} className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: WORK_BUCKET_COLORS[s] }} />{s === 'Delayed' ? 'Overdue' : s}</span>
-          ))}
-          <span className="ml-auto">Click a bar to drill down</span>
-        </p>
+        <PanelChart items={items} bars={bars} dimLabel={DIM_LABEL[groupBy]}
+          onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
       )}
     </section>
   )
@@ -302,6 +301,103 @@ function ActivityList({ items, onOpen }: { items: FilteredInstance[]; onOpen: (i
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+const STATUSES: WorkBucket[] = ['Upcoming', 'Completed', 'Delayed', 'NG']
+const statusName = (b: WorkBucket) => (b === 'Delayed' ? 'Overdue' : b)
+const TOP = 12
+
+/**
+ * The panel's chart: a status donut (with % complete in the middle) beside a stacked bar chart of the breakdown.
+ * Both resize with the panel; side by side when the panel is wide, stacked when narrow. Long lists show the top 12
+ * with "Show all". Clicking a bar (or its label) drills into it.
+ */
+function PanelChart({ items, bars, dimLabel, onDrill }: {
+  items: FilteredInstance[]
+  bars: { k: string; label: string; n: number; parts: number; xs: FilteredInstance[] }[]
+  dimLabel: string
+  onDrill: (key: string) => void
+}) {
+  const [all, setAll] = useState(false)
+  const shown = all ? bars : bars.slice(0, TOP)
+  const tickOf = (b: { label: string; n: number }) => `${b.label} (${b.n})`
+  const data = shown.map((b) => ({
+    key: b.k, name: tickOf(b), total: b.n, parts: b.parts, label: b.label,
+    ...Object.fromEntries(STATUSES.map((s) => [s, b.xs.filter((x) => workBucket(x) === s).length])),
+  }))
+  const mix = STATUSES.map((s) => ({ s, n: items.filter((i) => workBucket(i) === s).length })).filter((x) => x.n > 0)
+  const done = items.filter((i) => workBucket(i) === 'Completed').length
+  const pct = items.length ? Math.round((done / items.length) * 100) : 0
+  const longest = Math.max(...shown.map((b) => tickOf(b).length), 4)
+  const labelW = Math.min(220, Math.max(70, longest * 6.2 + 10))
+  const height = Math.max(150, shown.length * 30 + 36)
+  const trim = (t: string) => (t.length * 6.2 > labelW - 8 ? `${t.slice(0, Math.floor((labelW - 14) / 6.2))}…` : t)
+
+  return (
+    <div className="grid grid-cols-1 gap-3 @[620px]:grid-cols-[200px_minmax(0,1fr)]">
+      {/* Status mix */}
+      <div className="flex flex-col items-center rounded-lg border border-[var(--color-border)] bg-white p-2">
+        <div className="self-start text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Status mix</div>
+        <div className="relative h-[150px] w-full max-w-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={mix} dataKey="n" nameKey="s" innerRadius="62%" outerRadius="92%" paddingAngle={mix.length > 1 ? 2 : 0} stroke="none" isAnimationActive={false}>
+                {mix.map((m) => <Cell key={m.s} fill={WORK_BUCKET_COLORS[m.s]} />)}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v as number, statusName(n as WorkBucket)]} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[18px] font-bold leading-none text-[#101828]">{pct}%</span>
+            <span className="mt-0.5 text-[9.5px] text-[var(--color-muted)]">completed</span>
+          </div>
+        </div>
+        <ul className="mt-1 grid w-full grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
+          {STATUSES.map((s) => {
+            const n = items.filter((i) => workBucket(i) === s).length
+            return (
+              <li key={s} className="flex items-center gap-1 text-[#475467]">
+                <span className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: WORK_BUCKET_COLORS[s] }} />
+                <span className="truncate">{statusName(s)}</span><span className="ml-auto font-semibold tabular-nums text-[#101828]">{n}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      {/* Breakdown */}
+      <div className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white p-2">
+        <div className="mb-1 flex items-center gap-2 text-[10px]">
+          <span className="font-semibold uppercase tracking-wide text-[var(--color-muted)]">Activities by {dimLabel}</span>
+          <span className="ml-auto text-[var(--color-muted)]">Click a bar to drill down</span>
+        </div>
+        <div style={{ height }} className="w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} layout="vertical" margin={{ top: 2, right: 12, left: 0, bottom: 2 }} barCategoryGap={6}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
+              <XAxis type="number" allowDecimals={false} fontSize={10} stroke="#98a2b3" tickLine={false} />
+              <YAxis type="category" dataKey="name" width={labelW} fontSize={10.5} stroke="#475467" tickLine={false} axisLine={false}
+                tickFormatter={trim} interval={0} style={{ cursor: 'pointer' }}
+                onClick={(t: unknown) => { const v = (t as { value?: string })?.value; const row = data.find((d) => d.name === v); if (row) onDrill(row.key) }} />
+              <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                formatter={(v, n) => [v as number, statusName(n as WorkBucket)]}
+                labelFormatter={(l, p) => { const r = p?.[0]?.payload as { total?: number; parts?: number } | undefined; return `${(p?.[0]?.payload as { label?: string } | undefined)?.label ?? l}${r ? ` · ${r.total} activities, ${r.parts} part${r.parts === 1 ? '' : 's'}` : ''}` }} />
+              {STATUSES.map((st, k) => (
+                <Bar key={st} dataKey={st} stackId="s" maxBarSize={26} fill={WORK_BUCKET_COLORS[st]} cursor="pointer" isAnimationActive={false}
+                  radius={k === STATUSES.length - 1 ? [0, 4, 4, 0] : 0}
+                  onClick={(d: unknown) => { const key = (d as { payload?: { key?: string } })?.payload?.key; if (key) onDrill(key) }} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {bars.length > TOP && (
+          <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">
+            {all ? `Show top ${TOP}` : `Show all ${bars.length}`}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

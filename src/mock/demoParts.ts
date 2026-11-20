@@ -39,6 +39,8 @@ interface DemoPartSeed {
   type: 'NewPart' | 'ECN'
   /** 'ack' = released + acknowledged, 'wait' = released, awaiting acknowledgement, 'none' = not released. */
   release: 'ack' | 'wait' | 'none'
+  /** Just arrived and not released yet: only the PIC's own activities have been started (the vendor can't see it). */
+  fresh?: boolean
 }
 
 const DEMO_PARTS: DemoPartSeed[] = [
@@ -49,7 +51,13 @@ const DEMO_PARTS: DemoPartSeed[] = [
   { partNo: '35520-M68P00', partName: 'Door Wiring Harness', model: 'Baleno', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Electrical', pic: 'Suresh Nair', type: 'NewPart', release: 'ack' },
   { partNo: '84701-M55R10', partName: 'Piston Pin', model: 'Dzire', vendorName: 'Bosch India', vendorCode: 'V1003', department: 'Engine', pic: 'Suresh Nair', type: 'NewPart', release: 'ack' },
   { partNo: '95100-M82P10', partName: 'Instrument Cluster Trim', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'ECN', release: 'ack' },
-  { partNo: '39100-M74F00', partName: 'Door Weatherstrip', model: 'Grand Vitara', vendorName: 'Sanden Vikas', vendorCode: 'V1005', department: 'Body', pic: 'Rahul Verma', type: 'NewPart', release: 'none' }
+  { partNo: '39100-M74F00', partName: 'Door Weatherstrip', model: 'Grand Vitara', vendorName: 'Sanden Vikas', vendorCode: 'V1005', department: 'Body', pic: 'Rahul Verma', type: 'NewPart', release: 'none' },
+  // Pending release: new parts the PIC still has to review and release to the vendor.
+  { partNo: '35650-M74T00', partName: 'Rear Combination Lamp LH', model: 'Swift', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Lighting', pic: 'Rahul Verma', type: 'NewPart', release: 'none', fresh: true },
+  { partNo: '36010-M55R20', partName: 'Fog Lamp Wiring Harness', model: 'Dzire', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Electrical', pic: 'Rahul Verma', type: 'ECN', release: 'none', fresh: true },
+  { partNo: '84701-M82P20', partName: 'Door Mirror Assy RH', model: 'Brezza', vendorName: 'Subros Limited', vendorCode: 'V1004', department: 'Body', pic: 'Anita Desai', type: 'NewPart', release: 'none', fresh: true },
+  { partNo: '15100-M68P30', partName: 'Fuel Pump Module', model: 'Baleno', vendorName: 'Bosch India', vendorCode: 'V1003', department: 'Engine', pic: 'Suresh Nair', type: 'NewPart', release: 'none', fresh: true },
+  { partNo: '73800-M82P40', partName: 'Glove Box Assy', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'ECN', release: 'none', fresh: true }
 ]
 
 /** A plausible value for one field. `n` varies the pick between parts/fields so the lists look mixed. */
@@ -158,6 +166,8 @@ export function buildDemoData(
         if (scenario === 4) return
         const mrd = getMilestoneMrd(model, row.subType ? subTypeMrdKey(row.milestoneId, row.subType) : row.milestoneId) ?? '2026-10-24'
         const vendorFlow = def.flow.steps.length > 1
+        // Not released yet: the vendor has done nothing; the PIC's own activities are only started (draft).
+        if (DEMO_PARTS[pi].fresh && (vendorFlow || scenario !== 3)) return
         let values: Record<string, any> = {}
         def.fields.forEach((f, fi) => {
           if (f.dataOnly) return // fed by the system, not entered
