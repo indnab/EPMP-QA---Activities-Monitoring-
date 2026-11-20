@@ -312,6 +312,12 @@ export interface QAStoreState {
    * is pushed into vendorTimeline.history (for the strikethrough view) and a named history line is appended.
    * Creates the entry if missing.
    */
+  /**
+   * Vendor Planning: the vendor (or PIC / SIC / Admin on its behalf) submits planned dates for several part ×
+   * activity items at once. Unchanged dates are skipped; a changed date keeps the previous one in history.
+   * Returns how many were saved.
+   */
+  submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; date: string; remark?: string }[]; by: PersonaId; actorName?: string }) => number
   setVendorTimeline: (
     templateRowId: string,
     partNo: string,
@@ -1267,6 +1273,33 @@ export const useQAStore = create<QAStoreState>()(
           return { entries }
         }),
 
+      submitVendorPlan: ({ items, by, actorName }) => {
+        if (!['Vendor', 'PIC', 'SIC', 'Admin'].includes(by)) return 0
+        let saved = 0
+        set((state) => {
+          const now = new Date().toISOString()
+          const actor = actorName || by
+          const entries = [...state.entries]
+          for (const it of items) {
+            if (!it.date) continue
+            const row = state.templateRows.find((r) => r.id === it.templateRowId)
+            const part = state.parts.find((p) => p.partNo === it.partNo)
+            if (!row || !part || part.supersededBy) continue
+            const id = makeEntryId(it.templateRowId, it.partNo)
+            const k = entries.findIndex((e) => e.id === id)
+            const prior = k >= 0 ? entries[k].vendorPlan : undefined
+            if (prior?.current.date === it.date && (prior.current.remark ?? '') === (it.remark?.trim() ?? '')) continue
+            const version = { date: it.date, by: actor, byRole: by, at: now, remark: it.remark?.trim() || undefined }
+            const plan = { current: version, history: prior ? [...prior.history, prior.current] : [] }
+            const log = { timestamp: now, persona: by, actorName: actor, action: prior ? `Updated planned date to ${it.date}` : `Planned date ${it.date}`, comment: it.remark?.trim() || undefined }
+            if (k >= 0) entries[k] = { ...entries[k], vendorPlan: plan, history: [...entries[k].history, log], updatedAt: now, updatedBy: by }
+            else entries.push({ id, templateRowId: row.id, activityId: row.activityId, partNo: it.partNo, values: {}, validationState: 'Draft', currentStepIndex: 0, vendorPlan: plan, history: [log], updatedAt: now, updatedBy: by })
+            saved++
+          }
+          return saved ? { entries } : {}
+        })
+        return saved
+      },
       setVendorTimeline: (templateRowId, partNo, start, end, persona, actorName, comment) =>
         set((state) => {
           if (!start || !end || start > end) return {}

@@ -30,6 +30,7 @@ const DashboardsPage = lazy(() =>
 import { WorkspacePage } from './features/workspace/WorkspacePage'
 import { ApplicabilityMatrixPage } from './features/applicability/ApplicabilityMatrixPage'
 import { MyWorkPage } from './features/mywork/MyWorkPage'
+import { VendorPlanningPage } from './features/vendorplanning/VendorPlanningPage'
 import { DataEntryLandingPage } from './features/dataentry/DataEntryLandingPage'
 import { MyWorkGridPage } from './features/mywork/MyWorkGridPage'
 
@@ -57,6 +58,7 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="data-entry" element={<DataEntryLandingPage />} />
           <Route path="activity-update" element={<ActivityUpdatePage />} />
+          <Route path="vendor-planning" element={<VendorPlanningPage />} />
           <Route path="mywork" element={<MyWorkPage />} />
           <Route path="mywork/:activityId/:milestoneId" element={<MyWorkGridPage />} />
           <Route path="part-workspace" element={<PartWorkspacePage />} />

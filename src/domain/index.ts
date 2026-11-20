@@ -407,6 +407,19 @@ export interface VendorTimelineVersion {
  * `history` holds every superseded version, newest last, each with its own metadata, so the UI can
  * show the old dates struck through with who/when.
  */
+/** One version of a vendor's planned date (Vendor Planning). */
+export interface VendorPlanVersion {
+  date: string // YYYY-MM-DD
+  by: string
+  byRole: PersonaId
+  at: string // ISO date-time
+  remark?: string
+}
+export interface VendorPlan {
+  current: VendorPlanVersion
+  /** Earlier submissions, oldest first. */
+  history: VendorPlanVersion[]
+}
 export interface VendorTimeline {
   current: VendorTimelineVersion
   history: VendorTimelineVersion[]
@@ -738,6 +751,11 @@ export interface ActivityEntry {
    * it overrides the template dates for tracking. `history` keeps superseded versions for the strikethrough view.
    */
   vendorTimeline?: VendorTimeline
+  /**
+   * Vendor Planning: the date the vendor commits to finish this activity for the part, against the system planned
+   * window (MRD-based). Tracking still follows the planned window; the plan shows the vendor's commitment.
+   */
+  vendorPlan?: VendorPlan
   /** Actions / recommendations raised on this activity for the part (often assigned to the vendor). */
   actions?: Action[]
   /** Deviations raised on this activity for the part, each moving through the activity's deviation flow. */

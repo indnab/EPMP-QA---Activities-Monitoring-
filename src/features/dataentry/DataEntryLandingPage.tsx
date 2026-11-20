@@ -28,6 +28,13 @@ const DESTS: Dest[] = [
     icon: tile(<><rect x="3" y="4" width="8" height="16" rx="2" /><rect x="13" y="4" width="8" height="16" rx="2" /><path d="M15.5 12l1.5 1.5 3-3" /></>)
   },
   {
+    to: '/vendor-planning',
+    title: 'Vendor Planning',
+    desc: 'Pick parts; every vendor activity is listed with its MRD-based planned window. Enter and submit your planned date against each.',
+    roles: ['Vendor', 'PIC', 'SIC', 'Admin'],
+    icon: tile(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 15h3M13 15h3" /></>)
+  },
+  {
     to: '/activities',
     title: 'Activities',
     desc: 'Every activity by milestone, with parts, planned dates and completion. Open one to work on its parts.',
