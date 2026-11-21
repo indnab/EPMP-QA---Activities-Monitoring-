@@ -2,7 +2,7 @@ import { Icon as FbIcon } from '../components/Icon'
 import { Toaster, toast } from '../components/Toast'
 import { loadSharedConfig } from './governance/configFile'
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PersonaSwitcher } from '../components/PersonaSwitcher'
 import { Modal } from '../components/Modal'
 import { useTableAxisLock } from '../hooks/useIsMobile'
@@ -97,6 +97,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/mywork',     label: 'Workspace',  group: 'Workspace', tour: 'nav-mywork',
     roles: ['Vendor', 'PIC', 'SIC', 'DPM'],
     icon: ico(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h9" /></>) },
+  // Shortcut to Workspace → My Screen (the personal dashboard), for every work role including the vendor.
+  { to: '/mywork?view=myscreen', label: 'My Screen', group: 'Workspace', tour: 'nav-my-screen',
+    roles: ['Vendor', 'PIC', 'SIC', 'DPM'],
+    icon: ico(<><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /><path d="M7 13l3-3 2 2 4-4" /></>) },
   { to: '/data-entry', label: 'Parts Data Entry', group: 'Workspace', tour: 'nav-data-entry',
     icon: ico(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 4v16" /><path d="M12 13l2 2 3-3" /></>) },
   { to: '/vendor-planning', label: 'Vendor Planning', group: 'Workspace', tour: 'nav-vendor-planning',
@@ -172,6 +176,11 @@ export function AppLayout() {
   )
 
   let lastGroup: string | null = null
+  // Workspace and its My Screen shortcut share the /mywork path: tell them apart by ?view=.
+  const loc = useLocation()
+  const onMyScreen = loc.pathname === '/mywork' && new URLSearchParams(loc.search).get('view') === 'myscreen'
+  const activeFor = (to: string, isActive: boolean) =>
+    to === '/mywork?view=myscreen' ? onMyScreen : to === '/mywork' ? isActive && !onMyScreen : isActive
 
   return (
     <div className="epmp-shell flex h-screen overflow-hidden">
@@ -214,9 +223,9 @@ export function AppLayout() {
                   data-tour={item.tour}
                   title={navCollapsed ? item.label : undefined}
                   onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) => `sb-item ${isActive ? 'active' : ''} ${navCollapsed ? 'justify-center !px-0' : ''}`}
+                  className={({ isActive }) => `sb-item ${activeFor(item.to, isActive) ? 'active' : ''} ${navCollapsed ? 'justify-center !px-0' : ''}`}
                 >
-                  {({ isActive }) => (
+                  {({ isActive: navActive }) => { const isActive = activeFor(item.to, navActive); return (
                     <>
                       <span className="flex h-[18px] w-[18px] flex-none items-center justify-center opacity-95">{item.icon}</span>
                       {!navCollapsed && <span className="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>}
@@ -226,7 +235,7 @@ export function AppLayout() {
                         </svg>
                       )}
                     </>
-                  )}
+                  ) }}
                 </NavLink>
               </div>
             )

@@ -471,6 +471,10 @@ interface FilterBarProps {
  */
 function CompactFilterBar(f: FilterBarProps) {
   const [more, setMore] = useState(false)
+  // Minimize: only the search box and a summary stay; remembered in this browser.
+  const [mini, toggleMini] = useCollapsed('mw-filters')
+  const active = [f.status, f.model, f.milestone, f.partNo, f.dept, f.vendorCode, f.activity, f.pic].filter((v) => v.length > 0).length
+    + Object.values(f.attrs).filter((v) => v.length > 0).length + (isAllMarkets(f.market) ? 0 : 1)
   const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
   // Master search: every filter on the bar, searchable by value (several terms apply several filters).
   const facets: SearchFacet[] = [
@@ -485,6 +489,18 @@ function CompactFilterBar(f: FilterBarProps) {
     { key: 'activity', label: 'Activity', options: plain(f.activityOptions), selected: f.activity },
     ...(f.showPic ? [{ key: 'pic', label: 'PIC', options: f.picOptions, selected: f.pic }] : []),
   ]
+  // Minimized: just a small filter icon at the top right (with the number of filters in force).
+  if (mini) {
+    return (
+      <div className="pointer-events-none flex justify-end">
+        <button type="button" onClick={toggleMini} aria-expanded="false" aria-label={`Show filters${active ? ` (${active} applied)` : ''}`} title="Show the filters"
+          className="pointer-events-auto relative -mb-1 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[#344054] shadow-md hover:bg-[var(--color-surface)]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></svg>
+          {active > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[9.5px] font-bold text-white">{active}</span>}
+        </button>
+      </div>
+    )
+  }
   return (
     <section className="epmp-card mb-3 px-3 py-2">
       {/* Date quick filter and whose work to show: part of the filters, for the whole page. */}
@@ -501,7 +517,12 @@ function CompactFilterBar(f: FilterBarProps) {
         {f.hasFilters && (
           <button onClick={f.clearFilters} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
         )}
+        <button type="button" onClick={toggleMini} aria-expanded="true" aria-label="Minimize filters" title="Minimize the filters to an icon"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white text-[#344054] hover:bg-[var(--color-surface)]">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" /></svg>
+        </button>
       </div>
+      {<>
       <div className="flex flex-wrap items-center gap-2">
         {f.leading}
         {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
@@ -519,6 +540,7 @@ function CompactFilterBar(f: FilterBarProps) {
           {f.showPic && <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />}
         </div>
       )}
+      </>}
     </section>
   )
 }

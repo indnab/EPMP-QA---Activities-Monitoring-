@@ -32,6 +32,8 @@ interface TileDef {
   counts?: 'models' | 'vendors' | 'parts'
   /** Opens already drilled to this (e.g. one model). */
   drill?: { dim: Dim; value: string }[]
+  /** What the details list at the top shows (default: what the tile counts; 'none' = no list). */
+  detail?: 'models' | 'vendors' | 'parts' | 'activities' | 'none'
   /** First breakdown (default: the drill path). */
   groupBy?: Dim
 }
@@ -44,7 +46,7 @@ const scopeTiles = (group: string, stage: 'under' | 'developed', color: string, 
   { id: `${stage}.ng`, group, title: 'Unique NG parts', color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', counts: 'parts', test: (_i, c) => c.stage === stage && c.bucket === 'NG' },
 ]
 const STATIC_TILES: TileDef[] = [
-  { id: 'all', group: 'Scope', title: 'All activities', color: '#2153f5', icon: 'list', test: () => true },
+  { id: 'all', group: 'Scope', title: 'All activities', color: '#2153f5', icon: 'list', detail: 'none', test: () => true },
   { id: 'ngparts', group: 'Scope', title: 'NG parts', color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', counts: 'parts', test: (_i, c) => c.bucket === 'NG' },
   ...scopeTiles(UNDER, 'under', '#2153f5', true),
   ...scopeTiles(DEV, 'developed', '#10b981', false),
@@ -99,7 +101,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [] }: {
   const TILES = useMemo<TileDef[]>(() => [
     ...STATIC_TILES,
     ...[...new Set(instances.map((i) => i.part.model))].sort().map((m): TileDef => ({
-      id: `model:${m}`, group: 'Models', title: m, color: stageOf.get(m) === 'developed' ? '#10b981' : '#2153f5', icon: 'grid',
+      id: `model:${m}`, group: 'Models', title: m, detail: 'parts', color: stageOf.get(m) === 'developed' ? '#10b981' : '#2153f5', icon: 'grid',
       drill: [{ dim: 'model', value: m }], test: (i) => i.part.model === m,
     })),
   ], [instances, stageOf])
@@ -251,6 +253,12 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
     </div>
   )
   const uniq = (f: (i: FilteredInstance) => string) => new Set(items.map(f)).size
+  // The tile's details list; once drilled into one model / vendor / part, it lists the next level down.
+  const baseKind = tile.detail ?? tile.counts ?? 'activities'
+  const kindDim = { models: 'model', vendors: 'vendor', parts: 'part' } as const
+  const detailKind: 'models' | 'vendors' | 'parts' | 'activities' | null = baseKind === 'none' ? null
+    : baseKind !== 'activities' && used.includes(kindDim[baseKind]) ? (used.includes('part') ? 'activities' : 'parts')
+      : baseKind
 
   return (
     <section className="epmp-card @container flex min-h-[280px] min-w-0 flex-col p-3" aria-label={tile.title} data-screen-panel={panel.tile}>
@@ -301,6 +309,10 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
         <ActivityList items={items} onOpen={onOpen} />
       ) : (
         <>
+          {detailKind && (
+            <TileDetails kind={detailKind} items={items} color={tile.color} onOpen={onOpen}
+              onDrill={(dim, value) => onChange({ drill: [...panel.drill.filter((d) => d.dim !== dim), { dim, value }], groupBy: undefined })} />
+          )}
           <PanelInsights items={items} groupBy={groupBy} onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
           <PanelChart items={items} bars={bars} dimLabel={DIM_LABEL[groupBy]}
             onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
@@ -672,6 +684,126 @@ function PanelInsights({ items, groupBy, onDrill }: {
           </div>
         ), 'next 6 weeks, by planned end')}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The tile's own details, first in its panel: which models, which parts, which vendors (with their numbers), or for
+ * an activity tile the activities themselves. A row drills the panel into it (an activity row opens its form).
+ */
+function TileDetails({ kind, items, color, onDrill, onOpen }: {
+  kind: 'models' | 'vendors' | 'parts' | 'activities'
+  items: FilteredInstance[]
+  color: string
+  onDrill: (dim: Dim, value: string) => void
+  onOpen: (i: FilteredInstance) => void
+}) {
+  const { partReleases, partAcks } = useQAStore()
+  const [all, setAll] = useState(false)
+  const [open, setOpen] = useState(true)
+  const LIMIT = 8
+  const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
+  type Row = { key: string; cells: React.ReactNode[]; onClick: () => void; title: string }
+  const { head, rows } = useMemo((): { head: string[]; rows: Row[] } => {
+    const group = (f: (i: FilteredInstance) => string) => {
+      const m = new Map<string, FilteredInstance[]>()
+      for (const i of items) { const k = f(i); m.set(k, [...(m.get(k) ?? []), i]) }
+      return [...m.entries()]
+    }
+    const stats = (xs: FilteredInstance[]) => {
+      const done = xs.filter((i) => i.status === 'Approved').length
+      return {
+        n: xs.length, done, od: xs.filter((i) => workBucket(i) === 'Delayed').length, ng: xs.filter((i) => workBucket(i) === 'NG').length,
+        bar: (
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-[#eef2f7]"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${pct(done, xs.length)}%` }} /></span>
+            <span className="tabular-nums">{pct(done, xs.length)}%</span>
+          </span>
+        ),
+      }
+    }
+    const num = (v: number, warn?: string) => <span className={`tabular-nums ${v && warn ? warn : ''}`}>{v}</span>
+    if (kind === 'models') {
+      return {
+        head: ['Model', 'Parts', 'Vendors', 'Activities', 'Completed', 'Overdue', 'NG'],
+        rows: group((i) => i.part.model).map(([m, xs]) => { const s = stats(xs); return {
+          key: m, title: `Drill into ${m}`, onClick: () => onDrill('model', m),
+          cells: [<strong key="m" className="text-[#101828]">{m}</strong>, new Set(xs.map((i) => i.part.partNo)).size, new Set(xs.map((i) => i.part.vendorCode)).size, s.n, s.bar, num(s.od, 'font-semibold text-amber-600'), num(s.ng, 'font-semibold text-red-600')],
+          sort: s.od * 1000 + s.ng } }).sort((a, b) => (b as { sort: number }).sort - (a as { sort: number }).sort),
+      }
+    }
+    if (kind === 'vendors') {
+      return {
+        head: ['Vendor', 'Parts', 'Models', 'Activities', 'Completed', 'Overdue', 'NG'],
+        rows: group((i) => i.part.vendorCode || i.part.vendorName).map(([v, xs]) => { const s = stats(xs); const p = xs[0].part; return {
+          key: v, title: `Drill into ${p.vendorName}`, onClick: () => onDrill('vendor', v),
+          cells: [<span key="v"><span className="font-mono text-[10px] text-[var(--color-muted)]">{p.vendorCode}</span> <strong className="text-[#101828]">{p.vendorName}</strong></span>, new Set(xs.map((i) => i.part.partNo)).size, [...new Set(xs.map((i) => i.part.model))].join(', '), s.n, s.bar, num(s.od, 'font-semibold text-amber-600'), num(s.ng, 'font-semibold text-red-600')],
+          sort: s.od * 1000 + s.ng } }).sort((a, b) => (b as { sort: number }).sort - (a as { sort: number }).sort),
+      }
+    }
+    if (kind === 'parts') {
+      return {
+        head: ['Part', 'Model', 'Vendor', 'Activities', 'Completed', 'Overdue', 'NG'],
+        rows: group((i) => i.part.partNo).map(([no, xs]) => { const s = stats(xs); const p = xs[0].part; return {
+          key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
+          cells: [<span key="p"><span className="font-mono text-[#101828]">{no}</span> <span className="text-[var(--color-muted)]">{p.partName}</span></span>, p.model, `${p.vendorCode}: ${p.vendorName}`, s.n, s.bar, num(s.od, 'font-semibold text-amber-600'), num(s.ng, 'font-semibold text-red-600')],
+          sort: s.od * 1000 + s.ng } }).sort((a, b) => (b as { sort: number }).sort - (a as { sort: number }).sort),
+      }
+    }
+    // Activities: the items themselves, most late first.
+    const late = (i: FilteredInstance) => (i.dates.status === 'resolved' ? Math.round((Date.parse(`${DEMO_TODAY}T00:00:00Z`) - Date.parse(`${i.dates.end}T00:00:00Z`)) / 86_400_000) : -999)
+    return {
+      head: ['Part', 'Activity', 'Trial', 'Planned end', 'Task now', 'Status'],
+      rows: [...items].sort((a, b) => late(b) - late(a)).map((i) => {
+        const b = workBucket(i)
+        const d = late(i)
+        return {
+          key: `${i.row.id}|${i.part.partNo}`, title: 'Open the activity form', onClick: () => onOpen(i),
+          cells: [
+            <span key="p"><span className="font-mono text-[#101828]">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.model}</span></span>,
+            i.activity.name, trialLabelOf(i.row.milestoneId),
+            <span key="e" className="whitespace-nowrap">{i.dates.status === 'resolved' ? fmtDate(i.dates.end) : '—'}{b === 'Delayed' && d > 0 ? <span className="ml-1 font-semibold text-amber-600">+{d} d</span> : null}</span>,
+            taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—',
+            b ? <span key="s" className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold text-white" style={{ background: WORK_BUCKET_COLORS[b] }}>{b === 'Delayed' ? 'Overdue' : b}</span> : '—',
+          ],
+        }
+      }),
+    }
+  }, [kind, items, onDrill, onOpen, partReleases, partAcks])
+  const shown = all ? rows : rows.slice(0, LIMIT)
+  const noun = { models: 'model', vendors: 'vendor', parts: 'part', activities: 'activit' }[kind]
+  const plural = (n: number) => (kind === 'activities' ? (n === 1 ? 'activity' : 'activities') : `${noun}${n === 1 ? '' : 's'}`)
+  return (
+    <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-white" data-tile-details={kind}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-[var(--color-surface)]" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
+        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[#344054]">Which {kind}</span>
+        <span className="rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{rows.length}</span>
+        <span className="ml-auto text-[9.5px] text-[var(--color-muted)]">{kind === 'activities' ? 'click a row to open it' : 'click a row to drill in'}</span>
+        <FbIcon name="chevron-down" size={12} className={open ? "" : "-rotate-90"} />
+      </button>
+      {open && (
+        <>
+          <div className="max-h-[300px] overflow-auto">
+            <table className="w-full text-[10.5px]">
+              <thead className="sticky top-0"><tr className="text-left">{head.map((h) => <th key={h} className="px-2.5 py-1.5">{h}</th>)}</tr></thead>
+              <tbody>
+                {shown.map((r) => (
+                  <tr key={r.key} onClick={r.onClick} title={r.title} className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+                    {r.cells.map((c, k) => <td key={k} className="px-2.5 py-1.5 text-[#344054]">{c}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length > LIMIT && (
+            <button type="button" onClick={() => setAll((v) => !v)} className="w-full border-t border-[var(--color-border)] px-2.5 py-1 text-left text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+              {all ? `Show first ${LIMIT}` : `Show all ${rows.length} ${plural(rows.length)}`}
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 }
