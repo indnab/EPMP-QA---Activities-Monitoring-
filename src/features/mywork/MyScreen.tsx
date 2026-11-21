@@ -132,11 +132,10 @@ export function MyScreen({ instances, parts, onOpen, filters = [] }: {
   const groups = [...new Set(TILES.map((t) => t.group))]
 
   const openIds = new Set(panels.map((p) => p.tile))
-  // A tile already on the screen moves to the top instead of opening twice.
+  // Clicking a tile opens its dashboard; clicking it again (while it's open) closes it.
   const pick = (tile: string) => {
-    const at = panels.find((p) => p.tile === tile)
-    if (at) setPanels([at, ...panels.filter((p) => p !== at)])
-    else add(tile)
+    if (panels.some((p) => p.tile === tile)) { setPanels(panels.filter((p) => p.tile !== tile)); return }
+    add(tile)
     setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
   }
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
@@ -158,7 +157,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [] }: {
             <button type="button" onClick={() => setPanels([])} className="ml-auto text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Clear screen</button>
           )}
         </div>
-        <p className="mb-2 px-1 text-[10px] text-[var(--color-muted)]">Click a tile to open its dashboard on the right.</p>
+        <p className="mb-2 px-1 text-[10px] text-[var(--color-muted)]">Click a tile to open its dashboard on the right; click it again to close it.</p>
         {groups.map((g) => {
           const open = !closedGroups.has(g)
           return (
@@ -173,7 +172,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [] }: {
                   {TILES.filter((t) => t.group === g).map((t) => {
                     const on = openIds.has(t.id)
                     return (
-                      <button key={t.id} type="button" onClick={() => pick(t.id)} data-screen-tile={t.id} aria-pressed={on}
+                      <button key={t.id} type="button" onClick={() => pick(t.id)} data-screen-tile={t.id} aria-pressed={on} title={on ? 'Click to close this dashboard' : 'Click to open its dashboard'}
                         className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${on ? 'border-[#bfdbfe] bg-secondary font-semibold text-[#101828]' : 'border-transparent text-[#344054] hover:border-[var(--color-border)] hover:bg-[var(--color-surface)]'}`}
                         style={on ? { boxShadow: `inset 3px 0 0 ${t.color}` } : undefined}>
                         <FbIcon name={t.icon} size={12} style={{ color: t.color }} />
