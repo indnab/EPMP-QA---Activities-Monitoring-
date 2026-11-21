@@ -134,6 +134,24 @@ export function BasicsStep({ draft, onChange }: BasicsStepProps) {
       </div>
 
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+        <span className="block text-sm font-medium text-[var(--color-text)]">Planned date defined by</span>
+        <span className="mb-2 block text-xs text-[var(--color-muted)]">
+          In Vendor Planning, who enters the planned date against the system planned window: the vendor (the PIC then
+          approves it or sends it back) or the PIC (no approval needed).
+        </span>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Planned date defined by">
+          {(['Vendor', 'PIC'] as const).map((r) => {
+            const current = draft.plannedDateBy ?? (draft.flow?.steps?.[0]?.role === 'Vendor' ? 'Vendor' : 'PIC')
+            return (
+              <label key={r} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${current === r ? 'border-[var(--color-primary)] bg-white font-medium' : 'border-[var(--color-border)] bg-white'}`}>
+                <input type="radio" name="plannedDateBy" checked={current === r} onChange={() => onChange({ plannedDateBy: r })} />
+                {r === 'Vendor' ? 'Vendor (PIC approves)' : 'PIC'}
+              </label>
+            )
+          })}
+        </div>
+      </div>
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"

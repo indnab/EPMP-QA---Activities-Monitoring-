@@ -168,6 +168,12 @@ export interface ActivityDefinition {
    */
   allowVendorPlannedTimeline?: boolean
   /**
+   * Vendor Planning: who defines the planned date for this activity. 'Vendor' = the vendor submits it and the PIC
+   * approves or sends it back; 'PIC' = the PIC sets it (no approval). Absent = the vendor when the flow starts with
+   * the vendor, else the PIC (see plannedDateOwner).
+   */
+  plannedDateBy?: 'Vendor' | 'PIC'
+  /**
    * Ordered chain of approver roles a deviation on this activity must pass through. Prebuilt activities
    * default to ['PIC','SIC','DPM']. Set in the Builder. Absent = use the default chain.
    */
@@ -407,6 +413,10 @@ export interface VendorTimelineVersion {
  * `history` holds every superseded version, newest last, each with its own metadata, so the UI can
  * show the old dates struck through with who/when.
  */
+/** Who defines an activity's planned date (Vendor Planning). */
+export function plannedDateOwner(a: { plannedDateBy?: 'Vendor' | 'PIC'; flow: { steps: { role: string }[] } }): 'Vendor' | 'PIC' {
+  return a.plannedDateBy ?? (a.flow.steps[0]?.role === 'Vendor' ? 'Vendor' : 'PIC')
+}
 /** One version of a vendor's planned date (Vendor Planning). */
 export interface VendorPlanVersion {
   date: string // YYYY-MM-DD
@@ -416,6 +426,14 @@ export interface VendorPlanVersion {
   remark?: string
 }
 export interface VendorPlan {
+  /**
+   * Submitted = the vendor's date waits for the PIC; Approved = accepted (or set by the PIC itself);
+   * Sent back = returned to the vendor with a comment (the vendor changes it and submits again).
+   * Absent on older data = Submitted.
+   */
+  status?: 'Submitted' | 'Approved' | 'Sent back'
+  /** The PIC's last decision. */
+  decision?: { by: string; at: string; comment?: string }
   current: VendorPlanVersion
   /** Earlier submissions, oldest first. */
   history: VendorPlanVersion[]

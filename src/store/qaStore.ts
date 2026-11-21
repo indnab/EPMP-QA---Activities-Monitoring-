@@ -318,6 +318,11 @@ export interface QAStoreState {
    * Returns how many were saved.
    */
   submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; date: string; remark?: string }[]; by: PersonaId; actorName?: string }) => number
+  /**
+   * PIC decides submitted planned dates (usually all of a part's at once): Approve, or Send back with a comment.
+   * Only items still Submitted change. Returns how many.
+   */
+  decideVendorPlans: (args: { items: { templateRowId: string; partNo: string }[]; decision: 'Approve' | 'Send back'; comment?: string; by: PersonaId; actorName?: string }) => number
   setVendorTimeline: (
     templateRowId: string,
     partNo: string,
@@ -1290,7 +1295,12 @@ export const useQAStore = create<QAStoreState>()(
             const prior = k >= 0 ? entries[k].vendorPlan : undefined
             if (prior?.current.date === it.date && (prior.current.remark ?? '') === (it.remark?.trim() ?? '')) continue
             const version = { date: it.date, by: actor, byRole: by, at: now, remark: it.remark?.trim() || undefined }
-            const plan = { current: version, history: prior ? [...prior.history, prior.current] : [] }
+            // The vendor's date goes to the PIC for approval; a date the PIC (or SIC / Admin) sets stands as approved.
+            const plan = {
+              current: version, history: prior ? [...prior.history, prior.current] : [],
+              status: (by === 'Vendor' ? 'Submitted' : 'Approved') as 'Submitted' | 'Approved',
+              decision: by === 'Vendor' ? undefined : { by: actor, at: now },
+            }
             const log = { timestamp: now, persona: by, actorName: actor, action: prior ? `Updated planned date to ${it.date}` : `Planned date ${it.date}`, comment: it.remark?.trim() || undefined }
             if (k >= 0) entries[k] = { ...entries[k], vendorPlan: plan, history: [...entries[k].history, log], updatedAt: now, updatedBy: by }
             else entries.push({ id, templateRowId: row.id, activityId: row.activityId, partNo: it.partNo, values: {}, validationState: 'Draft', currentStepIndex: 0, vendorPlan: plan, history: [log], updatedAt: now, updatedBy: by })
@@ -1299,6 +1309,25 @@ export const useQAStore = create<QAStoreState>()(
           return saved ? { entries } : {}
         })
         return saved
+      },
+      decideVendorPlans: ({ items, decision, comment, by, actorName }) => {
+        if (!['PIC', 'SIC', 'Admin'].includes(by)) return 0
+        if (decision === 'Send back' && !comment?.trim()) return 0
+        let n = 0
+        set((state) => {
+          const now = new Date().toISOString()
+          const actor = actorName || by
+          const ids = new Set(items.map((i) => makeEntryId(i.templateRowId, i.partNo)))
+          const entries = state.entries.map((e) => {
+            const p = e.vendorPlan
+            if (!ids.has(e.id) || !p || (p.status ?? 'Submitted') !== 'Submitted') return e
+            n++
+            const log = { timestamp: now, persona: by, actorName: actor, action: decision === 'Approve' ? `Approved planned date ${p.current.date}` : `Sent back planned date ${p.current.date}`, comment: comment?.trim() || undefined }
+            return { ...e, vendorPlan: { ...p, status: decision === 'Approve' ? 'Approved' as const : 'Sent back' as const, decision: { by: actor, at: now, comment: comment?.trim() || undefined } }, history: [...e.history, log], updatedAt: now, updatedBy: by }
+          })
+          return n ? { entries } : {}
+        })
+        return n
       },
       setVendorTimeline: (templateRowId, partNo, start, end, persona, actorName, comment) =>
         set((state) => {
