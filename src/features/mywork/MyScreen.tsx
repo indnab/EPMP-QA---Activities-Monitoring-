@@ -87,12 +87,14 @@ const labelOf = (d: Dim, v: string, items: FilteredInstance[]): string => {
   return v
 }
 
-export function MyScreen({ instances, parts, onOpen, filters = [] }: {
+export function MyScreen({ instances, parts, onOpen, filters = [], onFocus }: {
   instances: FilteredInstance[]
   parts: PartRecord[]
   onOpen: (i: FilteredInstance) => void
   /** The page filters in force, e.g. ["Model: Swift", "Status: NG"]. Any filter shows the Insights panel automatically. */
   filters?: string[]
+  /** The dashboard at the top (its tile at its current drill level), or null when none is open. */
+  onFocus?: (focus: { label: string; items: FilteredInstance[] } | null) => void
 }) {
   const { picAssignments, partReleases, partAcks } = useQAStore()
   const { panels, setPanels } = useScreen()
@@ -139,6 +141,15 @@ export function MyScreen({ instances, parts, onOpen, filters = [] }: {
     setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
   }
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
+  // Tell the page which activities the top dashboard shows (Activity Update lists them).
+  const top = panels[0]
+  const topItems = top ? itemsOf(top.tile).filter((i) => top.drill.every((d) => keyOf(i, d.dim) === d.value)) : null
+  const topLabel = top ? [TILES.find((t) => t.id === top.tile)?.title ?? top.tile, ...top.drill.map((d) => labelOf(d.dim, d.value, topItems ?? []))].join(' › ') : ''
+  const focusSig = top ? `${top.key}|${JSON.stringify(top.drill)}|${topItems!.map((i) => `${i.row.id}|${i.part.partNo}`).join(',')}` : ''
+  useEffect(() => {
+    onFocus?.(top ? { label: topLabel, items: topItems! } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSig])
   // Insights for the filters: shown by itself whenever a filter is selected (and on an empty screen); it starts
   // again from the top whenever the filters change.
   const filterSig = filters.join('|')

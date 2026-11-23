@@ -634,6 +634,8 @@ function MyWorkPageInner() {
   const kpiLayout = useKpiCardsLayout()
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
+  // My Screen: the dashboard at the top (tile + drill) feeds Activity Update there.
+  const [screenFocus, setScreenFocus] = useState<{ label: string; items: FilteredInstance[] } | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
   const [insPicked, setInsPicked] = useState<Set<string>>(new Set())
   const [insBulkOpen, setInsBulkOpen] = useState(false)
@@ -972,6 +974,28 @@ function MyWorkPageInner() {
     }
   }
 
+  // Activity Update: on My Work (first section) and on My Screen (below the dashboards), driven by the filters.
+  const renderActivityUpdate = (src?: { label: string; items: FilteredInstance[] } | null) => {
+    const items = src ? src.items : tableRows
+    const active = src ? true : updateActive
+    return (
+          <section id="mw-update" className="epmp-card p-3" aria-label="Activity Update">
+            <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
+              <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
+              {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">{src ? <>Shows the activities of <strong className="text-[#344054]">{src.label}</strong> (the dashboard at the top)</> : 'Shows the activities of whatever the filters above select (and any KPI tile you click)'}</span>}
+              <span className="ml-auto"><CollapseButton collapsed={updateClosed} onToggle={toggleUpdate} label="Activity Update" /></span>
+            </div>
+            {!updateClosed && (!active ? (
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
+                Select <strong>any filter</strong> above (model, part, vendor, trial, status… or use the search), or click a KPI tile, to list those activities here and update them together.
+              </p>
+            ) : (
+              <ActivityUpdatePanel instances={items} partCount={new Set(items.map((i) => i.part.partNo)).size} trials={fMilestone.length ? fMilestone : undefined} />
+            ))}
+          </section>
+    )
+  }
+  const activityUpdateSection = renderActivityUpdate()
   const groupDimLabel = { model: 'Model', vendor: 'Vendor', department: 'Department', milestone: 'Trial status' }[groupDim]
 
   return (
@@ -1048,7 +1072,10 @@ function MyWorkPageInner() {
           }
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
-        <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} /></ExportSection>
+        <>
+          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} onFocus={setScreenFocus} /></ExportSection>
+          <div className="mt-3">{renderActivityUpdate(screenFocus)}</div>
+        </>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
       ) : effectiveView === 'actions' ? (
@@ -1090,22 +1117,7 @@ function MyWorkPageInner() {
             }} />
           ) },
           // Activity Update: driven by the page filters (Model → Trial → Part in the filter bar above).
-          { id: 'update', label: 'Activity Update', node: (
-          <section id="mw-update" className="epmp-card p-3" aria-label="Activity Update">
-            <div className={`flex flex-wrap items-center gap-2 ${updateClosed ? '' : 'mb-3'}`}>
-              <h3 className="mr-1 text-[13px] font-semibold text-[var(--color-text)]">Activity Update</h3>
-              {!updateClosed && <span className="text-[10.5px] text-[var(--color-muted)]">Shows the activities of whatever the filters above select (and any KPI tile you click)</span>}
-              <span className="ml-auto"><CollapseButton collapsed={updateClosed} onToggle={toggleUpdate} label="Activity Update" /></span>
-            </div>
-            {!updateClosed && (!updateActive ? (
-              <p className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-[11.5px] text-[var(--color-muted)]">
-                Select <strong>any filter</strong> above (model, part, vendor, trial, status… or use the search), or click a KPI tile, to list those activities here and update them together.
-              </p>
-            ) : (
-              <ActivityUpdatePanel instances={tableRows} partCount={new Set(tableRows.map((i) => i.part.partNo)).size} trials={fMilestone.length ? fMilestone : undefined} />
-            ))}
-          </section>
-          ) },
+          { id: 'update', label: 'Activity Update', node: activityUpdateSection },
           // Detail table — appears for the selected bucket/group (KPI/NG drill lands here)
           { id: 'list', label: 'Parts list', node: (<>
           <div id="mw-detail" />
