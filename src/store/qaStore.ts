@@ -317,7 +317,7 @@ export interface QAStoreState {
    * activity items at once. Unchanged dates are skipped; a changed date keeps the previous one in history.
    * Returns how many were saved.
    */
-  submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; date: string; remark?: string }[]; by: PersonaId; actorName?: string }) => number
+  submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; date: string; remark?: string; /** Outside the system planned window: needs the PIC's approval. */ outside?: boolean }[]; by: PersonaId; actorName?: string }) => number
   /**
    * PIC decides submitted planned dates (usually all of a part's at once): Approve, or Send back with a comment.
    * Only items still Submitted change. Returns how many.
@@ -1295,11 +1295,13 @@ export const useQAStore = create<QAStoreState>()(
             const prior = k >= 0 ? entries[k].vendorPlan : undefined
             if (prior?.current.date === it.date && (prior.current.remark ?? '') === (it.remark?.trim() ?? '')) continue
             const version = { date: it.date, by: actor, byRole: by, at: now, remark: it.remark?.trim() || undefined }
-            // The vendor's date goes to the PIC for approval; a date the PIC (or SIC / Admin) sets stands as approved.
+            // A vendor date outside the planned window goes to the PIC for approval; inside the window it stands
+            // (approved automatically), as does a date the PIC (or SIC / Admin) sets.
+            const needsPic = by === 'Vendor' && !!it.outside
             const plan = {
               current: version, history: prior ? [...prior.history, prior.current] : [],
-              status: (by === 'Vendor' ? 'Submitted' : 'Approved') as 'Submitted' | 'Approved',
-              decision: by === 'Vendor' ? undefined : { by: actor, at: now },
+              status: (needsPic ? 'Submitted' : 'Approved') as 'Submitted' | 'Approved',
+              decision: needsPic ? undefined : { by: by === 'Vendor' ? 'Within the planned window' : actor, at: now },
             }
             const log = { timestamp: now, persona: by, actorName: actor, action: prior ? `Updated planned date to ${it.date}` : `Planned date ${it.date}`, comment: it.remark?.trim() || undefined }
             if (k >= 0) entries[k] = { ...entries[k], vendorPlan: plan, history: [...entries[k].history, log], updatedAt: now, updatedBy: by }

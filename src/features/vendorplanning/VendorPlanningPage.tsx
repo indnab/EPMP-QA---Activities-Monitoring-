@@ -4,7 +4,9 @@
  *  - Vendor: the vendor enters and submits it; the PIC approves all of a part's submitted dates at one go, or sends
  *    them back with a comment (the vendor then changes and resubmits).
  *  - PIC: the PIC enters it directly (no approval).
- * A date after the window's end needs a remark; earlier dates are kept. The vendor sees only its own activities on
+ * A vendor date inside the window stands (approved automatically); outside it needs a remark and goes to the PIC
+ * for approval (notified in the bell). Earlier dates are kept. A Gantt view shows each window as a band with the
+ * planned date on it; clicking the band's row sets the date. The vendor sees only its own activities on
  * parts released to it and acknowledged.
  */
 import { Fragment, useMemo, useState } from 'react'
@@ -41,6 +43,7 @@ export function VendorPlanningPage() {
   const [fParts, setFParts] = useState<string[]>([])
   const [fModels, setFModels] = useState<string[]>([])
   const [trial, setTrial] = useState('All')
+  const [view, setView] = useState<'table' | 'gantt'>('table')
   const [show, setShow] = useState<'all' | 'unplanned' | 'late' | 'awaiting' | 'sentback'>('all')
   const modelOptions = [...new Set(scoped.map((p) => p.model))].sort().map((value) => ({ value }))
   const partOptions = scoped
@@ -72,21 +75,27 @@ export function VendorPlanningPage() {
   const [edit, setEdit] = useState<Record<string, { date?: string; remark?: string }>>({})
   const dateOf = (r: (typeof rows)[number]) => edit[key(r.i)]?.date ?? r.plan?.current.date ?? ''
   const remarkOf = (r: (typeof rows)[number]) => edit[key(r.i)]?.remark ?? r.plan?.current.remark ?? ''
-  const lateBy = (r: (typeof rows)[number]) => { const d = dateOf(r); return d && r.win ? days(r.win.end, d) : 0 }
+  // Days outside the planned window: > 0 after its end, < 0 before its start, 0 inside (or no date / window).
+  const outBy = (r: (typeof rows)[number]) => {
+    const d = dateOf(r)
+    if (!d || !r.win) return 0
+    return d > r.win.end ? days(r.win.end, d) : d < r.win.start ? -days(d, r.win.start) : 0
+  }
+  const lateBy = outBy
   // Who may type the date: the activity's owner (Admin: any).
   const editable = (r: (typeof rows)[number]) => role === 'Admin' || (r.owner === 'Vendor' ? isVendor : role === 'PIC' || role === 'SIC')
   const shown = rows.filter((r) =>
     (trial === 'All' || r.i.row.milestoneId === trial) &&
-    (show === 'all' || (show === 'unplanned' ? !dateOf(r) : show === 'late' ? lateBy(r) > 0 : show === 'awaiting' ? r.status === 'Submitted' : r.status === 'Sent back')))
+    (show === 'all' || (show === 'unplanned' ? !dateOf(r) : show === 'late' ? lateBy(r) !== 0 : show === 'awaiting' ? r.status === 'Submitted' : r.status === 'Sent back')))
   const dirty = rows.filter((r) => {
     const e = edit[key(r.i)]
     return e && ((e.date !== undefined && e.date !== (r.plan?.current.date ?? '')) || (e.remark !== undefined && e.remark !== (r.plan?.current.remark ?? '')))
   })
-  const needsRemark = dirty.filter((r) => lateBy(r) > 0 && !remarkOf(r).trim())
+  const needsRemark = dirty.filter((r) => lateBy(r) !== 0 && !remarkOf(r).trim())
   const counts = {
     total: rows.length,
     planned: rows.filter((r) => r.plan).length,
-    late: rows.filter((r) => lateBy(r) > 0).length,
+    late: rows.filter((r) => lateBy(r) !== 0).length,
     awaiting: rows.filter((r) => r.status === 'Submitted').length,
     sentBack: rows.filter((r) => r.status === 'Sent back').length,
   }
@@ -106,13 +115,14 @@ export function VendorPlanningPage() {
     setEdit(next)
   }
   const submit = () => {
-    if (needsRemark.length) { toast(`Add a remark for the ${needsRemark.length} date${needsRemark.length === 1 ? '' : 's'} after the planned window.`); return }
+    if (needsRemark.length) { toast(`Add a remark for the ${needsRemark.length} date${needsRemark.length === 1 ? '' : 's'} outside the planned window.`); return }
     const n = submitVendorPlan({
-      items: dirty.map((r) => ({ templateRowId: r.i.row.id, partNo: r.i.part.partNo, date: dateOf(r), remark: remarkOf(r) })),
+      items: dirty.map((r) => ({ templateRowId: r.i.row.id, partNo: r.i.part.partNo, date: dateOf(r), remark: remarkOf(r), outside: lateBy(r) !== 0 })),
       by: role, actorName: isVendor ? FIXED_VENDOR_NAME : undefined,
     })
+    const out = isVendor ? dirty.filter((r) => lateBy(r) !== 0).length : 0
     setEdit({})
-    toast(n ? `Plan submitted: ${n} planned date${n === 1 ? '' : 's'}.` : 'Nothing changed.')
+    toast(n ? `Plan submitted: ${n} planned date${n === 1 ? '' : 's'}.${out ? ` ${out} outside the planned window ${out === 1 ? 'goes' : 'go'} to the PIC for approval; the rest stand.` : ''}` : 'Nothing changed.')
   }
 
   const sel = 'h-9 rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 text-[11.5px] text-[#344054]'
@@ -131,7 +141,7 @@ export function VendorPlanningPage() {
               {trialOptions.map((t) => <option key={t} value={t}>{trialLabelOf(t)}</option>)}
             </select>
             <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="Show">
-              {([['all', 'All'], ['unplanned', 'Not planned'], ['awaiting', `Awaiting approval (${counts.awaiting})`], ['sentback', `Sent back (${counts.sentBack})`], ['late', 'After window']] as const).map(([id, label]) => (
+              {([['all', 'All'], ['unplanned', 'Not planned'], ['awaiting', `Awaiting approval (${counts.awaiting})`], ['sentback', `Sent back (${counts.sentBack})`], ['late', 'Outside window']] as const).map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setShow(id)} aria-pressed={show === id}
                   className={`rounded-md px-2.5 py-1 text-[10.5px] font-medium ${show === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
               ))}
@@ -150,7 +160,13 @@ export function VendorPlanningPage() {
         <section className="epmp-card overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] px-4 py-2.5">
             <span className="text-[12px] font-semibold text-[var(--color-text)]">Planning · {shown.length} activit{shown.length === 1 ? 'y' : 'ies'}</span>
-            <span className="text-[10.5px] text-[var(--color-muted)]">{counts.planned} of {counts.total} planned{counts.awaiting ? ` · ${counts.awaiting} awaiting PIC approval` : ''}{counts.sentBack ? ` · ${counts.sentBack} sent back` : ''}{counts.late ? ` · ${counts.late} after the window` : ''}</span>
+            <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="View">
+              {([['table', 'Table'], ['gantt', 'Gantt']] as const).map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
+                  className={`rounded-md px-2.5 py-1 text-[10.5px] font-medium ${view === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
+              ))}
+            </div>
+            <span className="text-[10.5px] text-[var(--color-muted)]">{counts.planned} of {counts.total} planned{counts.awaiting ? ` · ${counts.awaiting} awaiting PIC approval` : ''}{counts.sentBack ? ` · ${counts.sentBack} sent back` : ''}{counts.late ? ` · ${counts.late} outside the window` : ''}</span>
             {canEdit && (
               <span className="ml-auto flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={fillWindowEnd} title="Fill the empty dates with the end of the planned window">Use window end for blanks</Button>
@@ -159,6 +175,12 @@ export function VendorPlanningPage() {
               </span>
             )}
           </div>
+          {view === 'gantt' ? (
+            <PlanGantt rows={shown.map((r) => ({
+              k: key(r.i), part: r.i.part, activity: r.i.activity.name, trial: trialLabelOf(r.i.row.milestoneId), win: r.win,
+              date: dateOf(r), out: lateBy(r), status: dirty.includes(r) ? 'Not submitted' : r.status, owner: r.owner, editable: editable(r),
+            }))} onSet={(k, d) => set(k, { date: d })} />
+          ) : (
           <div className="max-h-[calc(100vh-290px)] overflow-auto">
             <table className="w-full text-[11px]">
               <thead className="sticky top-0 z-10">
@@ -212,7 +234,7 @@ export function VendorPlanningPage() {
                       <td className="px-3 py-2">
                         <input type="date" value={d} disabled={!can} aria-label={`Planned date for ${r.i.activity.name} on ${r.i.part.partNo}`}
                           onChange={(e) => set(k, { date: e.target.value })}
-                          className={`h-8 rounded-lg border px-2 text-[11px] ${late > 0 ? 'border-amber-300 bg-amber-50' : 'border-[var(--color-border)] bg-white'}`} />
+                          className={`h-8 rounded-lg border px-2 text-[11px] ${late !== 0 ? 'border-amber-300 bg-amber-50' : 'border-[var(--color-border)] bg-white'}`} />
                         {r.plan && r.plan.history.length > 0 && (
                           <div className="mt-0.5 text-[9.5px] text-[var(--color-muted)]" title={r.plan.history.map((h) => `${fmtDate(h.date)} by ${h.by}`).join('\n')}>
                             was <span className="line-through">{fmtDate(r.plan.history.at(-1)!.date)}</span>
@@ -221,13 +243,13 @@ export function VendorPlanningPage() {
                       </td>
                       <td className="px-3 py-2">
                         <input value={remarkOf(r)} disabled={!can} onChange={(e) => set(k, { remark: e.target.value })}
-                          placeholder={late > 0 ? 'Why after the window? (required)' : 'Optional'} aria-label="Remark"
-                          className={`h-8 w-full min-w-[160px] rounded-lg border px-2 text-[11px] ${late > 0 && !remarkOf(r).trim() ? 'border-red-300' : 'border-[var(--color-border)]'}`} />
+                          placeholder={late !== 0 ? 'Why outside the window? (required)' : 'Optional'} aria-label="Remark"
+                          className={`h-8 w-full min-w-[160px] rounded-lg border px-2 text-[11px] ${late !== 0 && !remarkOf(r).trim() ? 'border-red-300' : 'border-[var(--color-border)]'}`} />
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-[10.5px]">
                         <div className="flex flex-wrap gap-1">
                           {!d ? <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">Not planned</span>
-                            : late > 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">{late} d after window</span>
+                            : late !== 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">{late > 0 ? `${late} d after window` : `${-late} d before window`}</span>
                               : <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800">Within window</span>}
                           {!changed && r.status && (
                             <span className={`rounded-full px-2 py-0.5 font-semibold ${r.status === 'Approved' ? 'bg-emerald-600 text-white' : r.status === 'Sent back' ? 'bg-red-100 text-red-800' : 'bg-cyan-100 text-cyan-800'}`}>
@@ -249,8 +271,9 @@ export function VendorPlanningPage() {
               </tbody>
             </table>
           </div>
+          )}
           <p className="border-t border-[var(--color-border)] px-4 py-2 text-[10px] text-[var(--color-muted)]">
-            Planned window = the system dates from the MRD reference and the activity's offsets. Your planned date is your commitment; a date after the window needs a remark. Vendor: {chosen.length ? [...new Set(rows.map((r) => vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)))].join(', ') : '—'}.
+            Planned window = the system dates from the MRD reference and the activity's offsets. A planned date inside the window stands; outside it needs a remark and the PIC's approval. Vendor: {chosen.length ? [...new Set(rows.map((r) => vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)))].join(', ') : '—'}.
           </p>
         </section>
       )}
@@ -271,3 +294,128 @@ export function VendorPlanningPage() {
   )
 }
 
+
+// ── Gantt view ─────────────────────────────────────────────────────────────────────────────────────────────────
+interface GanttRow {
+  k: string
+  part: { partNo: string; partName: string; model: string }
+  activity: string
+  trial: string
+  win: { start: string; end: string } | null
+  date: string
+  /** Days outside the window (+ after, − before, 0 inside). */
+  out: number
+  status?: string
+  owner: 'Vendor' | 'PIC'
+  editable: boolean
+}
+const GDAY = 86_400_000
+const gnum = (d: string) => Date.parse(`${d}T00:00:00Z`)
+const gstr = (t: number) => new Date(t).toISOString().slice(0, 10)
+
+/**
+ * Each activity on a time axis: the system planned window as a band, the planned date as a marker on it (green inside
+ * the band, amber outside, joined to the band by a line). Clicking a row's track sets the planned date there (where
+ * the date is yours to set); a red line marks today.
+ */
+function PlanGantt({ rows, onSet }: { rows: GanttRow[]; onSet: (k: string, date: string) => void }) {
+  const [zoom, setZoom] = useState<'week' | 'month'>('month')
+  const px = zoom === 'week' ? 16 : 5
+  const LEFT = 330
+  const range = useMemo(() => {
+    const ds = rows.flatMap((r) => [r.win?.start, r.win?.end, r.date]).filter((d): d is string => !!d).concat(DEMO_TODAY)
+    const lo = new Date(Math.min(...ds.map(gnum))), hi = new Date(Math.max(...ds.map(gnum)))
+    const from = Date.UTC(lo.getUTCFullYear(), lo.getUTCMonth(), 1)
+    const to = Date.UTC(hi.getUTCFullYear(), hi.getUTCMonth() + 1, 1)
+    return { from, to }
+  }, [rows])
+  const x = (d: string) => Math.round(((gnum(d) - range.from) / GDAY) * px)
+  const width = Math.max(560, Math.round(((range.to - range.from) / GDAY) * px))
+  const months: { label: string; left: number }[] = []
+  for (let d = new Date(range.from); d.getTime() < range.to; d.setUTCMonth(d.getUTCMonth() + 1)) {
+    months.push({ label: d.toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }), left: Math.round(((d.getTime() - range.from) / GDAY) * px) })
+  }
+  const weeks: number[] = []
+  if (zoom === 'week') for (let t = range.from; t < range.to; t += GDAY) if (new Date(t).getUTCDay() === 1) weeks.push(Math.round(((t - range.from) / GDAY) * px))
+  const todayX = x(DEMO_TODAY)
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] px-4 py-2 text-[10.5px] text-[#475467]">
+        <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="Zoom">
+          {(['week', 'month'] as const).map((z) => (
+            <button key={z} type="button" onClick={() => setZoom(z)} aria-pressed={zoom === z}
+              className={`rounded-md px-2.5 py-1 font-medium capitalize ${zoom === z ? 'bg-white text-[#101828] shadow-sm' : ''}`}>{z}</button>
+          ))}
+        </div>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-6 rounded-sm border border-emerald-400 bg-emerald-100" />Planned window (system)</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rotate-45 bg-emerald-600" />Planned date inside</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rotate-45 bg-amber-500" />Outside: remark + PIC approval</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-px bg-red-500" />Today</span>
+        <span className="ml-auto text-[var(--color-muted)]">Click a row to set the planned date there</span>
+      </div>
+      <div className="max-h-[calc(100vh-330px)] overflow-auto" role="grid" aria-label="Planning Gantt">
+        <div className="relative" style={{ width: LEFT + width }}>
+          <div className="sticky top-0 z-20 flex border-b border-[var(--color-border)] bg-[#dce8fb]">
+            <div className="sticky left-0 z-30 flex-none border-r border-[var(--color-border)] bg-[#dce8fb] px-3 py-1.5 text-[10.5px] font-medium text-[#344054]" style={{ width: LEFT }}>Part · Activity</div>
+            <div className="relative h-[30px]" style={{ width }}>
+              {months.map((m) => <div key={m.left} className="absolute top-0 border-l border-[#b8cdf0] px-1.5 pt-1 text-[10px] font-semibold text-[#344054]" style={{ left: m.left }}>{m.label}</div>)}
+            </div>
+          </div>
+          {rows.map((r, n) => {
+            const newPart = n === 0 || rows[n - 1].part.partNo !== r.part.partNo
+            const left = r.win ? x(r.win.start) : 0
+            const bandW = r.win ? Math.max(6, x(gstr(gnum(r.win.end) + GDAY)) - left) : 0
+            const dx = r.date ? x(r.date) + Math.round(px / 2) : 0
+            const edge = r.win ? (r.out > 0 ? left + bandW : left) : dx
+            const tip = `${r.activity}${r.win ? ` · window ${fmtDate(r.win.start)} → ${fmtDate(r.win.end)}` : ''}${r.date ? ` · planned ${fmtDate(r.date)}` : ' · not planned'}${r.out ? ` (${Math.abs(r.out)} d ${r.out > 0 ? 'after' : 'before'} the window)` : ''}`
+            return (
+              <Fragment key={r.k}>
+                {newPart && (
+                  <div className="flex border-b border-[var(--color-border)] bg-[#f5f7ff]" style={{ height: 26 }}>
+                    <div className="sticky left-0 z-10 flex flex-none items-center gap-2 border-r border-[var(--color-border)] bg-[#f5f7ff] px-3" style={{ width: LEFT }}>
+                      <span className="font-mono text-[11px] font-semibold text-[#101828]">{r.part.partNo}</span>
+                      <span className="truncate text-[10px] text-[#475467]">{r.part.partName} · {r.part.model}</span>
+                    </div>
+                    <div style={{ width }} />
+                  </div>
+                )}
+                <div role="row" className="flex border-b border-[var(--color-border)] bg-white" style={{ height: 32 }}>
+                  <div role="rowheader" className="sticky left-0 z-10 flex flex-none items-center gap-1.5 border-r border-[var(--color-border)] bg-white px-3" style={{ width: LEFT }}>
+                    <span className="rounded bg-secondary px-1 py-px text-[9px] font-semibold text-primary">{r.trial}</span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-[#344054]" title={r.activity}>{r.activity}</span>
+                    {r.status && (
+                      <span className={`flex-none rounded-full px-1.5 py-px text-[9px] font-semibold ${r.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : r.status === 'Sent back' ? 'bg-red-100 text-red-800' : r.status === 'Not submitted' ? 'bg-amber-100 text-amber-800' : 'bg-cyan-100 text-cyan-800'}`}>
+                        {r.status === 'Submitted' ? 'Awaiting PIC' : r.status}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`relative ${r.editable ? 'cursor-crosshair' : ''}`} style={{ width }} title={tip}
+                    onClick={(e) => {
+                      if (!r.editable) return
+                      const box = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                      onSet(r.k, gstr(range.from + Math.floor((e.clientX - box.left) / px) * GDAY))
+                    }}>
+                    {months.map((m) => <div key={m.left} className="absolute inset-y-0 border-l border-[#eef2f7]" style={{ left: m.left }} />)}
+                    {weeks.map((w) => <div key={w} className="absolute inset-y-0 border-l border-dashed border-[#f1f5f9]" style={{ left: w }} />)}
+                    {r.win ? (
+                      <div className="absolute rounded-md border border-emerald-400 bg-emerald-100/80" style={{ left, width: bandW, top: 8, height: 16 }} />
+                    ) : <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9.5px] italic text-[var(--color-muted)]">Awaiting MRD</span>}
+                    {r.date && r.out !== 0 && (
+                      <div className="absolute border-t-2 border-dashed border-amber-500" style={{ left: Math.min(edge, dx), width: Math.abs(dx - edge), top: 15 }} />
+                    )}
+                    {r.date && (
+                      <div className={`absolute h-3 w-3 rotate-45 shadow ${r.out ? 'bg-amber-500 ring-2 ring-amber-200' : 'bg-emerald-600 ring-2 ring-white'}`} style={{ left: dx - 6, top: 10 }} />
+                    )}
+                    {r.date && <span className={`absolute whitespace-nowrap rounded bg-white/85 px-0.5 text-[9.5px] font-semibold ${r.out ? 'text-amber-700' : 'text-emerald-700'}`} style={r.out < 0 ? { right: width - dx + 9, top: 9 } : { left: dx + 9, top: 9 }}>{fmtDate(r.date)}{r.out ? ` (${r.out > 0 ? '+' : '−'}${Math.abs(r.out)} d)` : ''}</span>}
+                  </div>
+                </div>
+              </Fragment>
+            )
+          })}
+          {todayX >= 0 && todayX <= width && <div className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-red-500" style={{ left: LEFT + todayX }} aria-hidden="true" />}
+        </div>
+      </div>
+    </div>
+  )
+}

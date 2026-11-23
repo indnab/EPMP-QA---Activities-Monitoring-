@@ -19,7 +19,8 @@ const TAG_STYLE: Record<string, string> = {
   Deviation: 'bg-amber-100 text-amber-800',
   Action: 'bg-indigo-100 text-indigo-800',
   Delay: 'bg-red-100 text-red-800',
-  Release: 'bg-blue-100 text-blue-800'
+  Release: 'bg-blue-100 text-blue-800',
+  Planning: 'bg-cyan-100 text-cyan-800'
 }
 
 /**
@@ -27,7 +28,7 @@ const TAG_STYLE: Record<string, string> = {
  * release handshake). It is a live in-app list, not a push or email notification.
  */
 export function NotificationBell() {
-  const { partReleases, partAcks } = useQAStore()
+  const { partReleases, partAcks, entries } = useQAStore()
   const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const { attention } = useExceptionData()
@@ -52,6 +53,18 @@ export function NotificationBell() {
       const n = states.filter((s) => s === 'Returned').length
       if (n) out.push({ key: 'rel-p', tag: 'Release', title: `${n} part${n === 1 ? '' : 's'} returned by the vendor`, sub: 'Fix the details and release again', to: '/mywork' })
     }
+    // Vendor planned dates outside the system window wait for the PIC's approval (Vendor Planning).
+    if (currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin') {
+      const mine = new Set(live.map((p) => p.partNo))
+      const waiting = entries.filter((e) => mine.has(e.partNo) && e.vendorPlan && (e.vendorPlan.status ?? 'Submitted') === 'Submitted')
+      if (waiting.length) {
+        const partsN = new Set(waiting.map((e) => e.partNo)).size
+        out.push({ key: 'plan-p', tag: 'Planning', title: `${waiting.length} vendor planned date${waiting.length === 1 ? '' : 's'} outside the window`, sub: `${partsN} part${partsN === 1 ? '' : 's'} · approve or send back in Vendor Planning`, to: '/vendor-planning' })
+      }
+    } else if (currentPersona === 'Vendor') {
+      const back = entries.filter((e) => e.vendorPlan?.status === 'Sent back').length
+      if (back) out.push({ key: 'plan-v', tag: 'Planning', title: `${back} planned date${back === 1 ? '' : 's'} sent back by the PIC`, sub: 'Change and resubmit in Vendor Planning', to: '/vendor-planning' })
+    }
     for (const a of attention.slice(0, 8)) {
       out.push({
         key: a.type + a.key, tag: a.type, title: a.title, sub: `${a.note}${a.due ? ' · ' + fmtDate(a.due) : ''}`,
@@ -59,7 +72,7 @@ export function NotificationBell() {
       })
     }
     return out
-  }, [parts, partReleases, partAcks, currentPersona, attention])
+  }, [parts, partReleases, partAcks, currentPersona, attention, entries])
   const count = notes.length + Math.max(0, attention.length - 8)
 
   return (
