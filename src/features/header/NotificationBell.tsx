@@ -6,6 +6,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { getReleaseState } from '../../engine'
 import { fmtDate, partInScope } from '../scope'
 import { useExceptionData } from '../exceptions/useExceptionData'
+import { ACK_SLA_DAYS, PLAN_SLA_DAYS, RELEASE_SLA_DAYS, usePlanningSla } from '../vendorplanning/planningSla'
 
 interface Note {
   key: string
@@ -20,7 +21,8 @@ const TAG_STYLE: Record<string, string> = {
   Action: 'bg-indigo-100 text-indigo-800',
   Delay: 'bg-red-100 text-red-800',
   Release: 'bg-blue-100 text-blue-800',
-  Planning: 'bg-cyan-100 text-cyan-800'
+  Planning: 'bg-cyan-100 text-cyan-800',
+  Timeline: 'bg-red-100 text-red-800'
 }
 
 /**
@@ -32,6 +34,7 @@ export function NotificationBell() {
   const parts = useWorkParts()
   const { currentPersona } = usePersonaStore()
   const { attention } = useExceptionData()
+  const slaRows = usePlanningSla()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -53,6 +56,24 @@ export function NotificationBell() {
       const n = states.filter((s) => s === 'Returned').length
       if (n) out.push({ key: 'rel-p', tag: 'Release', title: `${n} part${n === 1 ? '' : 's'} returned by the vendor`, sub: 'Fix the details and release again', to: '/mywork' })
     }
+    // Timelines: release within 7 d, acknowledgement within 3 d, vendor planned dates within ack + 15 d.
+    {
+      const mine = new Set(live.map((p) => p.partNo))
+      const s = slaRows.filter((x) => mine.has(x.part.partNo))
+      const n = (f: (x: (typeof s)[number]) => boolean) => s.filter(f).length
+      const plural = (k: number) => `${k} part${k === 1 ? '' : 's'}`
+      if (currentPersona === 'Vendor') {
+        const ack = n((x) => x.ackOverdue), late = n((x) => x.planExceeded), soon = n((x) => x.planPending && !x.planExceeded && (x.planDaysLeft ?? 99) <= 5)
+        if (ack) out.push({ key: 'tl-ack-v', tag: 'Timeline', title: `${plural(ack)} not acknowledged within ${ACK_SLA_DAYS} days`, sub: 'Acknowledge or return them in My Parts', to: '/mywork?view=actions' })
+        if (late) out.push({ key: 'tl-plan-v', tag: 'Timeline', title: `Planned dates overdue for ${plural(late)}`, sub: `Due within ${PLAN_SLA_DAYS} days of acknowledgement`, to: '/vendor-planning' })
+        if (soon) out.push({ key: 'tl-plan-soon', tag: 'Planning', title: `Planned dates due soon for ${plural(soon)}`, sub: 'Within 5 days', to: '/vendor-planning' })
+      } else if (currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin' || currentPersona === 'DPM') {
+        const rel = n((x) => x.releaseOverdue), ack = n((x) => x.ackOverdue), late = n((x) => x.planExceeded)
+        if (rel) out.push({ key: 'tl-rel', tag: 'Timeline', title: `${plural(rel)} pending release for over ${RELEASE_SLA_DAYS} days`, sub: 'Validate and release in My Parts', to: '/mywork?view=actions' })
+        if (ack) out.push({ key: 'tl-ack', tag: 'Timeline', title: `${plural(ack)} not acknowledged by the vendor within ${ACK_SLA_DAYS} days`, sub: 'Follow up with the vendor', to: '/mywork?view=actions' })
+        if (late) out.push({ key: 'tl-plan', tag: 'Timeline', title: `Vendor planned dates not filled in time for ${plural(late)}`, sub: `Past acknowledgement + ${PLAN_SLA_DAYS} days`, to: '/vendor-planning' })
+      }
+    }
     // Vendor planned dates outside the system window wait for the PIC's approval (Vendor Planning).
     if (currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin') {
       const mine = new Set(live.map((p) => p.partNo))
@@ -72,7 +93,7 @@ export function NotificationBell() {
       })
     }
     return out
-  }, [parts, partReleases, partAcks, currentPersona, attention, entries])
+  }, [parts, partReleases, partAcks, currentPersona, attention, entries, slaRows])
   const count = notes.length + Math.max(0, attention.length - 8)
 
   return (

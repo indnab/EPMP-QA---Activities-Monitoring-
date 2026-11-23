@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { activeModelNames } from '../../domain/projects'
+import { Link } from 'react-router-dom'
+import { ACK_SLA_DAYS, PLAN_SLA_DAYS, RELEASE_SLA_DAYS, usePlanningSla } from '../vendorplanning/planningSla'
+import type { PartSla } from '../vendorplanning/planningSla'
 import { usePicViewMatch } from './picView'
 import { Button, Modal } from '../../components'
 import { useQAStore } from '../../store/qaStore'
@@ -11,9 +14,14 @@ import type { PartRecord, ReleaseState } from '../../domain'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 
 /** Which slice of parts the list below the tiles shows. */
-type Slice = 'pending' | 'released' | 'awaiting' | 'acknowledged' | 'returned' | 'deleted'
+type Slice = 'pending' | 'released' | 'awaiting' | 'acknowledged' | 'returned' | 'deleted' | TimeSlice
+/** Timeline tiles: release > 7 d, acknowledgement > 3 d, vendor planned dates pending / past ack + 15 d. */
+type TimeSlice = 'relOverdue' | 'ackOverdue' | 'planPending' | 'planExceeded'
+const TIME_TEST: Record<TimeSlice, (s: PartSla) => boolean> = {
+  relOverdue: (s) => s.releaseOverdue, ackOverdue: (s) => s.ackOverdue, planPending: (s) => s.planPending, planExceeded: (s) => s.planExceeded,
+}
 /** 'deleted' is not a release state: it lists parts SAP / ENOVIA deleted (they are recalled automatically). */
-const SLICE_STATES: Record<Exclude<Slice, 'deleted'>, ReleaseState[]> = {
+const SLICE_STATES: Record<Exclude<Slice, 'deleted' | TimeSlice>, ReleaseState[]> = {
   pending: ['Pending'],
   released: ['Released', 'Acknowledged'],
   awaiting: ['Released'],
@@ -102,7 +110,28 @@ export function ReleasePanel() {
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState('')
 
-  const shown = slice === 'deleted' ? deletedRows : rows.filter((r) => SLICE_STATES[slice].includes(r.state))
+  const slaRows = usePlanningSla()
+  const sla = useMemo(() => new Map(slaRows.map((s) => [s.part.partNo, s])), [slaRows])
+  const tcount = (t: TimeSlice) => rows.filter((r) => { const s = sla.get(r.part.partNo); return s ? TIME_TEST[t](s) : false }).length
+  const isTime = (s: Slice): s is TimeSlice => s in TIME_TEST
+  const shown = slice === 'deleted' ? deletedRows
+    : isTime(slice) ? rows.filter((r) => { const s = sla.get(r.part.partNo); return s ? TIME_TEST[slice](s) : false })
+      : rows.filter((r) => SLICE_STATES[slice].includes(r.state))
+  /** Where the part stands against its timeline, in words. */
+  const timeline = (no: string): { text: string; late: boolean } | null => {
+    const s = sla.get(no)
+    if (!s) return null
+    if (s.releaseDays !== undefined) return { text: `With PIC ${s.releaseDays} d (received ${fmtDate(s.receivedAt!)}) · release due within ${RELEASE_SLA_DAYS} d`, late: s.releaseOverdue }
+    if (s.ackDays !== undefined) return { text: `With vendor ${s.ackDays} d for acknowledgement · due within ${ACK_SLA_DAYS} d`, late: s.ackOverdue }
+    if (s.planRequired) {
+      const left = s.planDaysLeft ?? 0
+      return {
+        text: `Planned dates ${s.planFilled} of ${s.planRequired} · ${s.planDaysWithVendor} d with vendor · due ${fmtDate(s.planDue!)} (ack + ${PLAN_SLA_DAYS} d)${s.planPending ? (left < 0 ? ` · ${-left} d late` : ` · ${left} d left`) : ' · complete'}${s.planAwaiting ? ` · ${s.planAwaiting} awaiting PIC` : ''}${s.rejections.length ? ` · ${s.rejections.length} sent back` : ''}`,
+        late: s.planExceeded,
+      }
+    }
+    return null
+  }
   // Deleted parts cannot be released (SAP / ENOVIA has to activate them first).
   const pickable = (state: ReleaseState, part?: PartRecord) =>
     !part?.sourceDeleted && (isVendor ? state === 'Released' : canReleaseParts && (state === 'Pending' || state === 'Returned'))
@@ -158,6 +187,22 @@ export function ReleasePanel() {
         </span>
       </div>
       <div className={`grid grid-cols-2 gap-3 ${isVendor ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
+        {isVendor ? (
+          <>
+            <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
+            <Tile title="Planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
+            <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
+          </>
+        ) : (
+          <>
+            <Tile title={`Release overdue (> ${RELEASE_SLA_DAYS} d)`} count={tcount('relOverdue')} color="#b45309" active={slice === 'relOverdue'} onClick={() => choose('relOverdue')} />
+            <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
+            <Tile title="Vendor planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
+            <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
+          </>
+        )}
+      </div>
+      <div className={`mt-3 grid grid-cols-2 gap-3 ${isVendor ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
         {isVendor ? (
           <>
             <Tile title="Awaiting my acknowledgement" count={counts.awaiting} color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
@@ -260,10 +305,19 @@ export function ReleasePanel() {
                           : state === 'Returned' && ret
                           ? `Returned ${fmtDate(ret.at.slice(0, 10))}: “${ret.reason}”`
                           : state === 'Pending'
-                            ? '—'
+                            ? ''
                             : rel
                               ? `Released ${fmtDate(rel.at.slice(0, 10))} by ${rel.by}`
                               : '—'}
+                        {!part.sourceDeleted && (() => {
+                          const t = timeline(part.partNo)
+                          return t ? (
+                            <div className={`mt-0.5 ${t.late ? 'font-semibold text-red-700' : 'text-[#475467]'}`}>
+                              {t.late && '⚠ '}{t.text}
+                              {state === 'Acknowledged' && <> · <Link to="/vendor-planning" className="font-semibold text-[var(--color-accent)] hover:underline">Vendor Planning</Link></>}
+                            </div>
+                          ) : null
+                        })()}
                       </td>
                     </tr>
                   )

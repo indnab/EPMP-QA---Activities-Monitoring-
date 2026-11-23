@@ -4,7 +4,7 @@
  * Used by the "Load sample parts" button (AppLayout). Remove together with that button.
  */
 import { staffIdOf } from '../domain/people'
-import { makeEntryId } from '../domain'
+import { makeEntryId, plannedDateOwner } from '../domain'
 import { deriveTechnicalCategory } from '../domain/timelineCatalog'
 import type {
   Action,
@@ -21,7 +21,7 @@ import type {
   PartRelease,
   TemplateRow
 } from '../domain'
-import { addDays, getFilteredData, evaluateCalculatedFields, evaluateConditionalRules, getMilestoneMrd, rowsFromActivityTable, rowsFromCount } from '../engine'
+import { addDays, getFilteredData, resolveInstanceDates, evaluateCalculatedFields, evaluateConditionalRules, getMilestoneMrd, rowsFromActivityTable, rowsFromCount } from '../engine'
 import { subTypeMrdKey } from '../domain/timelineCatalog'
 import { sapTier2Rows } from './index'
 import { sampleIntakeAttrs } from './partIntakeFields'
@@ -138,17 +138,21 @@ export function buildDemoData(
       type: p.type,
       // Part numbers come from ENOVIA; some arrive through the SAP feed, so the sample mixes both.
       origin: idx % 3 === 0 ? 'SAP' : 'ENOVIA',
-      attrs: { ...sampleIntakeAttrs(p.partNo, idx), qa_pic_staff_id: staffIdOf(p.pic) }
+      attrs: { ...sampleIntakeAttrs(p.partNo, idx), qa_pic_staff_id: staffIdOf(p.pic) },
+      // Arrival in EPMP: the new (not released) parts came in 2–15 days ago, the rest well before.
+      receivedAt: p.fresh ? addDays('2026-10-15', -[12, 3, 9, 2, 15][Math.max(0, idx - 8) % 5]) : addDays('2026-09-20', -(idx % 4))
     }
     return { ...rec, technicalCategory: deriveTechnicalCategory(rec) }
   })
   const partReleases: PartRelease[] = []
   const partAcks: PartAck[] = []
-  DEMO_PARTS.forEach((p) => {
+  DEMO_PARTS.forEach((p, idx) => {
     if (p.release === 'none') return
-    partReleases.push({ id: `rel-${p.partNo}`, partNo: p.partNo, released: true, by: p.pic, byRole: 'PIC', at: '2026-10-04T10:00:00Z' })
+    // Acknowledged on different days, so some vendors are inside their 15-day planning time and some past it.
+    const ackOn = addDays('2026-10-05', -((idx * 5) % 18))
+    partReleases.push({ id: `rel-${p.partNo}`, partNo: p.partNo, released: true, by: p.pic, byRole: 'PIC', at: `${addDays(ackOn, -1)}T10:00:00Z` })
     if (p.release === 'ack') {
-      partAcks.push({ id: `ack-${p.partNo}`, partNo: p.partNo, status: 'Acknowledged', by: p.vendorName, byRole: 'Vendor', at: '2026-10-05T09:00:00Z' })
+      partAcks.push({ id: `ack-${p.partNo}`, partNo: p.partNo, status: 'Acknowledged', by: p.vendorName, byRole: 'Vendor', at: `${ackOn}T09:00:00Z` })
     }
   })
 
@@ -274,6 +278,41 @@ export function buildDemoData(
   })
 
   const delayReasons = seedExceptions(entries, parts)
+  // Vendor planning samples: one part fully planned (approved), one part half planned with dates outside the window
+  // waiting for the PIC and one sent back.
+  const planPart = (partNo: string, mode: 'full' | 'partial') => {
+    const part = parts.find((p) => p.partNo === partNo)
+    const model = models.find((m) => m.name === part?.model)
+    if (!part) return
+    let k = 0
+    for (const e of entries) {
+      if (e.partNo !== partNo) continue
+      const row = templateRows.find((r) => r.id === e.templateRowId)
+      const def = actById.get(e.activityId)
+      if (!row || !def || plannedDateOwner(def) !== 'Vendor') continue
+      const w = resolveInstanceDates(row, model, def, part)
+      if (w.status !== 'resolved') continue
+      k++
+      if (mode === 'partial' && k % 2 === 0) continue
+      // Planned after the part's acknowledgement (latest sample ack: 5 Oct).
+      const at = `2026-10-0${6 + (k % 3)}T11:00:00Z`
+      const outside = mode === 'partial' && k % 3 === 0
+      const date = outside ? addDays(w.end, 9) : w.end
+      const version = { date, by: part.vendorName, byRole: 'Vendor' as const, at, remark: outside ? 'Tool modification at sub-supplier' : undefined }
+      if (mode === 'partial' && k === 5) {
+        e.vendorPlan = { current: version, history: [], status: 'Sent back', decision: { by: part.pic, at: '2026-10-10T10:00:00Z', comment: 'Align with the trial build date' } }
+        e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned date ${date}` },
+          { timestamp: '2026-10-10T10:00:00Z', persona: 'PIC', actorName: part.pic, action: `Sent back planned date ${date}`, comment: 'Align with the trial build date' }]
+        continue
+      }
+      e.vendorPlan = outside
+        ? { current: version, history: [], status: 'Submitted' }
+        : { current: version, history: [], status: 'Approved', decision: { by: 'Within the planned window', at } }
+      e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned date ${date}` }]
+    }
+  }
+  planPart('31100-M74LD1', 'full')
+  planPart('35520-M68P00', 'partial')
   delayReasons.push(...seedVendorDelays(entries, parts, activities, templateRows, models, partReleases, partAcks, delayReasons))
   return { parts, entries, partReleases, partAcks, delayReasons, models }
 }

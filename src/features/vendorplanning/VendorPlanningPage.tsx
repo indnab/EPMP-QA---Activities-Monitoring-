@@ -24,6 +24,8 @@ import { EMPTY_FILTERS } from '../dashboard/drill'
 import { MultiSelect } from '../intake/MultiSelect'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 import { trialLabelOf } from '../trialLabel'
+import { PLAN_SLA_DAYS, usePlanningSla } from './planningSla'
+import type { PartSla } from './planningSla'
 
 const key = (i: FilteredInstance) => `${i.row.id}|${i.part.partNo}`
 const days = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
@@ -43,7 +45,7 @@ export function VendorPlanningPage() {
   const [fParts, setFParts] = useState<string[]>([])
   const [fModels, setFModels] = useState<string[]>([])
   const [trial, setTrial] = useState('All')
-  const [view, setView] = useState<'table' | 'gantt'>('table')
+  const [view, setView] = useState<'table' | 'gantt' | 'status'>('table')
   const [show, setShow] = useState<'all' | 'unplanned' | 'late' | 'awaiting' | 'sentback'>('all')
   const modelOptions = [...new Set(scoped.map((p) => p.model))].sort().map((value) => ({ value }))
   const partOptions = scoped
@@ -101,12 +103,28 @@ export function VendorPlanningPage() {
   }
   const canEdit = rows.some(editable)
   // PIC review: per part, the vendor dates waiting for approval.
-  const [sendBack, setSendBack] = useState<{ partNo: string; comment: string } | null>(null)
+  const [sendBack, setSendBack] = useState<{ partNos: string[]; comment: string } | null>(null)
   const awaitingOf = (partNo: string) => rows.filter((r) => r.i.part.partNo === partNo && r.status === 'Submitted')
-  const decide = (partNo: string, decision: 'Approve' | 'Send back', comment?: string) => {
-    const items = awaitingOf(partNo).map((r) => ({ templateRowId: r.i.row.id, partNo }))
+  const awaitingIn = (partNos: string[]) => rows.filter((r) => partNos.includes(r.i.part.partNo) && r.status === 'Submitted')
+  const awaitingParts = [...new Set(rows.filter((r) => r.status === 'Submitted').map((r) => r.i.part.partNo))]
+  /** Approve, or send back with a comment, every submitted date of these parts at one go. */
+  const decide = (partNos: string[], decision: 'Approve' | 'Send back', comment?: string) => {
+    const items = awaitingIn(partNos).map((r) => ({ templateRowId: r.i.row.id, partNo: r.i.part.partNo }))
     const n = decideVendorPlans({ items, decision, comment, by: role })
-    toast(decision === 'Approve' ? `${n} planned date${n === 1 ? '' : 's'} approved for ${partNo}.` : `${n} planned date${n === 1 ? '' : 's'} sent back to the vendor for ${partNo}.`)
+    const what = partNos.length === 1 ? partNos[0] : `${partNos.length} parts`
+    toast(decision === 'Approve' ? `${n} planned date${n === 1 ? '' : 's'} approved for ${what}.` : `${n} planned date${n === 1 ? '' : 's'} sent back to the vendor for ${what}.`)
+  }
+  // Part timelines (ack + 15 d) and rejections, for the part headers and the Part status view.
+  const slaAll = usePlanningSla()
+  const slaOf = useMemo(() => new Map(slaAll.map((s) => [s.part.partNo, s])), [slaAll])
+  const partActions = (partNo: string) => {
+    const w = awaitingOf(partNo).length
+    return canDecide && w > 0 ? (
+      <span className="flex items-center gap-1.5">
+        <Button variant="secondary" size="sm" onClick={() => setSendBack({ partNos: [partNo], comment: '' })}>Send back…</Button>
+        <Button variant="primary" size="sm" onClick={() => decide([partNo], 'Approve')}><Icon name="check" size={12} className="mr-1" />Approve all ({w})</Button>
+      </span>
+    ) : null
   }
   const set = (k: string, p: { date?: string; remark?: string }) => setEdit((prev) => ({ ...prev, [k]: { ...prev[k], ...p } }))
   const fillWindowEnd = () => {
@@ -151,23 +169,31 @@ export function VendorPlanningPage() {
         <span className="ml-auto text-[10.5px] text-[var(--color-muted)]">{chosen.length} part{chosen.length === 1 ? '' : 's'} selected{isVendor ? ` · ${scoped.length} released to you` : ''}</span>
       </section>
 
-      {chosen.length === 0 ? (
+      {chosen.length === 0 && view !== 'status' ? (
         <div className="epmp-card px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">
           Select one or more <strong>parts</strong> to list their activities with the planned window calculated from the MRD, then enter your planned date against each.
           {isVendor && scoped.length === 0 && <div className="mt-2">No parts are released to you and acknowledged yet (My Parts).</div>}
+          <div className="mt-3"><Button variant="secondary" size="sm" onClick={() => setView('status')}>See the part-wise planning status</Button></div>
         </div>
       ) : (
         <section className="epmp-card overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] px-4 py-2.5">
-            <span className="text-[12px] font-semibold text-[var(--color-text)]">Planning · {shown.length} activit{shown.length === 1 ? 'y' : 'ies'}</span>
+            <span className="text-[12px] font-semibold text-[var(--color-text)]">{view === 'status' ? 'Part-wise planning status' : `Planning · ${shown.length} activit${shown.length === 1 ? 'y' : 'ies'}`}</span>
             <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="View">
-              {([['table', 'Table'], ['gantt', 'Gantt']] as const).map(([id, label]) => (
+              {([['table', 'Table'], ['gantt', 'Gantt'], ['status', 'Part status']] as const).map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
                   className={`rounded-md px-2.5 py-1 text-[10.5px] font-medium ${view === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
               ))}
             </div>
-            <span className="text-[10.5px] text-[var(--color-muted)]">{counts.planned} of {counts.total} planned{counts.awaiting ? ` · ${counts.awaiting} awaiting PIC approval` : ''}{counts.sentBack ? ` · ${counts.sentBack} sent back` : ''}{counts.late ? ` · ${counts.late} outside the window` : ''}</span>
-            {canEdit && (
+            {view !== 'status' && <span className="text-[10.5px] text-[var(--color-muted)]">{counts.planned} of {counts.total} planned{counts.awaiting ? ` · ${counts.awaiting} awaiting PIC approval` : ''}{counts.sentBack ? ` · ${counts.sentBack} sent back` : ''}{counts.late ? ` · ${counts.late} outside the window` : ''}</span>}
+            {canDecide && awaitingParts.length > 0 && view !== 'status' && (
+              <span className="flex items-center gap-1.5 rounded-lg bg-cyan-50 px-2 py-1">
+                <span className="text-[10.5px] font-semibold text-cyan-800">{counts.awaiting} outside the window · {awaitingParts.length} part{awaitingParts.length === 1 ? '' : 's'}</span>
+                <Button variant="secondary" size="sm" onClick={() => setSendBack({ partNos: awaitingParts, comment: '' })}>Send back all…</Button>
+                <Button variant="primary" size="sm" onClick={() => decide(awaitingParts, 'Approve')}><Icon name="check" size={12} className="mr-1" />Approve all ({counts.awaiting})</Button>
+              </span>
+            )}
+            {canEdit && view !== 'status' && (
               <span className="ml-auto flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={fillWindowEnd} title="Fill the empty dates with the end of the planned window">Use window end for blanks</Button>
                 {dirty.length > 0 && <button type="button" onClick={() => setEdit({})} className="text-[10.5px] font-semibold text-[var(--color-muted)] hover:underline">Discard</button>}
@@ -175,8 +201,11 @@ export function VendorPlanningPage() {
               </span>
             )}
           </div>
-          {view === 'gantt' ? (
-            <PlanGantt rows={shown.map((r) => ({
+          {view === 'status' ? (
+            <PartStatus rows={slaAll.filter((s) => (chosen.length ? chosen.includes(s.part.partNo) : scoped.some((p) => p.partNo === s.part.partNo)) && (s.state !== 'Acknowledged' || s.planRequired > 0 || !isVendor))}
+              actions={partActions} onOpenPart={(no) => { setFParts([no]); setView('table') }} />
+          ) : view === 'gantt' ? (
+            <PlanGantt partInfo={(no) => <PlanDueChip s={slaOf.get(no)} />} partActions={partActions} rows={shown.map((r) => ({
               k: key(r.i), part: r.i.part, activity: r.i.activity.name, trial: trialLabelOf(r.i.row.milestoneId), win: r.win,
               date: dateOf(r), out: lateBy(r), status: dirty.includes(r) ? 'Not submitted' : r.status, owner: r.owner, editable: editable(r),
             }))} onSet={(k, d) => set(k, { date: d })} />
@@ -213,13 +242,9 @@ export function VendorPlanningPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono text-[11px] font-semibold text-[#101828]">{r.i.part.partNo}</span>
                             <span className="text-[10.5px] text-[#475467]">{r.i.part.partName} · {r.i.part.model} · {vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)}</span>
+                            <PlanDueChip s={slaOf.get(r.i.part.partNo)} />
                             {waiting.length > 0 && <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-800">{waiting.length} awaiting approval</span>}
-                            {canDecide && waiting.length > 0 && (
-                              <span className="ml-auto flex items-center gap-1.5">
-                                <Button variant="secondary" size="sm" onClick={() => setSendBack({ partNo: r.i.part.partNo, comment: '' })}>Send back…</Button>
-                                <Button variant="primary" size="sm" onClick={() => decide(r.i.part.partNo, 'Approve')}><Icon name="check" size={12} className="mr-1" />Approve all ({waiting.length})</Button>
-                              </span>
-                            )}
+                            <span className="ml-auto">{partActions(r.i.part.partNo)}</span>
                           </div>
                         </td>
                       </tr>
@@ -279,12 +304,12 @@ export function VendorPlanningPage() {
       )}
 
       {sendBack && (
-        <Modal open onClose={() => setSendBack(null)} title={`Send back planned dates · ${sendBack.partNo}`} size="md"
+        <Modal open onClose={() => setSendBack(null)} title={`Send back planned dates · ${sendBack.partNos.length === 1 ? sendBack.partNos[0] : `${sendBack.partNos.length} parts`}`} size="md"
           footer={<>
             <Button variant="secondary" size="md" onClick={() => setSendBack(null)}>Cancel</Button>
-            <Button variant="primary" size="md" disabled={!sendBack.comment.trim()} onClick={() => { decide(sendBack.partNo, 'Send back', sendBack.comment); setSendBack(null) }}>Send back ({awaitingOf(sendBack.partNo).length})</Button>
+            <Button variant="primary" size="md" disabled={!sendBack.comment.trim()} onClick={() => { decide(sendBack.partNos, 'Send back', sendBack.comment); setSendBack(null) }}>Send back ({awaitingIn(sendBack.partNos).length})</Button>
           </>}>
-          <p className="mb-2 text-[12px] text-[#344054]">The {awaitingOf(sendBack.partNo).length} submitted planned date{awaitingOf(sendBack.partNo).length === 1 ? '' : 's'} for this part {awaitingOf(sendBack.partNo).length === 1 ? 'goes' : 'go'} back to the vendor to change and resubmit.</p>
+          <p className="mb-2 text-[12px] text-[#344054]">The {awaitingIn(sendBack.partNos).length} planned date{awaitingIn(sendBack.partNos).length === 1 ? '' : 's'} outside the window for {sendBack.partNos.length === 1 ? 'this part' : `these ${sendBack.partNos.length} parts`} {awaitingIn(sendBack.partNos).length === 1 ? 'goes' : 'go'} back to the vendor to change and resubmit.</p>
           <textarea value={sendBack.comment} onChange={(e) => setSendBack({ ...sendBack, comment: e.target.value })} rows={3} autoFocus
             placeholder="What should the vendor change? (required)" aria-label="Comment for the vendor"
             className="w-full rounded-lg border border-[var(--color-border)] px-2.5 py-2 text-[12px]" />
@@ -318,7 +343,13 @@ const gstr = (t: number) => new Date(t).toISOString().slice(0, 10)
  * the band, amber outside, joined to the band by a line). Clicking a row's track sets the planned date there (where
  * the date is yours to set); a red line marks today.
  */
-function PlanGantt({ rows, onSet }: { rows: GanttRow[]; onSet: (k: string, date: string) => void }) {
+function PlanGantt({ rows, onSet, partInfo, partActions }: {
+  rows: GanttRow[]
+  onSet: (k: string, date: string) => void
+  /** Extra info and approval buttons on each part's header row. */
+  partInfo?: (partNo: string) => React.ReactNode
+  partActions?: (partNo: string) => React.ReactNode
+}) {
   const [zoom, setZoom] = useState<'week' | 'month'>('month')
   const px = zoom === 'week' ? 16 : 5
   const LEFT = 330
@@ -372,12 +403,15 @@ function PlanGantt({ rows, onSet }: { rows: GanttRow[]; onSet: (k: string, date:
             return (
               <Fragment key={r.k}>
                 {newPart && (
-                  <div className="flex border-b border-[var(--color-border)] bg-[#f5f7ff]" style={{ height: 26 }}>
+                  <div className="flex border-b border-[var(--color-border)] bg-[#f5f7ff]" style={{ height: 34 }}>
                     <div className="sticky left-0 z-10 flex flex-none items-center gap-2 border-r border-[var(--color-border)] bg-[#f5f7ff] px-3" style={{ width: LEFT }}>
                       <span className="font-mono text-[11px] font-semibold text-[#101828]">{r.part.partNo}</span>
                       <span className="truncate text-[10px] text-[#475467]">{r.part.partName} · {r.part.model}</span>
                     </div>
-                    <div style={{ width }} />
+                    <div className="sticky left-[330px] flex items-center gap-2 px-2" style={{ width: Math.min(width, 900) }}>
+                      {partInfo?.(r.part.partNo)}
+                      {partActions?.(r.part.partNo)}
+                    </div>
                   </div>
                 )}
                 <div role="row" className="flex border-b border-[var(--color-border)] bg-white" style={{ height: 32 }}>
@@ -415,6 +449,123 @@ function PlanGantt({ rows, onSet }: { rows: GanttRow[]; onSet: (k: string, date:
           })}
           {todayX >= 0 && todayX <= width && <div className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-red-500" style={{ left: LEFT + todayX }} aria-hidden="true" />}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** "Plan due <date> (ack + 15 d) · N d left / late" for a part's header. */
+function PlanDueChip({ s }: { s?: PartSla }) {
+  if (!s || !s.planRequired || !s.planDue) return null
+  const left = s.planDaysLeft ?? 0
+  const cls = !s.planPending ? 'bg-emerald-100 text-emerald-800' : left < 0 ? 'bg-red-100 text-red-800' : left <= 5 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+  return (
+    <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${cls}`} title={`Vendor planned dates due within ${PLAN_SLA_DAYS} days of acknowledgement (${fmtDate(s.ackedAt!)})`}>
+      {s.planFilled}/{s.planRequired} planned · due {fmtDate(s.planDue)} · {!s.planPending ? 'complete' : left < 0 ? `${-left} d late` : `${left} d left`} · {s.planDaysWithVendor} d with vendor
+    </span>
+  )
+}
+
+/**
+ * Part-wise planning status: where each part stands (release, acknowledgement, vendor planned dates against ack + 15
+ * days), how many dates are approved, waiting for the PIC or sent back, and every rejection with what happened next.
+ */
+function PartStatus({ rows, actions, onOpenPart }: { rows: PartSla[]; actions: (partNo: string) => React.ReactNode; onOpenPart: (partNo: string) => void }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const [only, setOnly] = useState<'all' | 'late' | 'rejected'>('all')
+  const shown = rows
+    .filter((s) => only === 'all' || (only === 'late' ? s.planExceeded || s.ackOverdue || s.releaseOverdue : s.rejections.length > 0))
+    .sort((a, b) => Number(b.planExceeded) - Number(a.planExceeded) || (a.planDaysLeft ?? 999) - (b.planDaysLeft ?? 999))
+  const stage = (s: PartSla): { text: string; cls: string } => {
+    if (s.state === 'Pending') return { text: s.releaseOverdue ? `Release overdue (${s.releaseDays} d)` : `Pending release (${s.releaseDays ?? '—'} d)`, cls: s.releaseOverdue ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800' }
+    if (s.state === 'Returned') return { text: 'Returned by vendor', cls: 'bg-red-100 text-red-800' }
+    if (s.state === 'Released') return { text: s.ackOverdue ? `Ack overdue (${s.ackDays} d)` : `Awaiting ack (${s.ackDays} d)`, cls: s.ackOverdue ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800' }
+    if (!s.planRequired) return { text: 'No vendor planning', cls: 'bg-slate-100 text-slate-600' }
+    if (!s.planPending) return { text: s.planAwaiting ? 'Planned · awaiting PIC' : 'Planned', cls: s.planAwaiting ? 'bg-cyan-100 text-cyan-800' : 'bg-emerald-100 text-emerald-800' }
+    const left = s.planDaysLeft ?? 0
+    return { text: left < 0 ? `Planning ${-left} d late` : `Planning · ${left} d left`, cls: left < 0 ? 'bg-red-100 text-red-800' : left <= 5 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700' }
+  }
+  const th = 'px-3 py-2'
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2 text-[10.5px]">
+        <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="Show parts">
+          {([['all', `All (${rows.length})`], ['late', 'Overdue'], ['rejected', 'With rejections']] as const).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setOnly(id)} aria-pressed={only === id}
+              className={`rounded-md px-2.5 py-1 font-medium ${only === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
+          ))}
+        </div>
+        <span className="text-[var(--color-muted)]">Release within 7 d · acknowledgement within 3 d · vendor planned dates within acknowledgement + {PLAN_SLA_DAYS} d. Click a part for its rejection history.</span>
+      </div>
+      <div className="max-h-[calc(100vh-300px)] overflow-auto">
+        <table className="w-full text-[11px]">
+          <thead className="sticky top-0 z-10">
+            <tr className="text-left">
+              <th className={th}>Part</th><th className={th}>Vendor</th><th className={th}>Stage</th><th className={th}>Acknowledged</th><th className={th}>Plan due (ack + {PLAN_SLA_DAYS} d)</th>
+              <th className={th}>Days with vendor</th><th className={th}>Planned</th><th className={th}>Approved</th><th className={th}>Awaiting PIC</th><th className={th}>Sent back</th><th className={th}>Rejections</th><th className={th} />
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((s) => {
+              const st = stage(s)
+              const isOpen = open === s.part.partNo
+              return (
+                <Fragment key={s.part.partNo}>
+                  <tr className={`cursor-pointer border-t border-[var(--color-border)] ${isOpen ? 'bg-[var(--color-surface)]' : 'hover:bg-[var(--color-surface)]'}`} onClick={() => setOpen(isOpen ? null : s.part.partNo)}>
+                    <td className="px-3 py-2"><span className="font-mono text-[#101828]">{s.part.partNo}</span><div className="text-[10px] text-[var(--color-muted)]">{s.part.partName} · {s.part.model}</div></td>
+                    <td className="px-3 py-2">{vendorLabel(s.part.vendorName, s.part.vendorCode)}</td>
+                    <td className="px-3 py-2"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.cls}`}>{st.text}</span></td>
+                    <td className="whitespace-nowrap px-3 py-2">{s.ackedAt ? fmtDate(s.ackedAt) : '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{s.planDue ? fmtDate(s.planDue) : '—'}</td>
+                    <td className="px-3 py-2 tabular-nums">{s.planDaysWithVendor ?? '—'}</td>
+                    <td className="px-3 py-2 tabular-nums">{s.planRequired ? `${s.planFilled} / ${s.planRequired}` : '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-emerald-700">{s.planApproved || '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-cyan-700">{s.planAwaiting || '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-red-700">{s.planSentBack || '—'}</td>
+                    <td className="px-3 py-2 tabular-nums">{s.rejections.length ? <span className="font-semibold text-red-700">{s.rejections.length}</span> : '—'}</td>
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <span className="flex items-center justify-end gap-1.5">
+                        {actions(s.part.partNo)}
+                        {s.state === 'Acknowledged' && s.planRequired > 0 && <button type="button" onClick={() => onOpenPart(s.part.partNo)} className="whitespace-nowrap text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Open plan →</button>}
+                      </span>
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="bg-[#fafbff]">
+                      <td colSpan={12} className="px-4 py-2.5">
+                        <div className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Rejection history · {s.part.partNo}</div>
+                        {s.rejections.length === 0 ? (
+                          <p className="text-[11px] text-[var(--color-muted)]">No planned dates sent back for this part.</p>
+                        ) : (
+                          <table className="w-full text-[10.5px]">
+                            <thead><tr className="text-left"><th className="px-2 py-1">Sent back on</th><th className="px-2 py-1">Activity</th><th className="px-2 py-1">Date rejected</th><th className="px-2 py-1">By</th><th className="px-2 py-1">Comment</th><th className="px-2 py-1">Now</th></tr></thead>
+                            <tbody>
+                              {s.rejections.map((x, k) => (
+                                <tr key={k} className="border-t border-[var(--color-border)]">
+                                  <td className="whitespace-nowrap px-2 py-1">{fmtDate(x.at.slice(0, 10))}</td>
+                                  <td className="px-2 py-1">{x.activity}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 line-through">{x.date ? fmtDate(x.date) : '—'}</td>
+                                  <td className="px-2 py-1">{x.by}</td>
+                                  <td className="px-2 py-1">{x.comment ? `“${x.comment}”` : '—'}</td>
+                                  <td className="px-2 py-1">
+                                    <span className={`rounded-full px-2 py-0.5 font-semibold ${x.now === 'Approved' ? 'bg-emerald-100 text-emerald-800' : x.now === 'Submitted' ? 'bg-cyan-100 text-cyan-800' : 'bg-red-100 text-red-800'}`}>
+                                      {x.now === 'Sent back' ? 'Not resubmitted yet' : x.now === 'Submitted' ? 'Resubmitted · awaiting PIC' : 'Resubmitted · approved'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+            {shown.length === 0 && <tr><td colSpan={12} className="px-4 py-10 text-center text-[var(--color-muted)]">No parts here.</td></tr>}
+          </tbody>
+        </table>
       </div>
     </div>
   )

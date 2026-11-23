@@ -491,6 +491,8 @@ export interface PartRecord {
    * The core fields above (part no, name, model, vendor, department, section, PIC) are not repeated here.
    */
   attrs?: Record<string, string>
+  /** Date the part arrived in EPMP (from SAP / ENOVIA, or created by hand). The PIC releases it within 7 days. */
+  receivedAt?: string
   /** Role that created a manual/placeholder part. */
   createdBy?: PersonaId
   /** ISO date-time a manual/placeholder part was created. */
