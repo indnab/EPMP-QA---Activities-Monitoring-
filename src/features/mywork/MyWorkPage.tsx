@@ -592,6 +592,7 @@ function MyWorkPageInner() {
   const approvalRows = useApprovalRows()
   // Counts for the Overview KPIs and Activity snapshot.
   const { delays: excDelays } = useExceptionData()
+  const delayKeys = useMemo(() => new Set(excDelays.review.map((r) => `${r.item.rowId}|${r.item.partNo}`)), [excDelays.review])
 
   // Filters (the client's set). Multi-select: empty array = All. Vendor/Part/PIC are "code: name" pickers.
   const [fModel, setFModel] = useState<string[]>([])
@@ -1073,7 +1074,7 @@ function MyWorkPageInner() {
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
         <>
-          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} onFocus={setScreenFocus} /></ExportSection>
+          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} onFocus={setScreenFocus} delayKeys={delayKeys} /></ExportSection>
           <div className="mt-3">{renderActivityUpdate(screenFocus)}</div>
         </>
       ) : effectiveView === 'calendar' ? (
