@@ -81,7 +81,8 @@ export function usePlanningSla(): PartSla[] {
       const rel = latest(partReleases, part.partNo)
       const ack = latest(partAcks, part.partNo)
       const receivedAt = part.receivedAt ?? part.createdAt?.slice(0, 10)
-      const releaseDays = state === 'Pending' && receivedAt ? daysBetween(receivedAt, today) : undefined
+      // A part added today (or dated after the demo date) has been with the PIC 0 days.
+      const releaseDays = state === 'Pending' && receivedAt ? Math.max(0, daysBetween(receivedAt, today)) : undefined
       const releasedAt = state === 'Released' && rel ? rel.at.slice(0, 10) : undefined
       const ackDays = releasedAt ? daysBetween(releasedAt, today) : undefined
       const mine = byPart.get(part.partNo) ?? []

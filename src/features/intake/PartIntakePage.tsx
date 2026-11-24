@@ -215,6 +215,11 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
                   <tr key={part.partNo} className="hover:bg-[#fafbff]">
                     <td className="sticky left-0 z-10 border-b border-r border-[var(--color-border)] bg-white px-3 py-2">
                       <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium ${ORIGIN_TAG[origin]}`}>{SOURCE_LABEL[origin]}</span>
+                      {(part.receivedAt ?? part.createdAt) && (
+                        <div className="mt-1 whitespace-nowrap text-[10px] text-[var(--color-muted)]" title="Date the part entered EPMP; the PIC releases it to the vendor within 7 days">
+                          Received {fmtDate((part.receivedAt ?? part.createdAt)!.slice(0, 10))}
+                        </div>
+                      )}
                       {part.sourceDeleted && (
                         <div className="mt-1 whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Off the work screens; its data is kept and comes back when reactivated">
                           Deleted in {part.sourceDeleted.system} · {fmtDate(part.sourceDeleted.at.slice(0, 10))}

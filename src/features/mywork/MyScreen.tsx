@@ -18,6 +18,7 @@ import { trialLabelOf } from '../trialLabel'
 import { mineBucket, useModelStages } from './OverviewTab'
 import { isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { usePersonaStore } from '../../store/personaStore'
+import { ACK_SLA_DAYS, PLAN_SLA_DAYS, RELEASE_SLA_DAYS, usePlanningSla } from '../vendorplanning/planningSla'
 import type { PartRecord } from '../../domain'
 import type { MineKey } from './OverviewTab'
 
@@ -30,6 +31,8 @@ type Ctx = {
   mine: MineKey | null; bucket: WorkBucket | null; stage: 'under' | 'developed' | 'past' | undefined
   /** Returned to the vendor (by the PIC or SIC) / to the PIC by the SIC; a vendor delay reason waits for review. */
   toVendor: boolean; toPic: boolean; delayReview: boolean
+  /** The part's timelines: release > 7 d, acknowledgement > 3 d, vendor planned dates pending / past ack + 15 d. */
+  relOD: boolean; ackOD: boolean; planPend: boolean; planExc: boolean
 }
 interface TileDef {
   id: string; group: string; title: string; color: string; icon: string
@@ -70,6 +73,10 @@ const STATIC_TILES: TileDef[] = [
   { id: 'm.approvePIC', group: 'Pending with', title: 'Awaiting PIC approval', color: '#0891b2', icon: 'check', test: (_i, c) => c.mine === 'approvePIC' },
   { id: 'm.approveSIC', group: 'Pending with', title: 'Awaiting SIC approval', color: '#8b5cf6', icon: 'check', test: (_i, c) => c.mine === 'approveSIC' },
   { id: 'm.approveDPM', group: 'Pending with', title: 'Awaiting DPM approval', color: '#6366f1', icon: 'check', test: (_i, c) => c.mine === 'approveDPM' },
+  { id: 't.release', group: 'Part timelines', title: `Release overdue (> ${RELEASE_SLA_DAYS} d)`, color: '#b45309', icon: 'clipboard', counts: 'parts', test: (_i, c) => c.relOD },
+  { id: 't.ack', group: 'Part timelines', title: `Ack overdue (> ${ACK_SLA_DAYS} d)`, color: '#dc2626', icon: 'clipboard', counts: 'parts', test: (_i, c) => c.ackOD },
+  { id: 't.planPending', group: 'Part timelines', title: 'Vendor planned dates pending', color: '#ea580c', icon: 'calendar-month', counts: 'parts', test: (_i, c) => c.planPend },
+  { id: 't.planExceeded', group: 'Part timelines', title: `Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`, color: '#991b1b', icon: 'exclamation-circle', counts: 'parts', test: (_i, c) => c.planExc },
   { id: 'r.toVendor', group: 'Returned & reviews', title: 'Returned to vendor', color: '#ea580c', icon: 'reply', test: (_i, c) => c.toVendor },
   { id: 'r.toPic', group: 'Returned & reviews', title: 'Returned to PIC', color: '#ea580c', icon: 'reply', test: (_i, c) => c.toPic },
   { id: 'r.delay', group: 'Returned & reviews', title: 'Delay reviews', color: '#2563eb', icon: 'calendar-month', test: (_i, c) => c.delayReview },
@@ -114,13 +121,15 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
   delayKeys?: Set<string>
 }) {
   const { currentPersona } = usePersonaStore()
+  const slaRows = usePlanningSla()
+  const slaOf = useMemo(() => new Map(slaRows.map((s) => [s.part.partNo, s])), [slaRows])
   const { picAssignments, partReleases, partAcks } = useQAStore()
   const { panels, setPanels } = useScreen()
   const stageOf = useModelStages(parts)
   // One button per model (opens that model's dashboard, by trial).
   const TILES = useMemo<TileDef[]>(() => [
     // Same tiles as My Work: "Returned to vendor" is the PIC's, "Returned to PIC" the SIC's.
-    ...STATIC_TILES.filter((t) => (t.id !== 'r.toVendor' || currentPersona === 'PIC') && (t.id !== 'r.toPic' || currentPersona === 'SIC')),
+    ...STATIC_TILES.filter((t) => (t.id !== 'r.toVendor' || currentPersona === 'PIC') && (t.id !== 'r.toPic' || currentPersona === 'SIC') && (t.id !== 't.release' || currentPersona !== 'Vendor')),
     ...[...new Set(instances.map((i) => i.part.model))].sort().map((m): TileDef => ({
       id: `model:${m}`, group: 'Models', title: m, detail: 'parts', color: stageOf.get(m) === 'developed' ? '#10b981' : '#2153f5', icon: 'grid',
       drill: [{ dim: 'model', value: m }], test: (i) => i.part.model === m,
@@ -132,8 +141,10 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
     return { i, ctx: {
       mine: mineBucket(pend, i.status), bucket: workBucket(i), stage: stageOf.get(i.part.model),
       toVendor: isReturnedToVendor(i), toPic: isReturnedToPicBySic(i), delayReview: !!delayKeys?.has(`${i.row.id}|${i.part.partNo}`),
+      relOD: !!slaOf.get(i.part.partNo)?.releaseOverdue, ackOD: !!slaOf.get(i.part.partNo)?.ackOverdue,
+      planPend: !!slaOf.get(i.part.partNo)?.planPending, planExc: !!slaOf.get(i.part.partNo)?.planExceeded,
     } }
-  }), [instances, picAssignments, partReleases, partAcks, stageOf, delayKeys])
+  }), [instances, picAssignments, partReleases, partAcks, stageOf, delayKeys, slaOf])
   const itemsOf = (tileId: string) => {
     const t = TILES.find((x) => x.id === tileId)
     return t ? tagged.filter((x) => t.test(x.i, x.ctx)).map((x) => x.i) : []

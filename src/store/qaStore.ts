@@ -657,7 +657,8 @@ export const useQAStore = create<QAStoreState>()(
           if (by !== 'SectionAdmin' && by !== 'Admin' && by !== 'PIC') return {} // dummy parts are raised by the Department Co-ordinator, the PIC or Admin
           if (!partNo || state.parts.some((p) => p.partNo === partNo)) return {}
           const now = new Date().toISOString()
-          const newPart: PartRecord = { ...part, partNo, origin: 'Manual', createdBy: by, createdAt: now }
+          // Received today (the demo date): the PIC's 7-day release clock starts now.
+          const newPart: PartRecord = { ...part, partNo, origin: 'Manual', createdBy: by, createdAt: now, receivedAt: DEMO_TODAY }
           const event: PartEvent = {
             id: `evt-created-${partNo}-${state.partEvents.length + 1}`,
             kind: 'Created',
