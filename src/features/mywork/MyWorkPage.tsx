@@ -654,8 +654,6 @@ function MyWorkPageInner() {
   const kpiLayout = useKpiCardsLayout()
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
-  // My Screen: the dashboard at the top (tile + drill) feeds Activity Update there.
-  const [screenFocus, setScreenFocus] = useState<{ label: string; items: FilteredInstance[] } | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
   const [insPicked, setInsPicked] = useState<Set<string>>(new Set())
   const [insBulkOpen, setInsBulkOpen] = useState(false)
@@ -1118,8 +1116,7 @@ function MyWorkPageInner() {
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
         <>
-          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} onFocus={setScreenFocus} delayKeys={delayKeys} /></ExportSection>
-          <div className="mt-3">{renderActivityUpdate(screenFocus)}</div>
+          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
         </>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>

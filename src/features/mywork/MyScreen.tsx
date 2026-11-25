@@ -15,6 +15,7 @@ import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY, fmtDate } from '../scope'
 import { trialLabelOf } from '../trialLabel'
+import { ActivityUpdatePanel } from '../activityupdate/ActivityUpdatePage'
 import { mineBucket, useModelStages } from './OverviewTab'
 import { isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { usePersonaStore } from '../../store/personaStore'
@@ -109,14 +110,14 @@ const labelOf = (d: Dim, v: string, items: FilteredInstance[]): string => {
   return v
 }
 
-export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, delayKeys }: {
+export function MyScreen({ instances, parts, onOpen, filters = [], trials, delayKeys }: {
   instances: FilteredInstance[]
   parts: PartRecord[]
   onOpen: (i: FilteredInstance) => void
   /** The page filters in force, e.g. ["Model: Swift", "Status: NG"]. Any filter shows the Insights panel automatically. */
   filters?: string[]
-  /** The dashboard at the top (its tile at its current drill level), or null when none is open. */
-  onFocus?: (focus: { label: string; items: FilteredInstance[] } | null) => void
+  /** Trials picked in the page filters (Activity Update fills those). */
+  trials?: string[]
   /** Activities (`rowId|partNo`) whose vendor delay reason waits for review. */
   delayKeys?: Set<string>
 }) {
@@ -174,15 +175,6 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
     setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
   }
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
-  // Tell the page which activities the top dashboard shows (Activity Update lists them).
-  const top = panels[0]
-  const topItems = top ? itemsOf(top.tile).filter((i) => top.drill.every((d) => keyOf(i, d.dim) === d.value)) : null
-  const topLabel = top ? [TILES.find((t) => t.id === top.tile)?.title ?? top.tile, ...top.drill.map((d) => labelOf(d.dim, d.value, topItems ?? []))].join(' › ') : ''
-  const focusSig = top ? `${top.key}|${JSON.stringify(top.drill)}|${topItems!.map((i) => `${i.row.id}|${i.part.partNo}`).join(',')}` : ''
-  useEffect(() => {
-    onFocus?.(top ? { label: topLabel, items: topItems! } : null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusSig])
   // Insights for the filters: shown by itself whenever a filter is selected (and on an empty screen); it starts
   // again from the top whenever the filters change.
   const filterSig = filters.join('|')
@@ -237,7 +229,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
         {showAuto && (
           <div className="mb-3">
             <ScreenPanel panel={auto} items={tagged.map((x) => x.i)} onChange={(x) => setAuto((a) => ({ ...a, ...x }))}
-              onRemove={() => setAutoHidden(filterSig)} onOpen={onOpen}
+              onRemove={() => setAutoHidden(filterSig)} onOpen={onOpen} trials={trials}
               tile={{ id: 'all', group: '', title: filters.length ? 'Insights · your filters' : 'Insights · all my activities', color: '#2153f5', icon: 'chart-mixed', test: () => true }}
               note={filters.length
                 ? <span className="flex flex-wrap gap-1">{filters.map((f) => <span key={f} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-primary">{f}</span>)}</span>
@@ -253,7 +245,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
         ) : panels.length === 0 ? null : (
           <div className={`grid grid-cols-1 gap-3 ${panels.length > 1 ? 'min-[1800px]:grid-cols-2' : ''}`}>
             {panels.map((p) => (
-              <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} />
+              <ScreenPanel key={p.key} panel={p} tile={TILES.find((t) => t.id === p.tile)} items={itemsOf(p.tile)} onChange={(x) => update(p.key, x)} onRemove={() => remove(p.key)} onOpen={onOpen} trials={trials} />
             ))}
           </div>
         )}
@@ -262,7 +254,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], onFocus, dela
   )
 }
 
-function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpen, note }: {
+function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpen, note, trials }: {
   panel: Panel
   tile: TileDef | undefined
   /** Shown under the title (e.g. the filters behind the automatic Insights panel). */
@@ -271,6 +263,7 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
   onChange: (p: Partial<Panel>) => void
   onRemove: () => void
   onOpen: (i: FilteredInstance) => void
+  trials?: string[]
 }) {
   // A model tile whose model is no longer in view still shows (empty).
   const tile: TileDef = given ?? { id: panel.tile, group: '', title: panel.tile.replace(/^model:/, ''), color: '#2153f5', icon: 'grid', test: () => false }
@@ -299,7 +292,7 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
   // The tile's details list; once drilled into one model / vendor / part, it lists the next level down.
   const baseKind = tile.detail ?? tile.counts ?? 'activities'
   const kindDim = { models: 'model', vendors: 'vendor', parts: 'part' } as const
-  const detailKind: DetailKind | null = panel.detail ? panel.detail : baseKind === 'none' ? null
+  const detailKind: DetailKind = panel.detail ? panel.detail : baseKind === 'none' ? 'activities'
     : baseKind !== 'activities' && used.includes(kindDim[baseKind]) ? (used.includes('part') ? 'activities' : 'parts')
       : baseKind
 
@@ -349,45 +342,18 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
       {items.length === 0 ? (
         <p className="flex-1 py-6 text-center text-[11px] text-[var(--color-muted)]">Nothing here for the current filters.</p>
       ) : groupBy === 'list' ? (
-        <ActivityList items={items} onOpen={onOpen} />
+        <TileDetails kind="activities" items={items} color={tile.color} onOpen={onOpen} trials={trials}
+          onPick={(picks, detail) => onChange({ drill: [...panel.drill.filter((d) => !picks.some((x) => x.dim === d.dim)), ...picks], groupBy: undefined, detail })} />
       ) : (
         <>
-          {detailKind && (
-            <TileDetails kind={detailKind} items={items} color={tile.color} onOpen={onOpen}
-              onPick={(picks, detail) => onChange({ drill: [...panel.drill.filter((d) => !picks.some((x) => x.dim === d.dim)), ...picks], groupBy: undefined, detail })} />
-          )}
+          <TileDetails kind={detailKind} items={items} color={tile.color} onOpen={onOpen} trials={trials}
+            onPick={(picks, detail) => onChange({ drill: [...panel.drill.filter((d) => !picks.some((x) => x.dim === d.dim)), ...picks], groupBy: undefined, detail })} />
           <PanelInsights items={items} groupBy={groupBy} onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
           <PanelChart items={items} bars={bars} dimLabel={DIM_LABEL[groupBy]}
             onDrill={(k) => onChange({ drill: [...panel.drill, { dim: groupBy, value: k }], groupBy: undefined })} />
         </>
       )}
     </section>
-  )
-}
-
-function ActivityList({ items, onOpen }: { items: FilteredInstance[]; onOpen: (i: FilteredInstance) => void }) {
-  return (
-    <div className="max-h-[320px] overflow-auto rounded-lg border border-[var(--color-border)]">
-      <table className="w-full text-[10.5px]">
-        <thead className="sticky top-0">
-          <tr className="text-left"><th className="px-2 py-1.5">Part</th><th className="px-2 py-1.5">Activity</th><th className="px-2 py-1.5">Trial</th><th className="px-2 py-1.5">Planned end</th><th className="px-2 py-1.5">Status</th></tr>
-        </thead>
-        <tbody>
-          {items.map((i) => {
-            const b = workBucket(i)
-            return (
-              <tr key={`${i.row.id}|${i.part.partNo}`} onClick={() => onOpen(i)} className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-surface)]" title="Open the activity form">
-                <td className="px-2 py-1.5"><span className="font-mono">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
-                <td className="px-2 py-1.5">{i.activity.name}</td>
-                <td className="px-2 py-1.5">{trialLabelOf(i.row.milestoneId)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5">{i.dates.status === 'resolved' ? fmtDate(i.dates.end) : '—'}</td>
-                <td className="px-2 py-1.5">{b ? <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold text-white" style={{ background: WORK_BUCKET_COLORS[b] }}>{b === 'Delayed' ? 'Overdue' : b}</span> : '—'}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
   )
 }
 
@@ -735,21 +701,25 @@ function PanelInsights({ items, groupBy, onDrill }: {
  * The tile's own details, first in its panel: which models, which parts, which vendors (with their numbers), or for
  * an activity tile the activities themselves. A row drills the panel into it (an activity row opens its form).
  */
-function TileDetails({ kind, items, color, onPick, onOpen }: {
+function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   kind: 'models' | 'vendors' | 'parts' | 'activities'
   items: FilteredInstance[]
   color: string
   /** Narrow the panel (and optionally say what the list shows next). */
   onPick: (picks: { dim: Dim; value: string }[], detail?: DetailKind) => void
   onOpen: (i: FilteredInstance) => void
+  trials?: string[]
 }) {
   const { partReleases, partAcks } = useQAStore()
   const onDrill = (dim: Dim, value: string) => onPick([{ dim, value }])
   const [all, setAll] = useState(false)
   const [open, setOpen] = useState(true)
+  // Second tab: Activity Update on the ticked rows (or everything listed when none is ticked).
+  const [tab, setTab] = useState<'details' | 'update'>('details')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
   const LIMIT = 8
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
-  type Row = { key: string; cells: React.ReactNode[]; onClick: () => void; title: string }
+  type Row = { key: string; cells: React.ReactNode[]; onClick: () => void; title: string; xs: FilteredInstance[] }
   const { head, rows } = useMemo((): { head: string[]; rows: Row[] } => {
     const group = (f: (i: FilteredInstance) => string) => {
       const m = new Map<string, FilteredInstance[]>()
@@ -787,7 +757,7 @@ function TileDetails({ kind, items, color, onPick, onOpen }: {
       return {
         head: ['Model', 'Parts', 'Vendors', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.model).map(([m, xs]) => { const s = stats(xs); return {
-          key: m, title: `Drill into ${m}`, onClick: () => onDrill('model', m),
+          xs, key: m, title: `Drill into ${m}`, onClick: () => onDrill('model', m),
           cells: [<strong key="m" className="text-[#101828]">{m}</strong>, ...numbers('model', m, m, s, [
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its vendors', n: new Set(xs.map((i) => i.part.vendorCode)).size, detail: 'vendors' },
@@ -799,7 +769,7 @@ function TileDetails({ kind, items, color, onPick, onOpen }: {
       return {
         head: ['Vendor', 'Parts', 'Models', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.vendorCode || i.part.vendorName).map(([v, xs]) => { const s = stats(xs); const p = xs[0].part; return {
-          key: v, title: `Drill into ${p.vendorName}`, onClick: () => onDrill('vendor', v),
+          xs, key: v, title: `Drill into ${p.vendorName}`, onClick: () => onDrill('vendor', v),
           cells: [<span key="v"><span className="font-mono text-[10px] text-[var(--color-muted)]">{p.vendorCode}</span> <strong className="text-[#101828]">{p.vendorName}</strong></span>, ...numbers('vendor', v, p.vendorName, s, [
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its models', n: [...new Set(xs.map((i) => i.part.model))].join(', '), detail: 'models' },
@@ -811,7 +781,7 @@ function TileDetails({ kind, items, color, onPick, onOpen }: {
       return {
         head: ['Part', 'Model', 'Vendor', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.partNo).map(([no, xs]) => { const s = stats(xs); const p = xs[0].part; return {
-          key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
+          xs, key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
           cells: [<span key="p"><span className="font-mono text-[#101828]">{no}</span> <span className="text-[var(--color-muted)]">{p.partName}</span></span>,
             link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts')),
             link(`${p.vendorCode}: ${p.vendorName}`, `${p.vendorName}: its parts`, () => onPick([{ dim: 'vendor', value: p.vendorCode || p.vendorName }], 'parts')),
@@ -827,7 +797,7 @@ function TileDetails({ kind, items, color, onPick, onOpen }: {
         const b = workBucket(i)
         const d = late(i)
         return {
-          key: `${i.row.id}|${i.part.partNo}`, title: 'Open the activity form', onClick: () => onOpen(i),
+          xs: [i], key: `${i.row.id}|${i.part.partNo}`, title: 'Open the activity form', onClick: () => onOpen(i),
           cells: [
             <span key="p"><span className="font-mono text-[#101828]">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.model}</span></span>,
             i.activity.name, trialLabelOf(i.row.milestoneId),
@@ -843,23 +813,52 @@ function TileDetails({ kind, items, color, onPick, onOpen }: {
   const shown = all ? rows : rows.slice(0, LIMIT)
   const noun = { models: 'model', vendors: 'vendor', parts: 'part', activities: 'activit' }[kind]
   const plural = (n: number) => (kind === 'activities' ? (n === 1 ? 'activity' : 'activities') : `${noun}${n === 1 ? '' : 's'}`)
+  // Ticks that still match a listed row; the update tab works on those rows' activities, else on all listed.
+  const tickedRows = rows.filter((r) => picked.has(r.key))
+  const chosen = useMemo(() => {
+    const src = tickedRows.length ? tickedRows.flatMap((r) => r.xs) : items
+    const seen = new Set<string>()
+    return src.filter((i) => { const k = `${i.row.id}|${i.part.partNo}`; if (seen.has(k)) return false; seen.add(k); return true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickedRows.length, picked, rows, items])
+  const allTicked = rows.length > 0 && tickedRows.length === rows.length
+  const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  const tabCls = (on: boolean) => `px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide ${on ? 'text-[#101828]' : 'text-[var(--color-muted)] hover:text-[#344054]'}`
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-white" data-tile-details={kind}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-[var(--color-surface)]" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[#344054]">Which {kind}</span>
-        <span className="rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{rows.length}</span>
-        <span className="ml-auto text-[9.5px] text-[var(--color-muted)]">{kind === 'activities' ? 'click a row to open it' : 'click a name to drill in, a number to list it'}</span>
-        <FbIcon name="chevron-down" size={12} className={open ? "" : "-rotate-90"} />
-      </button>
-      {open && (
+      <div className="flex items-center gap-1 pr-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
+        <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} pl-3`}>
+          Which {kind} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{rows.length}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} className={tabCls(tab === 'update')}>
+          Activity Update <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{chosen.length}</span>
+        </button>
+        <span className="ml-auto hidden text-[9.5px] text-[var(--color-muted)] sm:inline">
+          {tab === 'update' ? (tickedRows.length ? `for the ${tickedRows.length} ticked ${plural(tickedRows.length)}` : 'for everything listed (tick rows to choose)') : kind === 'activities' ? 'tick rows to update them, or click a row to open it' : 'tick rows to update them, click a name to drill in, a number to list it'}
+        </span>
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Collapse' : 'Expand'} className="rounded p-1 hover:bg-[var(--color-surface)]">
+          <FbIcon name="chevron-down" size={12} className={open ? '' : '-rotate-90'} />
+        </button>
+      </div>
+      {open && tab === 'update' && (
+        <div className="border-t border-[var(--color-border)] p-2.5" data-screen-update>
+          <ActivityUpdatePanel instances={chosen} partCount={new Set(chosen.map((i) => i.part.partNo)).size} trials={trials} />
+        </div>
+      )}
+      {open && tab === 'details' && (
         <>
-          <div className="max-h-[300px] overflow-auto">
+          <div className="max-h-[300px] overflow-auto border-t border-[var(--color-border)]">
             <table className="w-full text-[10.5px]">
-              <thead className="sticky top-0"><tr className="text-left">{head.map((h) => <th key={h} className="px-2.5 py-1.5">{h}</th>)}</tr></thead>
+              <thead className="sticky top-0"><tr className="text-left">
+                <th className="w-7 px-2.5 py-1.5"><input type="checkbox" aria-label="Tick all" checked={allTicked} onChange={() => setPicked(allTicked ? new Set() : new Set(rows.map((r) => r.key)))} /></th>
+                {head.map((h) => <th key={h} className="px-2.5 py-1.5">{h}</th>)}
+              </tr></thead>
               <tbody>
                 {shown.map((r) => (
                   <tr key={r.key} onClick={r.onClick} title={r.title} className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-surface)]">
+                    <td className="px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" aria-label={`Tick ${r.key}`} checked={picked.has(r.key)} onChange={() => toggle(r.key)} />
+                    </td>
                     {r.cells.map((c, k) => <td key={k} className="px-2.5 py-1.5 text-[#344054]">{c}</td>)}
                   </tr>
                 ))}
