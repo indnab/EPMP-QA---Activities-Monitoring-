@@ -1,5 +1,5 @@
 /**
- * Workspace → My Screen: a blank canvas with the My Work tiles as buttons along the top. Clicking a tile adds a
+ * Workspace → My Parts: a blank canvas with the My Work tiles as buttons along the top. Clicking a tile adds a
  * dashboard panel for it: a summary (activities, parts, models, vendors) and a breakdown, by Model first. Clicking a
  * bar drills one level down (Model → Trial → Vendor → Part → Activity list); the breadcrumb goes back up, and the
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.

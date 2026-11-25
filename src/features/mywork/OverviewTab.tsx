@@ -368,7 +368,7 @@ export function PriorityModels({ instances, parts, className = '', selected = []
   selected?: string[]
   /** Click on a card: filter the page's list to that model (click again to clear). */
   onPick: (model: string) => void
-  /** Where the collapsed state is remembered (My Screen keeps its own). */
+  /** Where the collapsed state is remembered (My Parts keeps its own). */
   collapseKey?: string
 }) {
   const stageOf = useModelStages(parts)

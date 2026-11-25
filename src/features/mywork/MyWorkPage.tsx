@@ -593,7 +593,7 @@ function MyWorkPageInner() {
       : viewParam === 'actions' ? 'actions'
       : viewParam === 'calendar' ? 'calendar'
       : viewParam === 'myscreen' ? 'myscreen'
-      : 'actions' // the landing tab (there is no My Work tab any more)
+      : 'myscreen' // the landing tab: My Parts (the former My Screen)
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
   const setView = (t: MwTab, bucket?: WorkBucket, seg?: string) =>
     setSearchParams((prev) => {
@@ -802,7 +802,7 @@ function MyWorkPageInner() {
   )
 
   const hasFilters = hasExtra(fExtra) || [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity, fStatus].some((v) => v.length > 0) || hasAttrSel(fAttrs) || !isAllMarkets(fMarket)
-  // The filters in force as short labels (My Screen shows insights for them).
+  // The filters in force as short labels (My Parts shows insights for them).
   const filterChips = useMemo(() => {
     const chip = (label: string, vals: string[], show: (v: string) => string = (v) => v) =>
       vals.length === 0 ? [] : [`${label}: ${vals.length <= 2 ? vals.map(show).join(', ') : `${vals.length} selected`}`]
@@ -1015,7 +1015,7 @@ function MyWorkPageInner() {
     }
   }
 
-  // Activity Update: on My Work (first section) and on My Screen (below the dashboards), driven by the filters.
+  // Activity Update: on My Work (first section) and on My Parts (below the dashboards), driven by the filters.
   const renderActivityUpdate = (src?: { label: string; items: FilteredInstance[] } | null) => {
     const items = src ? src.items : tableRows
     const active = src ? true : updateActive
@@ -1049,15 +1049,15 @@ function MyWorkPageInner() {
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
           items={[
+            { id: 'myscreen', label: 'My Parts' },
             { id: 'actions', label: 'Part Allocation', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
-            { id: 'calendar', label: 'My Calendar' },
-            { id: 'myscreen', label: 'My Screen' }
+            { id: 'calendar', label: 'My Calendar' }
           ]}
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'Part Allocation', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Screen' }[effectiveView]}`} />
+          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'Part Allocation', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Parts' }[effectiveView]}`} />
         </div>
       </div>
 
@@ -1104,7 +1104,7 @@ function MyWorkPageInner() {
             <PriorityModels instances={instancesAllModels} parts={partsAllModels} selected={fModel} collapseKey="ms-priority-models"
               onPick={(m) => chooseModels(fModel.length === 1 && fModel[0] === m ? [] : [m])} />
           </div>
-          <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
+          <ExportSection id="mw-myscreen" label="My Parts"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
         </>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} modelNames={modelOptions} /></ExportSection>

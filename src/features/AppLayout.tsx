@@ -98,8 +98,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/mywork',     label: 'Workspace',  group: 'Workspace', tour: 'nav-mywork',
     roles: ['Vendor', 'PIC', 'SIC', 'DPM'],
     icon: ico(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h9" /></>) },
-  // Shortcut to Workspace → My Screen (the personal dashboard), for every work role including the vendor.
-  { to: '/mywork?view=myscreen', label: 'My Screen', group: 'Workspace', tour: 'nav-my-screen',
+  // Shortcut to Workspace → My Parts (the personal dashboard), for every work role including the vendor.
+  { to: '/mywork?view=myscreen', label: 'My Parts', group: 'Workspace', tour: 'nav-my-screen',
     roles: ['Vendor', 'PIC', 'SIC', 'DPM'],
     icon: ico(<><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /><path d="M7 13l3-3 2 2 4-4" /></>) },
   { to: '/data-entry', label: 'Parts Data Entry', group: 'Workspace', tour: 'nav-data-entry',
@@ -180,7 +180,7 @@ export function AppLayout() {
   )
 
   let lastGroup: string | null = null
-  // Workspace and its My Screen shortcut share the /mywork path: tell them apart by ?view=.
+  // Workspace and its My Parts shortcut share the /mywork path: tell them apart by ?view=.
   const loc = useLocation()
   const onMyScreen = loc.pathname === '/mywork' && new URLSearchParams(loc.search).get('view') === 'myscreen'
   const activeFor = (to: string, isActive: boolean) =>
