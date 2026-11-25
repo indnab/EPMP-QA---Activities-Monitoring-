@@ -5,7 +5,8 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -716,6 +717,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   const [open, setOpen] = useState(true)
   // Second tab: Activity Update on the ticked rows (or everything listed when none is ticked).
   const [tab, setTab] = useState<'details' | 'update'>('details')
+  const [maxed, setMaxed] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const LIMIT = 8
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
@@ -836,13 +838,21 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         <span className="ml-auto hidden text-[9.5px] text-[var(--color-muted)] sm:inline">
           {tab === 'update' ? (tickedRows.length ? `for the ${tickedRows.length} ticked ${plural(tickedRows.length)}` : 'for everything listed (tick rows to choose)') : kind === 'activities' ? 'tick rows to update them, or click a row to open it' : 'tick rows to update them, click a name to drill in, a number to list it'}
         </span>
+        {tab === 'update' && open && (
+          <button type="button" onClick={() => setMaxed(true)} aria-label="Maximize Activity Update" title="Maximize (full screen)" data-export-ignore="true"
+            className="rounded p-1 text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+          </button>
+        )}
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Collapse' : 'Expand'} className="rounded p-1 hover:bg-[var(--color-surface)]">
           <FbIcon name="chevron-down" size={12} className={open ? '' : '-rotate-90'} />
         </button>
       </div>
       {open && tab === 'update' && (
         <div className="border-t border-[var(--color-border)] p-2.5" data-screen-update>
-          <ActivityUpdatePanel instances={chosen} partCount={new Set(chosen.map((i) => i.part.partNo)).size} trials={trials} />
+          <MaximizeHost max={maxed} onRestore={() => setMaxed(false)} title={`Activity Update · ${chosen.length} ${chosen.length === 1 ? 'activity' : 'activities'}`}>
+            <ActivityUpdatePanel instances={chosen} partCount={new Set(chosen.map((i) => i.part.partNo)).size} trials={trials} />
+          </MaximizeHost>
         </div>
       )}
       {open && tab === 'details' && (
@@ -873,5 +883,51 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Shows its children in place, or over the whole screen when `max` (Restore or Esc to go back). The children's DOM
+ * node is moved to <body> while maximized (a fixed overlay inside the panel would be clipped), so what was typed stays.
+ */
+function MaximizeHost({ max, onRestore, title, children }: { max: boolean; onRestore: () => void; title: string; children: React.ReactNode }) {
+  const [host] = useState(() => document.createElement('div'))
+  const slot = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (max) {
+      host.className = 'epmp-shell fixed inset-0 z-[60] overflow-auto p-5'
+      document.body.appendChild(host)
+    } else {
+      host.className = ''
+      slot.current?.appendChild(host)
+    }
+  }, [max, host])
+  useEffect(() => () => { host.remove() }, [host])
+  useEffect(() => {
+    if (!max) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role=dialog]')) onRestore() }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [max, onRestore])
+  return (
+    <>
+      <div ref={slot} />
+      {createPortal(
+        <>
+          {max && (
+            <div className="sticky top-0 z-20 -mx-5 -mt-5 mb-3 flex items-center gap-2 bg-white/80 px-5 py-2 backdrop-blur" data-export-ignore="true">
+              <span className="text-[12px] font-semibold text-[var(--color-text)]">{title}</span>
+              <span className="text-[10.5px] text-[var(--color-muted)]">· full screen</span>
+              <button type="button" onClick={onRestore} title="Back to the page (Esc)" data-restore-update
+                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[10.5px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg> Restore
+              </button>
+            </div>
+          )}
+          {children}
+        </>,
+        host
+      )}
+    </>
   )
 }
