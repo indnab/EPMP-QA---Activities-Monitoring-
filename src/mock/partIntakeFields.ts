@@ -35,6 +35,8 @@ export const INTAKE_FIELDS: IntakeField[] = [
   { key: 'trial_status', label: 'Trial Status', source: 'System (EPMP)', display: true, system: true, remarks: 'As per the current trial status', filter: false, primary: true },
   { key: 'part_number', label: 'Part Number', source: 'Enovia', display: true, core: 'partNo', filter: true, primary: false, required: true },
   { key: 'part_name', label: 'Part Name', source: 'Enovia', display: true, core: 'partName', filter: true, primary: false, required: true },
+  { key: 'main_part_number', label: 'Main Part Number', source: 'Enovia', display: true, remarks: 'The main part this part belongs to (the part itself when it is the main part)', filter: true, primary: false },
+  { key: 'bundling_part_number', label: 'Bundling Part Number', source: 'Enovia', display: true, remarks: 'The bundle the part is supplied in, with the main part', filter: true, primary: false },
   { key: 'vendor_no', label: 'Vendor No', source: 'Enovia', display: true, core: 'vendorCode', filter: true, primary: false },
   { key: 'vendor_name', label: 'Vendor Name', source: 'SAP', display: true, core: 'vendorName', filter: true, primary: false, required: true },
   { key: 'plant', label: 'Plant', source: 'SAP', display: true, filter: true, primary: false },
@@ -76,6 +78,9 @@ export function sampleIntakeAttrs(partNo: string, i: number): Record<string, str
   const h = Array.from(partNo).reduce((n, c) => n + c.charCodeAt(0), 0) + i
   const pick = (a: string[]) => a[h % a.length]
   return {
+    // Parts ending in a digit 1-9 are bundled with the main part ending in 0; main parts and their first bundled parts share a bundle number.
+    main_part_number: /[1-9]$/.test(partNo) ? `${partNo.slice(0, -1)}0` : partNo,
+    bundling_part_number: /[0-2]$/.test(partNo) ? `BND-${partNo.slice(0, 5)}-${partNo.slice(-5, -1)}` : '',
     part_category: pick(['A', 'AR', 'A/AR', 'G', 'F']),
     model_variant: pick(['Domestic', 'Export', 'Domestic + Export']),
     fuel_type: pick(['Petrol', 'CNG', 'Petrol+CNG']),

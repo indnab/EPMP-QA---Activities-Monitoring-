@@ -30,7 +30,7 @@ export function intakeValue(f: IntakeField, part: PartRecord, models: ModelRecor
 
 export const DISPLAY_FIELDS: IntakeField[] = (() => {
   // Part Number and Part Name lead the table; the rest follow the order of the client sheet.
-  const first = ['part_number', 'part_name']
+  const first = ['part_number', 'part_name', 'main_part_number', 'bundling_part_number']
   const shown = INTAKE_FIELDS.filter((f) => f.display)
   return [...first.map((k) => shown.find((f) => f.key === k)!), ...shown.filter((f) => !first.includes(f.key))]
 })()
