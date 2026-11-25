@@ -293,15 +293,22 @@ export function buildDemoData(
     const model = models.find((m) => m.name === part?.model)
     if (!part) return
     let k = 0
-    for (const e of entries) {
-      if (e.partNo !== partNo) continue
-      const row = templateRows.find((r) => r.id === e.templateRowId)
-      const def = actById.get(e.activityId)
-      if (!row || !def || plannedDateOwner(def) !== 'Vendor') continue
+    for (const row of templateRows) {
+      if (row.section !== part.section) continue
+      const def = actById.get(row.activityId)
+      if (!def || plannedDateOwner(def) !== 'Vendor') continue
+      // Every vendor activity of the part is planned, so create the entry where none exists yet.
+      const id = makeEntryId(row.id, partNo)
+      let e = entries.find((x) => x.id === id)
+      if (e?.notApplicable) continue
+      if (!e) {
+        e = { id, templateRowId: row.id, activityId: row.activityId, partNo, values: {}, validationState: 'Draft', currentStepIndex: 0, history: [], updatedAt: NOW, updatedBy: 'Vendor' } as ActivityEntry
+        entries.push(e)
+      }
       const w = resolveInstanceDates(row, model, def, part)
       if (w.status !== 'resolved') continue
       k++
-      if (mode !== 'full' && k % 2 === 0) continue
+      // A vendor submits a part's whole plan in one go, so every activity of these parts is planned.
       // Planned after the part's acknowledgement (latest sample ack: 5 Oct).
       const at = `2026-10-0${6 + (k % 3)}T11:00:00Z`
       // 'review': the first planned activity and every third one fall outside the window (dates shifted by 4–12 days).

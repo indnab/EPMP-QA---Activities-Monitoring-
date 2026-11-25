@@ -5,7 +5,8 @@
  *    them back with a comment (the vendor then changes and resubmits).
  *  - PIC: the PIC enters it directly (no approval).
  * A vendor plan inside the window (start and end) stands (approved automatically); with either date outside it needs a remark and goes to the PIC
- * for approval (notified in the bell). Earlier dates are kept. A Gantt view shows each window as a band with the
+ * for approval (notified in the bell). The vendor submits a part's plan whole: every activity of a part needs its start
+ * and end dates before any of them can be submitted (no partial plans). Earlier dates are kept. A Gantt view shows each window as a band with the
  * planned start → end as a bar on it; clicking a row places the bar's start there. The vendor sees only its own activities on
  * parts released to it and acknowledged.
  */
@@ -103,6 +104,9 @@ export function VendorPlanningPage() {
     return e && ((e.date !== undefined && e.date !== (r.plan?.current.date ?? '')) || (e.start !== undefined && e.start !== (r.plan?.current.start ?? '')) || (e.remark !== undefined && e.remark !== (r.plan?.current.remark ?? '')))
   })
   const incomplete = dirty.filter((r) => !startOf(r) || !dateOf(r) || startOf(r) > dateOf(r))
+  // The vendor cannot submit a partial plan: for every part it touched, all its activities need both dates.
+  const missingOf = (partNo: string) => rows.filter((r) => r.i.part.partNo === partNo && editable(r) && (!startOf(r) || !dateOf(r) || startOf(r) > dateOf(r)))
+  const partialParts = isVendor ? [...new Set(dirty.map((r) => r.i.part.partNo))].filter((no) => missingOf(no).length > 0) : []
   const needsRemark = dirty.filter((r) => lateBy(r) !== 0 && !remarkOf(r).trim())
   const counts = {
     total: rows.length,
@@ -136,6 +140,12 @@ export function VendorPlanningPage() {
       </span>
     ) : null
   }
+  /** Vendor: how many of a part's activities still lack dates (the whole plan is submitted together). */
+  const missingChip = (no: string) => {
+    if (!isVendor) return null
+    const m = missingOf(no).length
+    return m > 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800" title="A part's plan is submitted whole: every activity needs a start and an end date">{m} of {rows.filter((r) => r.i.part.partNo === no).length} activities need dates · submit all together</span> : null
+  }
   const set = (k: string, p: { start?: string; date?: string; remark?: string }) => setEdit((prev) => ({ ...prev, [k]: { ...prev[k], ...p } }))
   const fillWindow = () => {
     const next = { ...edit }
@@ -151,6 +161,7 @@ export function VendorPlanningPage() {
     set(k, { start: day, date: new Date(Date.parse(`${day}T00:00:00Z`) + len * 86_400_000).toISOString().slice(0, 10) })
   }
   const submit = () => {
+    if (partialParts.length) { toast(`A part's plan is submitted in one go: ${partialParts.map((no) => `${no} still has ${missingOf(no).length} activit${missingOf(no).length === 1 ? 'y' : 'ies'} without dates`).join('; ')}.`); return }
     if (incomplete.length) { toast(`Enter a start and an end date (start not after end) for ${incomplete.length === 1 ? 'the activity' : `all ${incomplete.length} activities`} you changed.`); return }
     if (needsRemark.length) { toast(`Add a remark for the ${needsRemark.length} date${needsRemark.length === 1 ? '' : 's'} outside the planned window.`); return }
     const n = submitVendorPlan({
@@ -215,8 +226,9 @@ export function VendorPlanningPage() {
             {canEdit && view !== 'status' && (
               <span className="ml-auto flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={fillWindow} title="Fill the empty start and end dates with the planned window's dates">Use window dates for blanks</Button>
+                {partialParts.length > 0 && <span className="text-[10.5px] font-semibold text-amber-700">{partialParts.length} part{partialParts.length === 1 ? '' : 's'} incomplete: all activities of a part go together</span>}
                 {dirty.length > 0 && <button type="button" onClick={() => setEdit({})} className="text-[10.5px] font-semibold text-[var(--color-muted)] hover:underline">Discard</button>}
-                <Button variant="primary" size="sm" disabled={dirty.length === 0} onClick={submit}><Icon name="check" size={13} className="mr-1" />Submit plan ({dirty.length})</Button>
+                <Button variant="primary" size="sm" disabled={dirty.length === 0 || partialParts.length > 0} title={partialParts.length ? 'Enter start and end dates for every activity of each part you are planning, then submit them together' : undefined} onClick={submit}><Icon name="check" size={13} className="mr-1" />Submit plan ({dirty.length})</Button>
               </span>
             )}
           </div>
@@ -224,7 +236,7 @@ export function VendorPlanningPage() {
             <PartStatus rows={slaAll.filter((s) => (chosen.length ? chosen.includes(s.part.partNo) : scoped.some((p) => p.partNo === s.part.partNo)) && (s.state !== 'Acknowledged' || s.planRequired > 0 || !isVendor))}
               actions={partActions} onOpenPart={(no) => { setFParts([no]); setView('table') }} />
           ) : view === 'gantt' ? (
-            <PlanGantt partInfo={(no) => <PlanDueChip s={slaOf.get(no)} />} partActions={partActions} rows={shown.map((r) => ({
+            <PlanGantt partInfo={(no) => <><PlanDueChip s={slaOf.get(no)} />{missingChip(no)}</>} partActions={partActions} rows={shown.map((r) => ({
               k: key(r.i), part: r.i.part, activity: r.i.activity.name, trial: trialLabelOf(r.i.row.milestoneId), win: r.win,
               start: startOf(r), date: dateOf(r), out: lateBy(r), status: dirty.includes(r) ? 'Not submitted' : r.status, owner: r.owner, editable: editable(r),
             }))} onSet={placeStart} />
@@ -262,6 +274,7 @@ export function VendorPlanningPage() {
                             <span className="font-mono text-[11px] font-semibold text-[#101828]">{r.i.part.partNo}</span>
                             <span className="text-[10.5px] text-[#475467]">{r.i.part.partName} · {r.i.part.model} · {vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)}</span>
                             <PlanDueChip s={slaOf.get(r.i.part.partNo)} />
+                            {missingChip(r.i.part.partNo)}
                             {waiting.length > 0 && <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-800">{waiting.length} awaiting approval</span>}
                             <span className="ml-auto">{partActions(r.i.part.partNo)}</span>
                           </div>
