@@ -57,7 +57,14 @@ const DEMO_PARTS: DemoPartSeed[] = [
   { partNo: '36010-M55R20', partName: 'Fog Lamp Wiring Harness', model: 'Dzire', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Electrical', pic: 'Rahul Verma', type: 'ECN', release: 'none', fresh: true },
   { partNo: '84701-M82P20', partName: 'Door Mirror Assy RH', model: 'Brezza', vendorName: 'Subros Limited', vendorCode: 'V1004', department: 'Body', pic: 'Anita Desai', type: 'NewPart', release: 'none', fresh: true },
   { partNo: '15100-M68P30', partName: 'Fuel Pump Module', model: 'Baleno', vendorName: 'Bosch India', vendorCode: 'V1003', department: 'Engine', pic: 'Suresh Nair', type: 'NewPart', release: 'none', fresh: true },
-  { partNo: '73800-M82P40', partName: 'Glove Box Assy', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'ECN', release: 'none', fresh: true }
+  { partNo: '73800-M82P40', partName: 'Glove Box Assy', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'ECN', release: 'none', fresh: true },
+  // Acknowledged parts whose vendor plan has dates outside the planned window ("Vendor Plan Received for Review").
+  { partNo: '31100-M74LD2', partName: 'Headlamp Levelling Unit', model: 'Swift', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Lighting', pic: 'Rahul Verma', type: 'NewPart', release: 'ack' },
+  { partNo: '71811-M82P02', partName: 'Side Cladding LH', model: 'Brezza', vendorName: 'Subros Limited', vendorCode: 'V1004', department: 'Body', pic: 'Anita Desai', type: 'NewPart', release: 'ack' },
+  { partNo: '35520-M68P01', partName: 'Roof Wiring Harness', model: 'Baleno', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Electrical', pic: 'Suresh Nair', type: 'NewPart', release: 'ack' },
+  { partNo: '84701-M55R11', partName: 'Connecting Rod Bolt', model: 'Dzire', vendorName: 'Bosch India', vendorCode: 'V1003', department: 'Engine', pic: 'Suresh Nair', type: 'ECN', release: 'ack' },
+  { partNo: '95100-M82P11', partName: 'Centre Console Panel', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'NewPart', release: 'ack' },
+  { partNo: '39100-M74F01', partName: 'Door Sill Plate', model: 'Grand Vitara', vendorName: 'Sanden Vikas', vendorCode: 'V1005', department: 'Body', pic: 'Rahul Verma', type: 'NewPart', release: 'ack' }
 ]
 
 /** A plausible value for one field. `n` varies the pick between parts/fields so the lists look mixed. */
@@ -280,7 +287,8 @@ export function buildDemoData(
   const delayReasons = seedExceptions(entries, parts)
   // Vendor planning samples: one part fully planned (approved), one part half planned with dates outside the window
   // waiting for the PIC and one sent back.
-  const planPart = (partNo: string, mode: 'full' | 'partial') => {
+  const REMARKS = ['Tool modification at sub-supplier', 'Raw material delay (import)', 'Die trial rescheduled', 'Sub-supplier capacity constraint', 'Drawing revision under discussion']
+  const planPart = (partNo: string, mode: 'full' | 'partial' | 'review', nth = 0) => {
     const part = parts.find((p) => p.partNo === partNo)
     const model = models.find((m) => m.name === part?.model)
     if (!part) return
@@ -293,13 +301,15 @@ export function buildDemoData(
       const w = resolveInstanceDates(row, model, def, part)
       if (w.status !== 'resolved') continue
       k++
-      if (mode === 'partial' && k % 2 === 0) continue
+      if (mode !== 'full' && k % 2 === 0) continue
       // Planned after the part's acknowledgement (latest sample ack: 5 Oct).
       const at = `2026-10-0${6 + (k % 3)}T11:00:00Z`
-      const outside = mode === 'partial' && k % 3 === 0
-      const date = outside ? addDays(w.end, 9) : w.end
-      const start = outside ? addDays(w.start, 9) : w.start
-      const version = { start, date, by: part.vendorName, byRole: 'Vendor' as const, at, remark: outside ? 'Tool modification at sub-supplier' : undefined }
+      // 'review': the first planned activity and every third one fall outside the window (dates shifted by 4–12 days).
+      const outside = (mode === 'partial' && k % 3 === 0) || (mode === 'review' && (k === 1 || k % 3 === 0))
+      const shift = mode === 'review' ? 4 + ((nth * 3 + k) % 9) : 9
+      const date = outside ? addDays(w.end, shift) : w.end
+      const start = outside ? addDays(w.start, shift) : w.start
+      const version = { start, date, by: part.vendorName, byRole: 'Vendor' as const, at, remark: outside ? (mode === 'review' ? REMARKS[(nth + k) % REMARKS.length] : 'Tool modification at sub-supplier') : undefined }
       if (mode === 'partial' && k === 5) {
         e.vendorPlan = { current: version, history: [], status: 'Sent back', decision: { by: part.pic, at: '2026-10-10T10:00:00Z', comment: 'Align with the trial build date' } }
         e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned dates ${start} → ${date}` },
@@ -314,6 +324,8 @@ export function buildDemoData(
   }
   planPart('31100-M74LD1', 'full')
   planPart('35520-M68P00', 'partial')
+  ;['31100-M74LD0', '71811-M82P00', '84701-M55R10', '31100-M74LD2', '71811-M82P02', '35520-M68P01', '84701-M55R11', '95100-M82P11', '39100-M74F01']
+    .forEach((no, n) => planPart(no, 'review', n))
   delayReasons.push(...seedVendorDelays(entries, parts, activities, templateRows, models, partReleases, partAcks, delayReasons))
   return { parts, entries, partReleases, partAcks, delayReasons, models }
 }
