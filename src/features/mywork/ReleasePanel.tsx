@@ -222,7 +222,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
             <Tile title="Vendor planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
             <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
-            <Tile title="Planning submitted for review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
+            <Tile title="Vendor Plan Received for Review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
           </>
         )}
       </div>
