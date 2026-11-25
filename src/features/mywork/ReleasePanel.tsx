@@ -108,6 +108,8 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [returnOpen, setReturnOpen] = useState(false)
   const [reason, setReason] = useState('')
+  const [recallOpen, setRecallOpen] = useState(false)
+  const [recallReason, setRecallReason] = useState('')
   const [notice, setNotice] = useState('')
 
   const slaRows = usePlanningSla()
@@ -133,9 +135,15 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
     return null
   }
   // Deleted parts cannot be released (SAP / ENOVIA has to activate them first).
+  // PIC side: Pending / Returned parts can be released; Released / Acknowledged parts can be recalled.
   const pickable = (state: ReleaseState, part?: PartRecord) =>
-    !part?.sourceDeleted && (isVendor ? state === 'Released' : canReleaseParts && (state === 'Pending' || state === 'Returned'))
-  const pickedHere = shown.filter((r) => picked.has(r.part.partNo) && pickable(r.state, r.part)).map((r) => r.part.partNo)
+    !part?.sourceDeleted && (isVendor ? state === 'Released' : canReleaseParts)
+  const pickedRows = shown.filter((r) => picked.has(r.part.partNo) && pickable(r.state, r.part))
+  const pickedHere = isVendor
+    ? pickedRows.map((r) => r.part.partNo)
+    : pickedRows.filter((r) => r.state === 'Pending' || r.state === 'Returned').map((r) => r.part.partNo)
+  const pickedRecall = isVendor ? [] : pickedRows.filter((r) => r.state === 'Released' || r.state === 'Acknowledged').map((r) => r.part.partNo)
+  const recallAcked = pickedRows.filter((r) => r.state === 'Acknowledged').length
   const allPickable = shown.filter((r) => pickable(r.state, r.part)).map((r) => r.part.partNo)
   const allPicked = allPickable.length > 0 && allPickable.every((no) => picked.has(no))
 
@@ -160,6 +168,16 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
     }
     setNotice(`${pickedHere.length} part${pickedHere.length === 1 ? '' : 's'} released to the vendor.`)
     setPicked(new Set())
+  }
+  const doRecall = () => {
+    for (const no of pickedRecall) {
+      const part = parts.find((p) => p.partNo === no)
+      if (part) releasePart({ partNo: no, released: false, by: currentPersona, actorName: picName(part), comment: recallReason })
+    }
+    setNotice(`${pickedRecall.length} part${pickedRecall.length === 1 ? '' : 's'} recalled from the vendor. They are back under Pending release.`)
+    setPicked(new Set())
+    setRecallReason('')
+    setRecallOpen(false)
   }
   const doAcknowledge = () => {
     acknowledgeParts({ partNos: pickedHere, by: currentPersona, actorName: FIXED_VENDOR_NAME })
@@ -238,9 +256,14 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
               </>
             )}
             {!isVendor && canReleaseParts && (
-              <Button variant="primary" size="sm" disabled={pickedHere.length === 0} onClick={doRelease}>
-                Release selected ({pickedHere.length})
-              </Button>
+              <>
+                <Button variant="secondary" size="sm" disabled={pickedRecall.length === 0} onClick={() => { setRecallReason(''); setRecallOpen(true) }}>
+                  Recall selected ({pickedRecall.length})
+                </Button>
+                <Button variant="primary" size="sm" disabled={pickedHere.length === 0} onClick={doRelease}>
+                  Release selected ({pickedHere.length})
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -327,6 +350,35 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
           </div>
         )}
       </div>
+
+      <Modal
+        open={recallOpen}
+        onClose={() => setRecallOpen(false)}
+        title={`Recall ${pickedRecall.length} part${pickedRecall.length === 1 ? '' : 's'} from the vendor`}
+        footer={
+          <>
+            <Button variant="secondary" size="md" onClick={() => setRecallOpen(false)}>Cancel</Button>
+            <Button variant="danger" size="md" onClick={doRecall} disabled={!recallReason.trim()}>Recall</Button>
+          </>
+        }
+      >
+        <div className="space-y-2 text-sm">
+          <p className="text-xs text-[var(--color-muted)]">
+            The parts go back to <strong>Pending release</strong> and disappear from the vendor's queue until you release them again; the vendor then has to acknowledge them afresh.
+            {recallAcked > 0 && <> {recallAcked} of them {recallAcked === 1 ? 'was' : 'were'} already acknowledged. Entries the vendor made are kept.</>}
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-[10.5px] font-medium text-[var(--color-muted)]">Reason (required)</span>
+            <textarea
+              value={recallReason}
+              onChange={(e) => setRecallReason(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-2.5 py-2 text-[11.5px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              placeholder="e.g. Drawing revision changed, part details need correcting"
+            />
+          </label>
+        </div>
+      </Modal>
 
       <Modal
         open={returnOpen}
