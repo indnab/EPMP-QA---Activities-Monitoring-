@@ -1,8 +1,8 @@
 /**
  * Usage Report: EPMP portal usage, MSIL Quality users (PIC, SIC, DPM) and vendors (vendor codes parts are assigned to).
- * Headline counts (registered / active / inactive), hits, usage frequency (login days per month, active users) and
+ * Headline counts (registered / active / inactive), usage frequency (login days per month, active users) and
  * average time spent (per day / week / month); trends; days since last login; department-wise; user-wise and
- * vendor-wise tables; and who to follow up (inactive > 90 days, never logged in).
+ * vendor-wise tables.
  */
 import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -76,28 +76,24 @@ export function UsageReportPage() {
     for (const s of msil) m.set(s.user.dept, [...(m.get(s.user.dept) ?? []), s])
     return [...m.entries()].map(([d, xs]) => {
       const act = xs.filter((x) => x.active)
-      return { dept: d, users: xs.length, active: act.length, inactive: xs.length - act.length, hits: sum(xs, (x) => x.hits), perMonth: avg(act.map((x) => x.perMonth)), minDay: avgTime(act, 'day') }
-    }).sort((a, b) => b.hits - a.hits)
+      return { dept: d, users: xs.length, active: act.length, inactive: xs.length - act.length, minutes: sum(xs, (x) => x.minutes), perMonth: avg(act.map((x) => x.perMonth)), minDay: avgTime(act, 'day') }
+    }).sort((a, b) => b.minutes - a.minutes)
   }, [msil]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ql = q.trim().toLowerCase()
-  const userRows = [...msil].filter((s) => !ql || `${s.user.id} ${s.user.name} ${s.user.dept} ${s.user.role}`.toLowerCase().includes(ql)).sort((a, b) => b.hits - a.hits)
-  const vendorRows = [...vendors].filter((v) => !ql || `${v.code} ${v.name}`.toLowerCase().includes(ql)).sort((a, b) => b.hits - a.hits)
-  const maxU = Math.max(1, ...userRows.map((s) => s.hits)), maxV = Math.max(1, ...vendorRows.map((v) => v.hits))
+  const userRows = [...msil].filter((s) => !ql || `${s.user.id} ${s.user.name} ${s.user.dept} ${s.user.role}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
+  const vendorRows = [...vendors].filter((v) => !ql || `${v.code} ${v.name}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
+  const maxU = Math.max(1, ...userRows.map((s) => s.minutes)), maxV = Math.max(1, ...vendorRows.map((v) => v.minutes))
   const deptOptions = [...new Set(stats.filter((s) => s.user.kind === 'MSIL').map((s) => s.user.dept))].sort()
   const vendorOptions = [...new Map(stats.filter((s) => s.user.vendorCode).map((s) => [s.user.vendorCode!, s.user.vendorName!])).entries()].sort()
 
-  const follow = {
-    msil90: msil.filter((s) => s.since !== undefined && s.since >= INACTIVE_DAYS).length, vend90: vendors.filter((v) => v.since !== undefined && v.since >= INACTIVE_DAYS).length,
-    msilNever: msil.filter((s) => s.since === undefined).length, vendNever: vendors.filter((v) => v.since === undefined).length,
-  }
 
   const exportUsers = () => downloadCsv(`epmp-usage-msil-${from}-${to}.csv`, buildCsv(
-    ['User ID', 'Name', 'Role', 'Department', 'Status', 'Hits', 'Login days', 'Login days / month', 'Avg min per login day', 'Total minutes', 'Last login'],
-    userRows.map((s) => [s.user.id, s.user.name, s.user.role, s.user.dept, s.active ? 'Active' : 'Inactive', s.hits, s.loginDays, s.perMonth, s.minPerLoginDay, s.minutes, s.lastLogin ?? 'Never'])))
+    ['User ID', 'Name', 'Role', 'Department', 'Status', 'Login days', 'Login days / month', 'Avg min per login day', 'Total minutes', 'Last login'],
+    userRows.map((s) => [s.user.id, s.user.name, s.user.role, s.user.dept, s.active ? 'Active' : 'Inactive', s.loginDays, s.perMonth, s.minPerLoginDay, s.minutes, s.lastLogin ?? 'Never'])))
   const exportVendors = () => downloadCsv(`epmp-usage-vendors-${from}-${to}.csv`, buildCsv(
-    ['Vendor code', 'Vendor name', 'Linked users', 'Active users', 'Status', 'Hits', 'Login days', 'Login days / month', 'Total minutes', 'Last login'],
-    vendorRows.map((v) => [v.code, v.name, v.users.length, v.activeUsers, v.active ? 'Active' : 'Inactive', v.hits, v.loginDays, v.perMonth, v.minutes, v.lastLogin ?? 'Never'])))
+    ['Vendor code', 'Vendor name', 'Linked users', 'Active users', 'Status', 'Login days', 'Login days / month', 'Avg min per login day', 'Total minutes', 'Last login'],
+    vendorRows.map((v) => [v.code, v.name, v.users.length, v.activeUsers, v.active ? 'Active' : 'Inactive', v.loginDays, v.perMonth, v.loginDays ? Math.round(v.minutes / Math.max(1, v.users.reduce((n, u) => n + u.loginDays, 0))) : 0, v.minutes, v.lastLogin ?? 'Never'])))
 
   const sel = 'h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-[11.5px] text-[#344054]'
   const seg = <T extends string>(value: T, set: (v: T) => void, opts: [T, string][]) => (
@@ -150,12 +146,9 @@ export function UsageReportPage() {
         ))}
       </div>
 
-      {/* Hits, frequency, time */}
-      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-6">
+      {/* Frequency, time */}
+      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          ['MSIL user hits', sum(msil, (s) => s.hits).toLocaleString(), 'page views in the period', MSIL],
-          ['Vendor hits', sum(vendors, (v) => v.hits).toLocaleString(), 'across linked users', VEND],
-          ['Total portal hits', (sum(msil, (s) => s.hits) + sum(vendors, (v) => v.hits)).toLocaleString(), `${fmtDate(from)} – ${fmtDate(to)}`, '#344054'],
           ['Usage frequency · MSIL', `${avg(msilActive.map((s) => s.perMonth))}`, 'login days / month, active users', MSIL],
           ['Usage frequency · Vendor', `${avg(vendActive.map((v) => v.perMonth))}`, 'login days / month, active vendors', VEND],
         ].map(([t, v, sub, c]) => (
@@ -179,7 +172,7 @@ export function UsageReportPage() {
         <section className="epmp-card p-3">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <h3 className="text-[12.5px] font-semibold text-[#101828]">Portal usage trend</h3>
-            <span className="text-[10px] text-[var(--color-muted)]">hits</span>
+            <span className="text-[10px] text-[var(--color-muted)]">average time spent, minutes per user who logged in</span>
             <span className="ml-auto">{seg(grain, setGrain, [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</span>
           </div>
           <div className="h-[220px]">
@@ -187,10 +180,10 @@ export function UsageReportPage() {
               <LineChart data={series} margin={{ top: 6, right: 12, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
                 <XAxis dataKey="label" fontSize={10} stroke="#98a2b3" tickLine={false} minTickGap={16} />
-                <YAxis fontSize={10} stroke="#98a2b3" tickLine={false} allowDecimals={false} />
+                <YAxis fontSize={10} stroke="#98a2b3" tickLine={false} allowDecimals={false} unit=" m" />
                 <Tooltip {...tip} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="msilHits" name="MSIL users" stroke={MSIL} strokeWidth={2} dot={grain !== 'day'} isAnimationActive={false} />
-                <Line type="monotone" dataKey="vendorHits" name="Vendors" stroke={VEND} strokeWidth={2} dot={grain !== 'day'} isAnimationActive={false} />
+                <Line type="monotone" dataKey="msilAvgMin" name="MSIL users (min)" stroke={MSIL} strokeWidth={2} dot={grain !== 'day'} isAnimationActive={false} />
+                <Line type="monotone" dataKey="vendorAvgMin" name="Vendors (min)" stroke={VEND} strokeWidth={2} dot={grain !== 'day'} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -211,31 +204,16 @@ export function UsageReportPage() {
           </div>
         </section>
       </div>
-      <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section className="epmp-card p-3">
-          <div className="mb-1 flex items-center gap-2"><h3 className="text-[12.5px] font-semibold text-[#101828]">Average time spent trend</h3><span className="text-[10px] text-[var(--color-muted)]">minutes per user who logged in, per {grain}</span></div>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series} margin={{ top: 6, right: 12, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
-                <XAxis dataKey="label" fontSize={10} stroke="#98a2b3" tickLine={false} minTickGap={16} />
-                <YAxis fontSize={10} stroke="#98a2b3" tickLine={false} unit=" m" />
-                <Tooltip {...tip} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="msilAvgMin" name="MSIL users (min)" stroke={MSIL} strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="vendorAvgMin" name="Vendors (min)" stroke={VEND} strokeWidth={2} dot={false} isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+      <div className="mb-3 grid grid-cols-1 gap-3">
         <section className="epmp-card overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2"><h3 className="text-[12.5px] font-semibold text-[#101828]">Department-wise (MSIL)</h3></div>
           <div className="max-h-[200px] overflow-auto">
             <table className="w-full text-[10.5px]">
-              <thead className="sticky top-0"><tr className="text-left"><th className="px-3 py-1.5">Dept</th><th className="px-2 py-1.5">Users</th><th className="px-2 py-1.5">Active</th><th className="px-2 py-1.5">Inactive</th><th className="px-2 py-1.5">Hits</th><th className="px-2 py-1.5">Days / month</th><th className="px-2 py-1.5">Avg / day</th></tr></thead>
+              <thead className="sticky top-0"><tr className="text-left"><th className="px-3 py-1.5">Dept</th><th className="px-2 py-1.5">Users</th><th className="px-2 py-1.5">Active</th><th className="px-2 py-1.5">Inactive</th><th className="px-2 py-1.5">Total time</th><th className="px-2 py-1.5">Days / month</th><th className="px-2 py-1.5">Avg / day</th></tr></thead>
               <tbody>{depts.map((d) => (
                 <tr key={d.dept} onClick={() => setDept(d.dept === dept ? 'All' : d.dept)} className={`cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-surface)] ${dept === d.dept ? 'bg-secondary' : ''}`} title="Filter the report to this department">
                   <td className="px-3 py-1.5 font-semibold text-[#101828]">{d.dept}</td><td className="px-2 py-1.5">{d.users}</td><td className="px-2 py-1.5 text-blue-700">{d.active}</td><td className="px-2 py-1.5 text-amber-600">{d.inactive}</td>
-                  <td className="px-2 py-1.5 tabular-nums">{d.hits.toLocaleString()}</td><td className="px-2 py-1.5">{d.perMonth}</td><td className="px-2 py-1.5">{fmtMin(d.minDay)}</td>
+                  <td className="px-2 py-1.5 tabular-nums">{fmtMin(d.minutes)}</td><td className="px-2 py-1.5">{d.perMonth}</td><td className="px-2 py-1.5">{fmtMin(d.minDay)}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -250,22 +228,16 @@ export function UsageReportPage() {
       </div>
       <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
         <UsageTable title="MSIL user-wise usage" color={MSIL} rows={userRows.length} all={allUsers} setAll={setAllUsers} onExport={exportUsers}
-          head={['User ID', 'Name', 'Role · Dept', 'Hits', 'Days / mo', 'Avg / login day', 'Last login']}
+          head={['User ID', 'Name', 'Role · Dept', 'Total time', 'Days / mo', 'Avg / login day', 'Last login']}
           body={(allUsers ? userRows : userRows.slice(0, 8)).map((s) => <UserRow key={s.user.id} s={s} max={maxU} color={MSIL} fmtMin={fmtMin} />)} />
         <UsageTable title="Vendor-wise usage" color={VEND} rows={vendorRows.length} all={allVendors} setAll={setAllVendors} onExport={exportVendors}
-          head={['Vendor code', 'Vendor name', 'Users (active)', 'Hits', 'Days / mo', 'Time', 'Last login']}
+          head={['Vendor code', 'Vendor name', 'Users (active)', 'Total time', 'Days / mo', 'Avg / login day', 'Last login']}
           body={(allVendors ? vendorRows : vendorRows.slice(0, 8)).map((v) => <VendorRow key={v.code} v={v} max={maxV} color={VEND} fmtMin={fmtMin} />)} />
       </div>
 
-      {/* Follow-up */}
-      <section className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
-        <span className="flex items-center gap-2 font-bold uppercase tracking-wide"><Icon name="exclamation-circle" size={16} />Follow-up priority</span>
-        <span><strong className="text-[16px]">{follow.msil90}</strong> MSIL users and <strong className="text-[16px]">{follow.vend90}</strong> vendors inactive &gt; {INACTIVE_DAYS} days</span>
-        <span><strong className="text-[16px]">{follow.msilNever}</strong> MSIL users and <strong className="text-[16px]">{follow.vendNever}</strong> vendors have never logged in</span>
-      </section>
       <p className="mt-2 text-[10px] text-[var(--color-muted)]">
         Rules: Active = at least one login in the {INACTIVE_DAYS} days up to the period end; Inactive = no login in those {INACTIVE_DAYS} days. Usage frequency = login days per month in the period, active users only.
-        Average time spent = minutes per active user per day / week / month. A vendor is active when one of its linked users is. Hits = page views excluding system traffic. Sample data generated for the prototype.
+        Average time spent = minutes per active user per day / week / month. A vendor is active when one of its linked users is. Sample data generated for the prototype.
       </p>
     </div>
   )
@@ -278,7 +250,7 @@ function UsageTable({ title, color, rows, all, setAll, onExport, head, body }: {
     <section className="epmp-card overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
         <h3 className="text-[12.5px] font-semibold text-[#101828]">{title}</h3>
-        <span className="text-[10px] text-[var(--color-muted)]">{all ? `all ${rows}` : `top ${Math.min(8, rows)} of ${rows}`} · by hits</span>
+        <span className="text-[10px] text-[var(--color-muted)]">{all ? `all ${rows}` : `top ${Math.min(8, rows)} of ${rows}`} · by time spent</span>
         <button type="button" onClick={onExport} className="ml-auto text-[10.5px] font-semibold text-[var(--color-muted)] hover:underline"><Icon name="download" size={11} className="mr-0.5" />CSV</button>
         <button type="button" onClick={() => setAll(!all)} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">{all ? 'Show top 8' : 'View all'}</button>
       </div>
@@ -294,11 +266,11 @@ function UsageTable({ title, color, rows, all, setAll, onExport, head, body }: {
 const status = (active: boolean, since?: number) =>
   since === undefined ? <span className="rounded-full bg-slate-100 px-1.5 py-px text-[9px] font-semibold text-slate-600">Never</span>
     : active ? null : <span className="rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-semibold text-amber-800">Inactive {since} d</span>
-function HitsBar({ v, max, color }: { v: number; max: number; color: string }) {
+function TimeBar({ v, max, color, fmtMin }: { v: number; max: number; color: string; fmtMin: (m: number) => string }) {
   return (
     <span className="flex items-center gap-1.5">
       <span className="h-2 w-24 overflow-hidden rounded bg-[#eef2f7]"><span className="block h-full rounded" style={{ width: `${(v / max) * 100}%`, background: color }} /></span>
-      <span className="tabular-nums">{v.toLocaleString()}</span>
+      <span className="whitespace-nowrap tabular-nums">{fmtMin(v)}</span>
     </span>
   )
 }
@@ -308,22 +280,23 @@ function UserRow({ s, max, color, fmtMin }: { s: UserStat; max: number; color: s
       <td className="px-2.5 py-1.5 font-mono text-[#101828]">{s.user.id}</td>
       <td className="px-2.5 py-1.5">{s.user.name} {status(s.active, s.since)}</td>
       <td className="px-2.5 py-1.5 text-[#475467]">{s.user.role} · {s.user.dept}</td>
-      <td className="px-2.5 py-1.5"><HitsBar v={s.hits} max={max} color={color} /></td>
+      <td className="px-2.5 py-1.5"><TimeBar v={s.minutes} max={max} color={color} fmtMin={fmtMin} /></td>
       <td className="px-2.5 py-1.5 tabular-nums">{s.active ? s.perMonth : '—'}</td>
       <td className="px-2.5 py-1.5">{s.loginDays ? fmtMin(s.minPerLoginDay) : '—'}</td>
       <td className="whitespace-nowrap px-2.5 py-1.5">{s.lastLogin ? fmtDate(s.lastLogin) : 'Never'}</td>
     </tr>
   )
 }
+const sumDays = (v: VendorStat) => v.users.reduce((n, u) => n + u.loginDays, 0)
 function VendorRow({ v, max, color, fmtMin }: { v: VendorStat; max: number; color: string; fmtMin: (m: number) => string }) {
   return (
-    <tr className="border-t border-[var(--color-border)]" title={v.users.map((u) => `${u.user.id} ${u.user.name}: ${u.hits} hits${u.lastLogin ? `, last ${u.lastLogin}` : ', never'}`).join('\n')}>
+    <tr className="border-t border-[var(--color-border)]" title={v.users.map((u) => `${u.user.id} ${u.user.name}: ${fmtMin(u.minutes)}${u.lastLogin ? `, last ${u.lastLogin}` : ', never'}`).join('\n')}>
       <td className="px-2.5 py-1.5 font-mono text-[#101828]">{v.code}</td>
       <td className="px-2.5 py-1.5">{v.name} {status(v.active, v.since)}</td>
       <td className="px-2.5 py-1.5 tabular-nums">{v.users.length} ({v.activeUsers})</td>
-      <td className="px-2.5 py-1.5"><HitsBar v={v.hits} max={max} color={color} /></td>
+      <td className="px-2.5 py-1.5"><TimeBar v={v.minutes} max={max} color={color} fmtMin={fmtMin} /></td>
       <td className="px-2.5 py-1.5 tabular-nums">{v.active ? v.perMonth : '—'}</td>
-      <td className="px-2.5 py-1.5">{v.minutes ? fmtMin(v.minutes) : '—'}</td>
+      <td className="px-2.5 py-1.5">{v.minutes ? fmtMin(Math.round(v.minutes / Math.max(1, sumDays(v)))) : '—'}</td>
       <td className="whitespace-nowrap px-2.5 py-1.5">{v.lastLogin ? fmtDate(v.lastLogin) : 'Never'}</td>
     </tr>
   )
