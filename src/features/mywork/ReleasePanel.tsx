@@ -66,7 +66,7 @@ function Tile(props: { title: string; count: number; color: string; active: bool
  * PIC / SIC / DPM: how many parts are released to the vendor, pending release and returned by the vendor; the PIC can
  * release several parts together. Vendor: the parts released to it, to acknowledge or return together.
  */
-export function ReleasePanel() {
+export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => boolean } = {}) {
   const { partReleases, partAcks, picAssignments, releasePart, acknowledgeParts, returnParts, entries } = useQAStore()
   const storeParts = useQAStore((s) => s.parts)
   const projects = useQAStore((s) => s.projects)
@@ -79,20 +79,20 @@ export function ReleasePanel() {
   const rows = useMemo(
     () =>
       parts
-        .filter((p) => !p.supersededBy && partInScope(p, currentPersona) && inView(p))
+        .filter((p) => !p.supersededBy && partInScope(p, currentPersona) && inView(p) && (!partFilter || partFilter(p)))
         .map((p) => ({ part: p, state: getReleaseState(p.partNo, partReleases, partAcks) }))
         // The vendor never sees parts the PIC has not released.
         .filter((r) => !isVendor || r.state !== 'Pending'),
-    [parts, partReleases, partAcks, currentPersona, isVendor, inView]
+    [parts, partReleases, partAcks, currentPersona, isVendor, inView, partFilter]
   )
   // Parts deleted in SAP / ENOVIA (off the work screens; recalled from the vendor). PIC side only.
   const deletedRows = useMemo(() => {
     if (isVendor) return []
     const live = activeModelNames(projects)
     return storeParts
-      .filter((p) => p.sourceDeleted && !p.supersededBy && live.has(p.model) && partInScope(p, currentPersona) && inView(p))
+      .filter((p) => p.sourceDeleted && !p.supersededBy && live.has(p.model) && partInScope(p, currentPersona) && inView(p) && (!partFilter || partFilter(p)))
       .map((p) => ({ part: p, state: getReleaseState(p.partNo, partReleases, partAcks) }))
-  }, [storeParts, projects, partReleases, partAcks, currentPersona, isVendor, inView])
+  }, [storeParts, projects, partReleases, partAcks, currentPersona, isVendor, inView, partFilter])
   const n = (states: ReleaseState[]) => rows.filter((r) => states.includes(r.state)).length
   const counts = {
     pending: n(['Pending']),

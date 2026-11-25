@@ -20,7 +20,7 @@ import { ALL_MARKETS, EMPTY_ATTR_SEL, MARKETS, PART_ATTR_FIELDS, PartAttrFilters
 import { MasterSearch } from './MasterSearch'
 import type { SearchFacet, SearchPick } from './MasterSearch'
 import type { PartAttrSel } from '../partAttrFilters'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell
@@ -51,6 +51,9 @@ import { DownloadMenu } from '../export/DownloadMenu'
 import { ExportSection } from '../export/ExportSection'
 import { useViewMode, ViewModeToggle } from '../viewmode'
 import { MultiSelect } from '../intake/MultiSelect'
+import { MoreFilters } from './MoreFilters'
+import { EMPTY_EXTRA, EXTRA_KEYS, LABELS, extraCount, extraOptions, hasExtra, matchExtra } from './extraFilters'
+import type { ExtraSel } from './extraFilters'
 import { SortMenu } from './SortMenu'
 import type { SortDir } from './SortMenu'
 
@@ -242,6 +245,8 @@ interface WorkFilters {
   partNo: string[]; vendorCode: string[]; activity: string[]
   attrs: PartAttrSel
   market: string[]
+  /** Part-level filters from the "More filters" window (keyed by part field), applied to a row's part. */
+  partOk?: (partNo: string) => boolean
 }
 
 // Sort fields for the worklist (both card and table views use these).
@@ -281,6 +286,7 @@ function ApprovalsPanel({ filters, filterBar, inRange }: { filters: WorkFilters;
         if (!inSel(filters.activity, r.title)) return false
         if (!matchPartAttrs(r, filters.attrs)) return false
         if (!matchMarket(r, filters.market)) return false
+        if (filters.partOk && !filters.partOk(r.partNo)) return false
         if (inRange && !inRange(r)) return false
         return true
       }),
@@ -459,6 +465,10 @@ interface FilterBarProps {
   /** Shown at the start of the bar (e.g. the Back button). */
   leading?: React.ReactNode
   /** Master search: every part (not only the chosen models'), and how picks are applied / removed. */
+  /** "More filters" window: Part / Vendor / People & departments fields. */
+  extra: ExtraSel; setExtra: (v: ExtraSel) => void; extraOpts: Record<string, { value: string }[]>
+  /** My Parts: only part-level filters (no Status, Trial, Activity or date range). */
+  partLevelOnly?: boolean
   allPartOptions: LabeledOption[]
   onSearchApply: (picks: SearchPick[]) => void
   onSearchRemove: (pick: SearchPick) => void
@@ -471,24 +481,28 @@ interface FilterBarProps {
  */
 function CompactFilterBar(f: FilterBarProps) {
   const [more, setMore] = useState(false)
+  const partLevel = !!f.partLevelOnly
   // Minimize: only the search box and a summary stay; remembered in this browser.
   const [mini, toggleMini] = useCollapsed('mw-filters')
   const active = [f.status, f.model, f.milestone, f.partNo, f.dept, f.vendorCode, f.activity, f.pic].filter((v) => v.length > 0).length
-    + Object.values(f.attrs).filter((v) => v.length > 0).length + (isAllMarkets(f.market) ? 0 : 1)
+    + Object.values(f.attrs).filter((v) => v.length > 0).length + (isAllMarkets(f.market) ? 0 : 1) + extraCount(f.extra)
   const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
   // Master search: every filter on the bar, searchable by value (several terms apply several filters).
   const facets: SearchFacet[] = [
-    ...(f.showStatus ? [{ key: 'status', label: 'Status', options: plain(f.statusOptions), selected: f.status }] : []),
+    ...(f.showStatus && !partLevel ? [{ key: 'status', label: 'Status', options: plain(f.statusOptions), selected: f.status }] : []),
     { key: 'model', label: 'Model', options: plain(f.modelOptions), selected: f.model },
-    { key: 'trial', label: 'Trial', options: f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) })), selected: f.milestone },
+    ...(partLevel ? [] : [{ key: 'trial', label: 'Trial', options: f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) })), selected: f.milestone }]),
     { key: 'part', label: 'Part', options: f.allPartOptions, selected: f.partNo },
     { key: 'vendor', label: 'Vendor', options: f.vendorOptions, selected: f.vendorCode },
     { key: 'dept', label: 'Dept', options: plain(f.deptOptions), selected: f.dept },
     ...PART_ATTR_FIELDS.map((af) => ({ key: af.key, label: af.label, options: plain(af.options), selected: f.attrs[af.key] })),
     { key: 'market', label: 'Market', options: plain([...MARKETS]), selected: isAllMarkets(f.market) ? [] : f.market },
-    { key: 'activity', label: 'Activity', options: plain(f.activityOptions), selected: f.activity },
+    ...(partLevel ? [] : [{ key: 'activity', label: 'Activity', options: plain(f.activityOptions), selected: f.activity }]),
     ...(f.showPic ? [{ key: 'pic', label: 'PIC', options: f.picOptions, selected: f.pic }] : []),
+    ...EXTRA_KEYS.filter((k) => (f.extraOpts[k]?.length ?? 0) > 0).map((k) => ({ key: `x:${k}`, label: k === 'status' ? 'Part status' : (LABELS[k] ?? k), options: f.extraOpts[k], selected: f.extra[k] ?? [] })),
   ]
+  // Filters living in the "More filters" window that are in force.
+  const moreCount = extraCount(f.extra) + (partLevel || f.activity.length === 0 ? 0 : 1) + (f.showPic && f.pic.length > 0 ? 1 : 0)
   // Minimized: just a small filter icon at the top right (with the number of filters in force).
   if (mini) {
     return (
@@ -506,13 +520,14 @@ function CompactFilterBar(f: FilterBarProps) {
       {/* Date quick filter and whose work to show: part of the filters, for the whole page. */}
       <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-2">
         <MasterSearch facets={facets} onApply={f.onSearchApply} onRemove={f.onSearchRemove} />
-        <QuickRangeControl />
+        {!partLevel && <QuickRangeControl />}
         <PicViewSelect />
         <button
-          onClick={() => setMore((v) => !v)}
-          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] font-semibold ${more ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
+          onClick={() => setMore(true)}
+          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10.5px] font-semibold ${moreCount ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[#344054]'} hover:bg-[#fafafa]`}
         >
           <FbIcon name="tools" size={12} /> More filters
+          {moreCount > 0 && <span className="rounded-full bg-[var(--color-primary)] px-1.5 text-[9.5px] font-bold text-white">{moreCount}</span>}
         </button>
         {f.hasFilters && (
           <button onClick={f.clearFilters} className="text-[10.5px] font-medium text-[var(--color-primary)] hover:underline">Clear</button>
@@ -525,21 +540,22 @@ function CompactFilterBar(f: FilterBarProps) {
       {<>
       <div className="flex flex-wrap items-center gap-2">
         {f.leading}
-        {f.showStatus && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
+        {f.showStatus && !partLevel && <MultiSelect label="Status" options={plain(f.statusOptions)} selected={f.status} onChange={f.setStatus} />}
         <MultiSelect label="Model" options={plain(f.modelOptions)} selected={f.model} onChange={f.setModel} />
-        <MultiSelect label="Trial" options={f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) }))} selected={f.milestone} onChange={f.setMilestone} />
+        {!partLevel && <MultiSelect label="Trial" options={f.milestoneOptions.map((id) => ({ value: id, label: trialLabelOf(id) }))} selected={f.milestone} onChange={f.setMilestone} />}
         <MultiSelect label="Part" options={f.partOptions} selected={f.partNo} onChange={f.setPartNo} />
         <MultiSelect label="Dept" options={plain(f.deptOptions)} selected={f.dept} onChange={f.setDept} />
         <MultiSelect label="Vendor" options={f.vendorOptions} selected={f.vendorCode} onChange={f.setVendorCode} />
         <PartAttrFilters value={f.attrs} onChange={f.setAttrs} />
         <MultiSelect label="Market" options={MARKETS.map((m) => ({ value: m }))} selected={f.market} onChange={f.setMarket} />
       </div>
-      {more && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
-          <MultiSelect label="Activity" options={plain(f.activityOptions)} selected={f.activity} onChange={f.setActivity} />
-          {f.showPic && <MultiSelect label="PIC" options={f.picOptions} selected={f.pic} onChange={f.setPic} />}
-        </div>
-      )}
+      <MoreFilters
+        open={more} onClose={() => setMore(false)}
+        value={{ extra: f.extra, partNo: f.partNo, vendorCode: f.vendorCode, activity: f.activity, pic: f.pic }}
+        onApply={(v) => { f.setExtra(v.extra); f.setPartNo(v.partNo); f.setVendorCode(v.vendorCode); f.setActivity(v.activity); f.setPic(v.pic) }}
+        options={f.extraOpts} partOptions={f.partOptions} vendorOptions={f.vendorOptions}
+        activityOptions={plain(f.activityOptions)} picOptions={f.picOptions} showPic={!!f.showPic} showActivity={!partLevel}
+      />
       </>}
     </section>
   )
@@ -551,6 +567,8 @@ function CompactFilterBar(f: FilterBarProps) {
 export function MyWorkPage() {
   return <PicViewProvider><MyWorkPageInner /></PicViewProvider>
 }
+
+const inSelF = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
 
 function MyWorkPageInner() {
   const { activities, entries, templateRows, models, milestones, partReleases, partAcks, picAssignments, updateEntryValues, transitionEntryState } = useQAStore()
@@ -605,6 +623,7 @@ function MyWorkPageInner() {
   const [fStatus, setFStatus] = useState<string[]>([]) // work bucket: Upcoming/Completed/Delayed/NG
   const [fAttrs, setFAttrs] = useState<PartAttrSel>(EMPTY_ATTR_SEL) // Part Category / Fuel Type
   const [fMarket, setFMarket] = useState<string[]>(ALL_MARKETS) // Domestic / Export (both by default)
+  const [fExtra, setFExtra] = useState<ExtraSel>(EMPTY_EXTRA) // "More filters" window: Part / Vendor / People & departments
   // Workspace drill state.
   const [groupDim, setGroupDim] = useState<'model' | 'vendor' | 'department' | 'milestone'>('model')
   // ?ret= vendor | pic: the list shows only activities returned to the vendor (PIC) / to the PIC by the SIC.
@@ -741,6 +760,8 @@ function MyWorkPageInner() {
     add('pic', setFPic)
     const attrPicks = PART_ATTR_FIELDS.filter((af) => by(af.key).length)
     if (attrPicks.length) setFAttrs((prev) => ({ ...prev, ...Object.fromEntries(attrPicks.map((af) => [af.key, union(prev[af.key], by(af.key))])) }))
+    const xs = picks.filter((x) => x.facet.startsWith('x:'))
+    if (xs.length) setFExtra((prev) => { const n = { ...prev }; for (const x of xs) { const k = x.facet.slice(2); n[k] = union(n[k] ?? [], [x.value]) } return n })
     if (by('market').length) setFMarket((prev) => (isAllMarkets(prev) ? by('market') : union(prev, by('market'))))
   }
   const removeSearch = ({ facet, value }: SearchPick) => {
@@ -753,6 +774,7 @@ function MyWorkPageInner() {
     else if (facet === 'dept') setFDept(drop)
     else if (facet === 'activity') setFActivity(drop)
     else if (facet === 'pic') setFPic(drop)
+    else if (facet.startsWith('x:')) setFExtra((prev) => ({ ...prev, [facet.slice(2)]: (prev[facet.slice(2)] ?? []).filter((x) => x !== value) }))
     else if (facet === 'market') setFMarket((prev) => { const n = drop(prev); return n.length ? n : ALL_MARKETS })
     else if (PART_ATTR_FIELDS.some((af) => af.key === facet)) setFAttrs((prev) => ({ ...prev, [facet]: drop(prev[facet as keyof PartAttrSel]) }))
   }
@@ -763,7 +785,27 @@ function MyWorkPageInner() {
     [allInstances, picAssignments]
   )
 
-  const hasFilters = [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity, fStatus].some((v) => v.length > 0) || hasAttrSel(fAttrs) || !isAllMarkets(fMarket)
+  // Values for the "More filters" window, over the parts in this role's scope.
+  const extraOpts = useMemo(
+    () => extraOptions(parts.filter((p) => !p.supersededBy && partInScope(p, currentPersona)), models, picAssignments),
+    [parts, currentPersona, models, picAssignments]
+  )
+  const partByNo = useMemo(() => new Map(parts.map((p) => [p.partNo, p])), [parts])
+  /** My Approvals rows: the part behind a row must pass the "More filters" fields. */
+  const approvalPartOk = useMemo(
+    () => (hasExtra(fExtra) ? (no: string) => { const p = partByNo.get(no); return !!p && matchExtra(p, fExtra, models, picAssignments) } : undefined),
+    [fExtra, partByNo, models, picAssignments]
+  )
+  /** My Parts: every part-level filter (no trial / activity / status there). */
+  const partFilter = useCallback(
+    (p: PartRecord) =>
+      inSelF(fModel, p.model) && inSelF(fDept, p.department || 'Other') && inSelF(fVendorCode, p.vendorCode) &&
+      inSelF(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSelF(fPartNo, p.partNo) &&
+      matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket) && matchExtra(p, fExtra, models, picAssignments),
+    [fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, fExtra, models, picAssignments]
+  )
+
+  const hasFilters = hasExtra(fExtra) || [fModel, fDept, fMilestone, fPic, fVendorCode, fPartNo, fActivity, fStatus].some((v) => v.length > 0) || hasAttrSel(fAttrs) || !isAllMarkets(fMarket)
   // The filters in force as short labels (My Screen shows insights for them).
   const filterChips = useMemo(() => {
     const chip = (label: string, vals: string[], show: (v: string) => string = (v) => v) =>
@@ -775,11 +817,12 @@ function MyWorkPageInner() {
       ...(allPartsOfModels ? [] : chip('Part', fPartNo)), ...chip('Dept', fDept), ...chip('Vendor', fVendorCode),
       ...PART_ATTR_FIELDS.flatMap((af) => chip(af.label, fAttrs[af.key])),
       ...(isAllMarkets(fMarket) ? [] : chip('Market', fMarket)), ...chip('Activity', fActivity), ...chip('PIC', fPic),
+      ...EXTRA_KEYS.flatMap((k) => chip(k === 'status' ? 'Part status' : (LABELS[k] ?? k), fExtra[k] ?? [])),
     ]
-  }, [fStatus, fModel, fMilestone, fPartNo, fDept, fVendorCode, fAttrs, fMarket, fActivity, fPic, allInstances])
+  }, [fExtra, fStatus, fModel, fMilestone, fPartNo, fDept, fVendorCode, fAttrs, fMarket, fActivity, fPic, allInstances])
   function clearFilters() {
     setFModel([]); setFDept([]); setFMilestone([]); setFPic([])
-    setFPartNo([]); setFVendorCode([]); setFActivity([]); setFStatus([]); setFAttrs(EMPTY_ATTR_SEL); setFMarket(ALL_MARKETS)
+    setFPartNo([]); setFVendorCode([]); setFActivity([]); setFStatus([]); setFAttrs(EMPTY_ATTR_SEL); setFMarket(ALL_MARKETS); setFExtra(EMPTY_EXTRA)
   }
   // Multi-select match: an empty picker means "All"; otherwise the value must be one of the ticked ones.
   const inSel = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
@@ -798,9 +841,10 @@ function MyWorkPageInner() {
         if (!inSel(fStatus, workBucket(i) ?? '')) return false
         if (!matchPartAttrs(i.part, fAttrs)) return false
         if (!matchMarket(i.part, fMarket)) return false
+        if (!matchExtra(i.part, fExtra, models, picAssignments)) return false
         return true
       }),
-    [allInstances, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, fMarket, picAssignments]
+    [allInstances, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, fMarket, fExtra, models, picAssignments]
   )
   const instances = useMemo(() => instancesAllModels.filter((i) => inSel(fModel, i.part.model)), [instancesAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -809,9 +853,9 @@ function MyWorkPageInner() {
     () => parts.filter((p) =>
       !p.supersededBy && partInScope(p, currentPersona) && inView(p) && partInRange(p) &&
       inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
-      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket)),
+      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && inSel(fPartNo, p.partNo) && matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket) && matchExtra(p, fExtra, models, picAssignments)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [parts, currentPersona, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, picAssignments, inView, rangePartNos, range, models]
+    [parts, currentPersona, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, fExtra, picAssignments, inView, rangePartNos, range, models]
   )
   const overviewParts = useMemo(() => partsAllModels.filter((p) => inSel(fModel, p.model)), [partsAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
   // Deleted parts under the same filters (not the date range or Part filter: deleted parts have no open activities).
@@ -819,9 +863,9 @@ function MyWorkPageInner() {
     () => deletedWorkParts.filter((p) =>
       partInScope(p, currentPersona) && inView(p) && inSel(fModel, p.model) &&
       inSel(fDept, p.department || 'Other') && inSel(fVendorCode, p.vendorCode) &&
-      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket)),
+      inSel(fPic, getPicOn(p, picAssignments, DEMO_TODAY).name) && matchPartAttrs(p, fAttrs) && matchMarket(p, fMarket) && matchExtra(p, fExtra, models, picAssignments)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deletedWorkParts, currentPersona, fModel, fDept, fVendorCode, fPic, fAttrs, fMarket, picAssignments, inView]
+    [deletedWorkParts, currentPersona, fModel, fDept, fVendorCode, fPic, fAttrs, fMarket, fExtra, picAssignments, inView]
   )
   // Workspace rollups.
   const groups = useMemo(() => workspaceGroups(instances, groupDim), [instances, groupDim])
@@ -1047,7 +1091,7 @@ function MyWorkPageInner() {
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
           leading={effectiveView === 'overview' ? <BackButton /> : undefined}
-          attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
+          attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />
       </div>
@@ -1055,7 +1099,7 @@ function MyWorkPageInner() {
 
       {effectiveView === 'worklist' ? (
         <ExportSection id="mw-worklist" label="Worklist / Approval"><ApprovalsPanel
-          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode, activity: fActivity, attrs: fAttrs, market: fMarket }}
+          filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode, activity: fActivity, attrs: fAttrs, market: fMarket, partOk: approvalPartOk }}
           inRange={approvalInRange}
           filterBar={
             <CompactFilterBar
@@ -1067,7 +1111,7 @@ function MyWorkPageInner() {
               partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
               activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
               status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]}
-              attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
+              attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
             />
           }
@@ -1082,7 +1126,21 @@ function MyWorkPageInner() {
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake (delay reasons are reviewed in My Approvals and Exception Management) */}
-          <ExportSection id="mw-release-sec" label="Release to vendor"><div id="mw-release"><ReleasePanel /></div></ExportSection>
+          <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
+            <CompactFilterBar partLevelOnly
+              model={fModel} setModel={chooseModels} modelOptions={modelOptions}
+              dept={fDept} setDept={setFDept} deptOptions={deptOptions}
+              vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
+              milestone={fMilestone} setMilestone={setFMilestone} milestoneOptions={milestoneOptions}
+              pic={fPic} setPic={setFPic} picOptions={picOptions} showPic={currentPersona !== 'PIC'}
+              partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
+              activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
+              status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]}
+              attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
+              hasFilters={hasFilters} clearFilters={clearFilters}
+            />
+          </div>
+          <ExportSection id="mw-release-sec" label="Release to vendor"><div id="mw-release"><ReleasePanel partFilter={partFilter} /></div></ExportSection>
         </>
       ) : (
         // Overview sections, in the order the user dragged them into (grip in the left gutter).
