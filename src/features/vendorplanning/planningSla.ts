@@ -28,7 +28,8 @@ export interface Rejection {
   at: string
   by: string
   comment?: string
-  /** The date sent back, and where that activity's plan stands now. */
+  /** The dates sent back (start only on plans that had one), and where that activity's plan stands now. */
+  start?: string
   date: string
   now: 'Sent back' | 'Submitted' | 'Approved'
 }
@@ -100,7 +101,8 @@ export function usePlanningSla(): PartSla[] {
           if (!h.action.startsWith('Sent back planned date')) continue
           rejections.push({
             activity: i.activity.name, at: h.timestamp, by: h.actorName || h.persona, comment: h.comment,
-            date: h.action.replace('Sent back planned date', '').trim(), now: status(i.entry?.vendorPlan) ?? 'Sent back',
+            start: (h.action.match(/\d{4}-\d{2}-\d{2}/g) ?? []).length > 1 ? h.action.match(/\d{4}-\d{2}-\d{2}/g)![0] : undefined,
+            date: (h.action.match(/\d{4}-\d{2}-\d{2}/g) ?? []).at(-1) ?? '', now: status(i.entry?.vendorPlan) ?? 'Sent back',
           })
         }
       }

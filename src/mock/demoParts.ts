@@ -298,17 +298,18 @@ export function buildDemoData(
       const at = `2026-10-0${6 + (k % 3)}T11:00:00Z`
       const outside = mode === 'partial' && k % 3 === 0
       const date = outside ? addDays(w.end, 9) : w.end
-      const version = { date, by: part.vendorName, byRole: 'Vendor' as const, at, remark: outside ? 'Tool modification at sub-supplier' : undefined }
+      const start = outside ? addDays(w.start, 9) : w.start
+      const version = { start, date, by: part.vendorName, byRole: 'Vendor' as const, at, remark: outside ? 'Tool modification at sub-supplier' : undefined }
       if (mode === 'partial' && k === 5) {
         e.vendorPlan = { current: version, history: [], status: 'Sent back', decision: { by: part.pic, at: '2026-10-10T10:00:00Z', comment: 'Align with the trial build date' } }
-        e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned date ${date}` },
-          { timestamp: '2026-10-10T10:00:00Z', persona: 'PIC', actorName: part.pic, action: `Sent back planned date ${date}`, comment: 'Align with the trial build date' }]
+        e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned dates ${start} → ${date}` },
+          { timestamp: '2026-10-10T10:00:00Z', persona: 'PIC', actorName: part.pic, action: `Sent back planned dates ${start} → ${date}`, comment: 'Align with the trial build date' }]
         continue
       }
       e.vendorPlan = outside
         ? { current: version, history: [], status: 'Submitted' }
         : { current: version, history: [], status: 'Approved', decision: { by: 'Within the planned window', at } }
-      e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned date ${date}` }]
+      e.history = [...e.history, { timestamp: at, persona: 'Vendor', actorName: part.vendorName, action: `Planned dates ${start} → ${date}` }]
     }
   }
   planPart('31100-M74LD1', 'full')

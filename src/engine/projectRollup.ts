@@ -1,6 +1,6 @@
 /**
- * Project Execution roll-up (one row per WBS object of the project's archetype, in tree order; milestones roll up
- * their activities) and the derived project team.
+ * Project Execution roll-up (one row per WBS object of the project's archetype, in tree order; milestones are calendar
+ * events, not rows) and the derived project team.
  * QA rows are rolled up from the same part × activity instances the work screens use.
  */
 import type { ActivityDefinition, ActivityEntry, ModelRecord, PartRecord, PicAssignment, ProjectArchetype, TemplateRow, WbsObject } from '../domain'
@@ -8,7 +8,7 @@ import { isBuildable } from '../domain'
 import type { Project } from '../domain/projects'
 import { projectParts } from '../domain/projects'
 import { DEP_LABEL, WBS_TYPE_LABEL } from '../domain/governance'
-import { WBS_LEVEL_LABEL, subtreeIds, wbsTree } from '../domain/wbsTree'
+import { WBS_LEVEL_LABEL, wbsTree } from '../domain/wbsTree'
 import type { PersonaId } from '../store/personaStore'
 import { completionPct, getFilteredData, getPicOn, workBucket } from './index'
 import { partInScope } from '../features/scope'
@@ -19,9 +19,9 @@ export interface ExecutionRowLink { rowId: string; label: string; instances: num
 
 export interface ExecutionRow {
   obj: WbsObject
-  /** 'qa' = built activity (part instances), 'milestone' = roll-up of the activities under it. */
+  /** 'qa' = built activity (part instances). ('milestone' is no longer produced: milestones are calendar events.) */
   kind: 'qa' | 'milestone' | 'other'
-  /** WBS code, e.g. 'WBS-1.2', and tree depth (0 = milestone). */
+  /** WBS code, e.g. '1.2', and tree depth (0 = top level). */
   code: string
   depth: number
   activity?: ActivityDefinition
@@ -93,20 +93,15 @@ export function buildExecutionRows(args: {
       links: [...byRow.values()],
     }
   })
-  // Milestones roll up the built activities under them.
-  return rows.map((r) => {
-    if (r.obj.level !== 'Milestone') return r
-    const under = subtreeIds(archetype.wbs, r.obj.id)
-    const qa = rows.filter((x) => x.kind === 'qa' && under.has(x.obj.id))
-    const withParts = qa.filter((x) => x.partsInScope > 0)
-    return {
-      ...r, kind: 'milestone' as const,
-      partsInScope: Math.max(0, ...qa.map((x) => x.partsInScope)),
-      completionPct: withParts.length ? Math.round(withParts.reduce((s, x) => s + x.completionPct, 0) / withParts.length) : 0,
-      ryg: worstRyg(qa.map((x) => x.ryg)),
-      delayed: qa.reduce((s, x) => s + x.delayed, 0),
-      ng: qa.reduce((s, x) => s + x.ng, 0),
-    }
+  // Milestones are not line items (they are events in My Calendar): leave their rows out, lift their activities one
+  // level and number what is left.
+  const counters: number[] = []
+  return rows.filter((r) => r.obj.level !== 'Milestone').map((r) => {
+    const depth = Math.max(0, r.depth - 1)
+    counters.length = depth + 1
+    counters[depth] = (counters[depth] ?? 0) + 1
+    for (let d = 0; d < depth; d++) counters[d] = counters[d] ?? 1
+    return { ...r, depth, code: `WBS-${counters.slice(0, depth + 1).join('.')}` }
   })
 }
 

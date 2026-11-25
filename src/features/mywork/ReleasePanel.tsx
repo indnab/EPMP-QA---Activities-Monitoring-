@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { activeModelNames } from '../../domain/projects'
 import { Link } from 'react-router-dom'
 import { ACK_SLA_DAYS, PLAN_SLA_DAYS, RELEASE_SLA_DAYS, usePlanningSla } from '../vendorplanning/planningSla'
@@ -116,6 +116,10 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
   const sla = useMemo(() => new Map(slaRows.map((s) => [s.part.partNo, s])), [slaRows])
   const tcount = (t: TimeSlice) => rows.filter((r) => { const s = sla.get(r.part.partNo); return s ? TIME_TEST[t](s) : false }).length
   const isTime = (s: Slice): s is TimeSlice => s in TIME_TEST
+  // Parts whose vendor-submitted plan has an activity outside the planned window (waiting for the PIC's review).
+  const navigate = useNavigate()
+  const reviewParts = rows.filter((r) => (sla.get(r.part.partNo)?.planAwaiting ?? 0) > 0).map((r) => r.part.partNo)
+  const openReview = () => navigate(`/vendor-planning?parts=${encodeURIComponent(reviewParts.join(','))}&show=awaiting`)
   const shown = slice === 'deleted' ? deletedRows
     : isTime(slice) ? rows.filter((r) => { const s = sla.get(r.part.partNo); return s ? TIME_TEST[slice](s) : false })
       : rows.filter((r) => SLICE_STATES[slice].includes(r.state))
@@ -197,7 +201,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
   return (
     <section className="mb-4" aria-label="Part release status">
       <div className="mb-2 flex items-baseline justify-between gap-3 max-sm:flex-col max-sm:gap-1">
-        <h2 className="text-[12px] font-semibold whitespace-nowrap text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Release to vendor'}</h2>
+        <h2 className="text-[12px] font-semibold whitespace-nowrap text-[var(--color-text)]">{isVendor ? 'Parts released to you' : 'Part Allocation Screen (Data in part numbers)'}</h2>
         <span className="text-[10.5px] text-[var(--color-muted)]">
           {isVendor
             ? 'Acknowledge a part to start work on it, or return it to the PIC with a reason.'
@@ -210,6 +214,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
             <Tile title="Planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
             <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
+            <Tile title="Planning submitted for review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
           </>
         ) : (
           <>
@@ -217,6 +222,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
             <Tile title="Vendor planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
             <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
+            <Tile title="Planning submitted for review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
           </>
         )}
       </div>
@@ -337,7 +343,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
                           return t ? (
                             <div className={`mt-0.5 ${t.late ? 'font-semibold text-red-700' : 'text-[#475467]'}`}>
                               {t.late && '⚠ '}{t.text}
-                              {state === 'Acknowledged' && <> · <Link to="/vendor-planning" className="font-semibold text-[var(--color-accent)] hover:underline">Vendor Planning</Link></>}
+                              {state === 'Acknowledged' && <> · <Link to={`/vendor-planning?parts=${encodeURIComponent(part.partNo)}`} className="font-semibold text-[var(--color-accent)] hover:underline">Vendor Planning</Link></>}
                             </div>
                           ) : null
                         })()}

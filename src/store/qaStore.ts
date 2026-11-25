@@ -319,7 +319,7 @@ export interface QAStoreState {
    * activity items at once. Unchanged dates are skipped; a changed date keeps the previous one in history.
    * Returns how many were saved.
    */
-  submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; date: string; remark?: string; /** Outside the system planned window: needs the PIC's approval. */ outside?: boolean }[]; by: PersonaId; actorName?: string }) => number
+  submitVendorPlan: (args: { items: { templateRowId: string; partNo: string; /** Planned start. */ start: string; /** Planned end. */ date: string; remark?: string; /** Outside the system planned window: needs the PIC's approval. */ outside?: boolean }[]; by: PersonaId; actorName?: string }) => number
   /**
    * PIC decides submitted planned dates (usually all of a part's at once): Approve, or Send back with a comment.
    * Only items still Submitted change. Returns how many.
@@ -1305,15 +1305,15 @@ export const useQAStore = create<QAStoreState>()(
           const actor = actorName || by
           const entries = [...state.entries]
           for (const it of items) {
-            if (!it.date) continue
+            if (!it.date || !it.start || it.start > it.date) continue
             const row = state.templateRows.find((r) => r.id === it.templateRowId)
             const part = state.parts.find((p) => p.partNo === it.partNo)
             if (!row || !part || part.supersededBy) continue
             const id = makeEntryId(it.templateRowId, it.partNo)
             const k = entries.findIndex((e) => e.id === id)
             const prior = k >= 0 ? entries[k].vendorPlan : undefined
-            if (prior?.current.date === it.date && (prior.current.remark ?? '') === (it.remark?.trim() ?? '')) continue
-            const version = { date: it.date, by: actor, byRole: by, at: now, remark: it.remark?.trim() || undefined }
+            if (prior?.current.date === it.date && prior.current.start === it.start && (prior.current.remark ?? '') === (it.remark?.trim() ?? '')) continue
+            const version = { start: it.start, date: it.date, by: actor, byRole: by, at: now, remark: it.remark?.trim() || undefined }
             // A vendor date outside the planned window goes to the PIC for approval; inside the window it stands
             // (approved automatically), as does a date the PIC (or SIC / Admin) sets.
             const needsPic = by === 'Vendor' && !!it.outside
@@ -1322,7 +1322,7 @@ export const useQAStore = create<QAStoreState>()(
               status: (needsPic ? 'Submitted' : 'Approved') as 'Submitted' | 'Approved',
               decision: needsPic ? undefined : { by: by === 'Vendor' ? 'Within the planned window' : actor, at: now },
             }
-            const log = { timestamp: now, persona: by, actorName: actor, action: prior ? `Updated planned date to ${it.date}` : `Planned date ${it.date}`, comment: it.remark?.trim() || undefined }
+            const log = { timestamp: now, persona: by, actorName: actor, action: prior ? `Updated planned dates to ${it.start} → ${it.date}` : `Planned dates ${it.start} → ${it.date}`, comment: it.remark?.trim() || undefined }
             if (k >= 0) entries[k] = { ...entries[k], vendorPlan: plan, history: [...entries[k].history, log], updatedAt: now, updatedBy: by }
             else entries.push({ id, templateRowId: row.id, activityId: row.activityId, partNo: it.partNo, values: {}, validationState: 'Draft', currentStepIndex: 0, vendorPlan: plan, history: [log], updatedAt: now, updatedBy: by })
             saved++
@@ -1343,7 +1343,7 @@ export const useQAStore = create<QAStoreState>()(
             const p = e.vendorPlan
             if (!ids.has(e.id) || !p || (p.status ?? 'Submitted') !== 'Submitted') return e
             n++
-            const log = { timestamp: now, persona: by, actorName: actor, action: decision === 'Approve' ? `Approved planned date ${p.current.date}` : `Sent back planned date ${p.current.date}`, comment: comment?.trim() || undefined }
+            const log = { timestamp: now, persona: by, actorName: actor, action: `${decision === 'Approve' ? 'Approved' : 'Sent back'} planned date${p.current.start ? 's' : ''} ${p.current.start ? `${p.current.start} → ` : ''}${p.current.date}`, comment: comment?.trim() || undefined }
             return { ...e, vendorPlan: { ...p, status: decision === 'Approve' ? 'Approved' as const : 'Sent back' as const, decision: { by: actor, at: now, comment: comment?.trim() || undefined } }, history: [...e.history, log], updatedAt: now, updatedBy: by }
           })
           return n ? { entries } : {}

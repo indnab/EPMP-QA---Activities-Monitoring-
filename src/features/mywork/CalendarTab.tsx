@@ -2,8 +2,10 @@
  * My Workspace → Calendar: the role's activities by planned end date, coloured by status, in a Week or Month view.
  * Clicking a day lists its activities with an Open form button (the week view also lists them in each day's column).
  * Activities still awaiting an MRD have no date and are left out.
+ * Trials / milestones are events here (one date each, per model), not WBS line items.
  */
-import { TrialName } from '../trialLabel'
+import { TrialName, trialLabelOf } from '../trialLabel'
+import { useQAStore } from '../../store/qaStore'
 import { useMemo, useState } from 'react'
 import { Button } from '../../components'
 import { Icon as FbIcon } from '../../components/Icon'
@@ -21,7 +23,7 @@ const fmtShort = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}
 const WEEK_ITEMS = 6
 type CalMode = 'week' | 'month'
 
-export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance[]; onOpen: (i: FilteredInstance) => void }) {
+export function CalendarTab({ instances, onOpen, modelNames }: { instances: FilteredInstance[]; onOpen: (i: FilteredInstance) => void; /** Models whose milestones show as events. */ modelNames: string[] }) {
   const [mode, setMode] = useState<CalMode>('month')
   // The date the view is centred on: its month (Month view) or its week (Week view).
   const [anchor, setAnchor] = useState(DEMO_TODAY)
@@ -37,6 +39,20 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
     }
     return map
   }, [instances])
+  // Milestone events: each trial's one date per model (its own date, not the MRD sub-types).
+  const { models, milestones } = useQAStore()
+  const msByDay = useMemo(() => {
+    const map = new Map<string, { model: string; milestoneId: string }[]>()
+    for (const name of modelNames) {
+      const m = models.find((x) => x.name === name)
+      if (!m) continue
+      for (const ms of milestones) {
+        const date = m.mrds[ms.id]
+        if (date) map.set(date, [...(map.get(date) ?? []), { model: name, milestoneId: ms.id }])
+      }
+    }
+    return map
+  }, [modelNames, models, milestones])
   const undated = instances.filter((i) => i.dates.status !== 'resolved').length
 
   const first = new Date(Date.UTC(ym.y, ym.m, 1))
@@ -58,6 +74,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
   const viewCount = [...byDay.entries()].filter(([d]) => inView(d)).reduce((n, [, xs]) => n + xs.length, 0)
 
   const dayItems = day ? byDay.get(day) ?? [] : []
+  const dayMs = day ? msByDay.get(day) ?? [] : []
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
@@ -92,6 +109,10 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
                     <span className={`text-[11.5px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{Number(date.slice(8))}</span>
                   </button>
                   <div className="flex flex-col gap-1 p-1">
+                    {(msByDay.get(date) ?? []).map((e) => (
+                      <button key={`${e.model}-${e.milestoneId}`} type="button" onClick={() => setDay(date)} title={`${e.model} · ${trialLabelOf(e.milestoneId)} milestone`}
+                        className="truncate rounded bg-indigo-600 px-1.5 py-1 text-left text-[10px] font-semibold text-white">⚑ {e.model} · {trialLabelOf(e.milestoneId)}</button>
+                    ))}
                     {items.slice(0, WEEK_ITEMS).map((i) => {
                       const b = workBucket(i)!
                       return (
@@ -126,10 +147,15 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
             const counts = WORK_BUCKETS.map((b) => [b, items.filter((i) => workBucket(i) === b).length] as const).filter(([, n]) => n > 0)
             const isToday = date === DEMO_TODAY
             const isSel = date === day
+            const evs = msByDay.get(date) ?? []
             return (
-              <button key={k} type="button" onClick={() => setDay(date)} aria-label={`${date}: ${items.length} activities`}
+              <button key={k} type="button" onClick={() => setDay(date)} aria-label={`${date}: ${items.length} activities${evs.length ? `, ${evs.length} milestone${evs.length === 1 ? '' : 's'}` : ''}`}
                 className={`flex min-h-[72px] flex-col items-stretch rounded-lg border p-1.5 text-left transition-colors ${isSel ? 'border-[var(--color-primary)] bg-secondary' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}>
                 <span className={`mb-1 text-[10.5px] font-semibold ${isToday ? 'inline-flex h-5 w-5 items-center justify-center self-start rounded-full bg-[var(--color-primary)] text-white' : 'text-[#344054]'}`}>{d}</span>
+                {evs.slice(0, 2).map((e) => (
+                  <span key={`${e.model}-${e.milestoneId}`} className="mb-0.5 truncate rounded bg-indigo-600 px-1 py-px text-[9.5px] font-semibold text-white" title={`${e.model} · ${trialLabelOf(e.milestoneId)} milestone`}>⚑ {e.model} {trialLabelOf(e.milestoneId)}</span>
+                ))}
+                {evs.length > 2 && <span className="mb-0.5 text-[9.5px] font-semibold text-indigo-700">+{evs.length - 2} milestones</span>}
                 <span className="flex flex-wrap gap-1">
                   {counts.map(([b, n]) => (
                     <span key={b} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
@@ -147,6 +173,7 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
           {WORK_BUCKETS.map((b) => (
             <span key={b} className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: WORK_BUCKET_COLORS[b] }} />{b}</span>
           ))}
+          <span className="inline-flex items-center gap-1"><span className="inline-block rounded bg-indigo-600 px-1 text-[9px] font-semibold text-white">⚑</span>Milestone (one date per trial)</span>
           <span className="ml-auto">By planned end date{undated ? ` · ${undated} awaiting MRD (no date)` : ''}</span>
         </div>
       </section>
@@ -157,6 +184,15 @@ export function CalendarTab({ instances, onOpen }: { instances: FilteredInstance
           {day ? new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Pick a day'}
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10.5px] font-medium text-primary">{dayItems.length}</span>
         </h3>
+        {dayMs.length > 0 && (
+          <div className="mb-2 space-y-1">
+            {dayMs.map((e) => (
+              <div key={`${e.model}-${e.milestoneId}`} className="flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-[11.5px] font-semibold text-indigo-800">
+                ⚑ {e.model} · <TrialName id={e.milestoneId} /> milestone
+              </div>
+            ))}
+          </div>
+        )}
         {dayItems.length === 0 ? (
           <p className="py-8 text-center text-[11.5px] text-[var(--color-muted)]">No activities due on this day.</p>
         ) : (

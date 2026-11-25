@@ -417,9 +417,12 @@ export interface VendorTimelineVersion {
 export function plannedDateOwner(a: { plannedDateBy?: 'Vendor' | 'PIC'; flow: { steps: { role: string }[] } }): 'Vendor' | 'PIC' {
   return a.plannedDateBy ?? (a.flow.steps[0]?.role === 'Vendor' ? 'Vendor' : 'PIC')
 }
-/** One version of a vendor's planned date (Vendor Planning). */
+/** One version of a vendor's planned dates (Vendor Planning): a start and an end. */
 export interface VendorPlanVersion {
-  date: string // YYYY-MM-DD
+  /** Planned start (YYYY-MM-DD). Absent on older data, which had an end date only. */
+  start?: string
+  /** Planned end (YYYY-MM-DD). */
+  date: string
   by: string
   byRole: PersonaId
   at: string // ISO date-time

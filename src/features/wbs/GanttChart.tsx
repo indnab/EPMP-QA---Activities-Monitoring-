@@ -1,6 +1,6 @@
 /**
- * Gantt chart of the WBS tree (Milestone → Part → Activity): one row per node with its planned start → end as a bar on
- * a time axis. Milestone and part bars span their children (summary bars); activity bars are coloured by status.
+ * Gantt chart of the WBS tree (Part → Activity → Task): one row per node with its planned start → end as a bar on
+ * a time axis. Part bars span their children (summary bars); activity bars are coloured by status.
  * Rows follow the WBS table's expand / collapse. Zoom: Week (days visible), Month or Quarter. A red line marks today.
  */
 import { useMemo, useState } from 'react'
@@ -20,7 +20,6 @@ const BAR: Record<string, { fill: string; text: string }> = {
   Open: { fill: '#94a3b8', text: '#334155' },
 }
 const KIND_TAG: Record<WbsNode['kind'], string> = {
-  milestone: 'bg-indigo-100 text-indigo-700',
   part: 'bg-sky-100 text-sky-700',
   activity: 'bg-slate-100 text-slate-600',
   task: 'bg-violet-100 text-violet-700',
@@ -91,7 +90,7 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
           {Object.entries(BAR).map(([k, v]) => (
             <span key={k} className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: v.fill }} />{k}</span>
           ))}
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm bg-[#1e1b4b]" />Milestone / part (summary)</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm bg-[#1e1b4b]" />Part (summary)</span>
           <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-4 rounded-sm bg-[#3b82f6] ring-2 ring-[#2563eb] ring-offset-1" />Current task</span>
           <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-px bg-red-500" />Today {fmtDate(today)}</span>
         </span>
@@ -103,7 +102,7 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
           {/* Header */}
           <div className="sticky top-0 z-20 flex border-b border-[var(--color-border)] bg-[#dce8fb]">
             <div className="sticky left-0 z-30 flex-none border-r border-[var(--color-border)] bg-[#dce8fb] px-3 py-2 text-[10.5px] font-medium text-[#344054]" style={{ width: LEFT_W }}>
-              WBS · Milestone / Part / Activity / Task
+              WBS · Part / Activity / Task
             </div>
             <div className="relative" style={{ width, height: zoom === 'quarter' ? 26 : 40 }}>
               {months.map((m) => (
@@ -119,14 +118,14 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
           {rows.map((n) => {
             const hasKids = !!n.children?.length
             const open = !collapsed.has(n.id)
-            const summary = n.kind === 'milestone' || n.kind === 'part'
+            const summary = n.kind === 'part'
             const isTask = n.kind === 'task'
             const color = BAR[n.status] ?? BAR.Open
             const left = n.start ? x(n.start) : 0
             const barW = n.start && n.end ? Math.max(summary ? 4 : 6, x(iso(toMs(n.end) + DAY)) - left) : 0
             return (
-              <div key={n.id} role="row" className={`flex border-b border-[var(--color-border)] ${n.kind === 'milestone' ? 'bg-[#f5f7ff]' : 'bg-white'}`} style={{ height: ROW_H }}>
-                <div role="rowheader" className={`sticky left-0 z-10 flex flex-none items-center gap-1.5 border-r border-[var(--color-border)] px-2 ${n.kind === 'milestone' ? 'bg-[#f5f7ff]' : 'bg-white'}`} style={{ width: LEFT_W }}>
+              <div key={n.id} role="row" className={`flex border-b border-[var(--color-border)] ${n.kind === 'part' ? 'bg-[#f5f7ff]' : 'bg-white'}`} style={{ height: ROW_H }}>
+                <div role="rowheader" className={`sticky left-0 z-10 flex flex-none items-center gap-1.5 border-r border-[var(--color-border)] px-2 ${n.kind === 'part' ? 'bg-[#f5f7ff]' : 'bg-white'}`} style={{ width: LEFT_W }}>
                   <span className="w-[84px] flex-none whitespace-nowrap font-mono text-[9.5px] text-[var(--color-muted)]">WBS-{n.id}</span>
                   <span className="flex min-w-0 flex-1 items-center gap-1.5" style={{ paddingLeft: n.depth * 12 }}>
                     {hasKids ? (
@@ -136,7 +135,7 @@ export function GanttChart({ rows, collapsed, onToggle, today }: {
                       </button>
                     ) : <span className="h-4 w-4 flex-none" />}
                     <span className={`flex-none rounded px-1 py-px text-[8.5px] font-medium capitalize ${KIND_TAG[n.kind]}`}>{n.kind}</span>
-                    <span className={`truncate text-[11px] ${n.kind === 'milestone' ? 'font-semibold text-[#101828]' : n.kind === 'part' ? 'font-medium text-[#101828]' : 'text-[#344054]'}`} title={n.label}>{n.label}</span>
+                    <span className={`truncate text-[11px] ${n.kind === 'part' ? 'font-semibold text-[#101828]' : 'text-[#344054]'}`} title={n.label}>{n.trial ? `${n.trial} · ` : ''}{n.label}</span>
                   </span>
                 </div>
                 <div className="relative" style={{ width }}>

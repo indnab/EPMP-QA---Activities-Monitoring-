@@ -1123,7 +1123,7 @@ function MyWorkPageInner() {
           <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
         </>
       ) : effectiveView === 'calendar' ? (
-        <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} /></ExportSection>
+        <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} modelNames={modelOptions} /></ExportSection>
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake (delay reasons are reviewed in My Approvals and Exception Management) */}
@@ -1141,7 +1141,7 @@ function MyWorkPageInner() {
               hasFilters={hasFilters} clearFilters={clearFilters}
             />
           </div>
-          <ExportSection id="mw-release-sec" label="Release to vendor"><div id="mw-release"><ReleasePanel partFilter={partFilter} /></div></ExportSection>
+          <ExportSection id="mw-release-sec" label="Part Allocation Screen"><div id="mw-release"><ReleasePanel partFilter={partFilter} /></div></ExportSection>
         </>
       ) : (
         // Overview sections, in the order the user dragged them into (grip in the left gutter).
