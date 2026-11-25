@@ -283,13 +283,6 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
     return [...m.entries()].map(([k, xs]) => ({ k, label: labelOf(groupBy, k, xs), n: xs.length, parts: new Set(xs.map((x) => x.part.partNo)).size, xs }))
       .sort((a, b) => b.n - a.n)
   }, [items, groupBy])
-  const stat = (label: string, v: number) => (
-    <div className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5">
-      <div className="text-[9.5px] font-medium uppercase tracking-wide text-[var(--color-muted)]">{label}</div>
-      <div className="text-[15px] font-bold tabular-nums" style={{ color: tile.color }}>{v}</div>
-    </div>
-  )
-  const uniq = (f: (i: FilteredInstance) => string) => new Set(items.map(f)).size
   // The tile's details list; once drilled into one model / vendor / part, it lists the next level down.
   const baseKind = tile.detail ?? tile.counts ?? 'activities'
   const kindDim = { models: 'model', vendors: 'vendor', parts: 'part' } as const
@@ -320,13 +313,6 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
           </span>
         ))}
       </nav>
-
-      <div className="mb-3 grid grid-cols-4 gap-1.5">
-        {stat('Activities', items.length)}
-        {stat('Parts', uniq((i) => i.part.partNo))}
-        {stat('Models', uniq((i) => i.part.model))}
-        {stat('Vendors', uniq((i) => i.part.vendorCode || i.part.vendorName))}
-      </div>
 
       <div className="mb-1.5 flex items-center gap-2">
         <span className="text-[10.5px] font-semibold text-[#344054]">{groupBy === 'list' ? 'Activities' : `By ${DIM_LABEL[groupBy]}`}</span>

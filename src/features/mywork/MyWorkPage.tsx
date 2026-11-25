@@ -1116,6 +1116,10 @@ function MyWorkPageInner() {
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
         <>
+          <div className="mb-3">
+            <PriorityModels instances={instancesAllModels} parts={partsAllModels} selected={fModel} collapseKey="ms-priority-models"
+              onPick={(m) => chooseModels(fModel.length === 1 && fModel[0] === m ? [] : [m])} />
+          </div>
           <ExportSection id="mw-myscreen" label="My Screen"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
         </>
       ) : effectiveView === 'calendar' ? (

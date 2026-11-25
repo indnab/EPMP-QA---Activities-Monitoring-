@@ -360,7 +360,7 @@ const PAGE_SIZES = [3, 6, 9] as const
  * Model-wise cards: priority models (delayed or NG activities, most first), then the rest. One line (3 cards) shows
  * first; "More models" switches to pages of 3, 6 or 9 cards.
  */
-export function PriorityModels({ instances, parts, className = '', selected = [], onPick }: {
+export function PriorityModels({ instances, parts, className = '', selected = [], onPick, collapseKey = 'ov-priority-models' }: {
   instances: FilteredInstance[]
   parts: PartRecord[]
   className?: string
@@ -368,9 +368,11 @@ export function PriorityModels({ instances, parts, className = '', selected = []
   selected?: string[]
   /** Click on a card: filter the page's list to that model (click again to clear). */
   onPick: (model: string) => void
+  /** Where the collapsed state is remembered (My Screen keeps its own). */
+  collapseKey?: string
 }) {
   const stageOf = useModelStages(parts)
-  const [collapsed, toggle] = useCollapsed('ov-priority-models')
+  const [collapsed, toggle] = useCollapsed(collapseKey)
   const [paged, setPaged] = useState(false)
   const [pageSize, setPageSize] = useState<number>(6)
   const [page, setPage] = useState(0)
