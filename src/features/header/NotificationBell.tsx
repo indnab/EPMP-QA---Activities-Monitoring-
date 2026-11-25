@@ -64,12 +64,12 @@ export function NotificationBell() {
       const plural = (k: number) => `${k} part${k === 1 ? '' : 's'}`
       if (currentPersona === 'Vendor') {
         const ack = n((x) => x.ackOverdue), late = n((x) => x.planExceeded), soon = n((x) => x.planPending && !x.planExceeded && (x.planDaysLeft ?? 99) <= 5)
-        if (ack) out.push({ key: 'tl-ack-v', tag: 'Timeline', title: `${plural(ack)} not acknowledged within ${ACK_SLA_DAYS} days`, sub: 'Acknowledge or return them in My Parts', to: '/mywork?view=actions' })
+        if (ack) out.push({ key: 'tl-ack-v', tag: 'Timeline', title: `${plural(ack)} not acknowledged within ${ACK_SLA_DAYS} days`, sub: 'Acknowledge or return them in Part Allocation', to: '/mywork?view=actions' })
         if (late) out.push({ key: 'tl-plan-v', tag: 'Timeline', title: `Planned dates overdue for ${plural(late)}`, sub: `Due within ${PLAN_SLA_DAYS} days of acknowledgement`, to: '/vendor-planning' })
         if (soon) out.push({ key: 'tl-plan-soon', tag: 'Planning', title: `Planned dates due soon for ${plural(soon)}`, sub: 'Within 5 days', to: '/vendor-planning' })
       } else if (currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'Admin' || currentPersona === 'DPM') {
         const rel = n((x) => x.releaseOverdue), ack = n((x) => x.ackOverdue), late = n((x) => x.planExceeded)
-        if (rel) out.push({ key: 'tl-rel', tag: 'Timeline', title: `${plural(rel)} pending release for over ${RELEASE_SLA_DAYS} days`, sub: 'Validate and release in My Parts', to: '/mywork?view=actions' })
+        if (rel) out.push({ key: 'tl-rel', tag: 'Timeline', title: `${plural(rel)} pending release for over ${RELEASE_SLA_DAYS} days`, sub: 'Validate and release in Part Allocation', to: '/mywork?view=actions' })
         if (ack) out.push({ key: 'tl-ack', tag: 'Timeline', title: `${plural(ack)} not acknowledged by the vendor within ${ACK_SLA_DAYS} days`, sub: 'Follow up with the vendor', to: '/mywork?view=actions' })
         if (late) out.push({ key: 'tl-plan', tag: 'Timeline', title: `Vendor planned dates not filled in time for ${plural(late)}`, sub: `Past acknowledgement + ${PLAN_SLA_DAYS} days`, to: '/vendor-planning' })
       }

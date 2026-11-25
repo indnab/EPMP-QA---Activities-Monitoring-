@@ -1,5 +1,5 @@
 /**
- * The "More Filters" set (Part, Vendor, People & Departments) shared by My Work, My Parts, My Approvals and My Screen.
+ * The "More Filters" set (Part, Vendor, People & Departments) shared by My Work, Part Allocation, My Approvals and My Screen.
  * Values come from the part's intake fields (Part Intake): any field can be filtered by ticking values. Part Number,
  * Vendor No, PIC and Activity use the page's existing filters (they are shown in the same window).
  */

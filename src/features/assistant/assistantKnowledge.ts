@@ -193,7 +193,7 @@ export function answer(q: string, f: Facts): Answer {
       text: f.role === 'Vendor'
         ? `${plural(f.ackPending, 'part')} awaiting your acknowledgement, ${f.ackOverdue} of them past 3 days.`
         : `${plural(f.releasePending, 'part')} pending release (${f.releaseOverdue} over 7 days). ${plural(f.ackPending, 'part')} waiting for the vendor to acknowledge (${f.ackOverdue} over 3 days). ${f.returned} returned by the vendor.`,
-      links: [{ label: 'My Parts', to: '/mywork?view=actions' }],
+      links: [{ label: 'Part Allocation', to: '/mywork?view=actions' }],
     }
   }
   if (has('plan', 'timeline', 'window', 'gantt')) {
@@ -206,7 +206,7 @@ export function answer(q: string, f: Facts): Answer {
     return { text: f.approvals ? `${plural(f.approvals, 'item')} waiting for your approval.` : 'Nothing is waiting for your approval.', links: [{ label: 'My Approvals', to: '/mywork?view=worklist' }] }
   }
   if (has('delete', 'removed')) {
-    return { text: f.deleted ? `${plural(f.deleted, 'part')} deleted in SAP / ENOVIA (recalled from the vendor; data kept, back if reactivated).` : 'No parts are deleted in SAP / ENOVIA.', links: [{ label: 'My Parts', to: '/mywork?view=actions&slice=deleted' }] }
+    return { text: f.deleted ? `${plural(f.deleted, 'part')} deleted in SAP / ENOVIA (recalled from the vendor; data kept, back if reactivated).` : 'No parts are deleted in SAP / ENOVIA.', links: [{ label: 'Part Allocation', to: '/mywork?view=actions&slice=deleted' }] }
   }
   if (has('usage', 'login', 'adoption')) return { text: 'The Usage Report shows portal adoption: active and inactive MSIL users and vendors, usage frequency and average time spent.', links: [{ label: 'Usage Report', to: '/usage' }] }
   if (has('how many part', 'parts', 'models')) return { text: `${plural(f.parts, 'part')} across ${plural(f.models.length, 'model')}, ${plural(f.vendors.length, 'vendor')}; ${plural(f.total, 'activity', 'activities')} in all.`, links: [{ label: 'My Screen', to: '/mywork?view=myscreen' }] }

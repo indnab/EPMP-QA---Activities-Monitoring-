@@ -466,7 +466,7 @@ interface FilterBarProps {
   /** Master search: every part (not only the chosen models'), and how picks are applied / removed. */
   /** "More filters" window: Part / Vendor / People & departments fields. */
   extra: ExtraSel; setExtra: (v: ExtraSel) => void; extraOpts: Record<string, { value: string }[]>
-  /** My Parts: only part-level filters (no Status, Trial, Activity or date range). */
+  /** Part Allocation: only part-level filters (no Status, Trial, Activity or date range). */
   partLevelOnly?: boolean
   allPartOptions: LabeledOption[]
   onSearchApply: (picks: SearchPick[]) => void
@@ -792,7 +792,7 @@ function MyWorkPageInner() {
     () => (hasExtra(fExtra) ? (no: string) => { const p = partByNo.get(no); return !!p && matchExtra(p, fExtra, models, picAssignments) } : undefined),
     [fExtra, partByNo, models, picAssignments]
   )
-  /** My Parts: every part-level filter (no trial / activity / status there). */
+  /** Part Allocation: every part-level filter (no trial / activity / status there). */
   const partFilter = useCallback(
     (p: PartRecord) =>
       inSelF(fModel, p.model) && inSelF(fDept, p.department || 'Other') && inSelF(fVendorCode, p.vendorCode) &&
@@ -1049,7 +1049,7 @@ function MyWorkPageInner() {
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
           items={[
-            { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
+            { id: 'actions', label: 'Part Allocation', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
             { id: 'calendar', label: 'My Calendar' },
             { id: 'myscreen', label: 'My Screen' }
@@ -1057,7 +1057,7 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Parts', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Screen' }[effectiveView]}`} />
+          <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'Part Allocation', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Screen' }[effectiveView]}`} />
         </div>
       </div>
 
@@ -1144,7 +1144,7 @@ function MyWorkPageInner() {
                 setTimeout(() => document.getElementById('mw-update')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
               }}
               onShowDeleted={() => {
-                // Deleted parts live in My Parts (recalled from the vendor automatically).
+                // Deleted parts live in Part Allocation (recalled from the vendor automatically).
                 setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('view', 'actions'); n.set('slice', 'deleted'); return n })
                 setTimeout(() => document.getElementById('mw-release')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
               }}

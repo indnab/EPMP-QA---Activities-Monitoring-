@@ -306,7 +306,7 @@ export function OverviewKpis({ instances, parts, deletedParts, onShowDeleted, on
       { id: 'scope.dev.models', group: 'Developed (< SOP + 3 months)', title: 'Total unique models', value: scope.developed.models, color: '#10b981', icon: 'grid', hint: 'Models past SOP, up to SOP + 3 months', onClick: () => onScope(scope.developed.pickAll) },
       { id: 'scope.dev.parts', group: 'Developed (< SOP + 3 months)', title: 'Total unique parts', value: scope.developed.parts, color: '#10b981', icon: 'check', hint: 'Parts of models past SOP, up to SOP + 3 months', onClick: () => onScope(scope.developed.pickAll) },
       { id: 'scope.dev.ng', group: 'Developed (< SOP + 3 months)', title: 'Total unique NG parts', value: scope.developed.ng, color: WORK_BUCKET_COLORS.NG, icon: 'close-circle', hint: 'Parts with at least one NG / rework activity', onClick: () => onScope(scope.developed.pickNg) },
-      { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA (recalled from the vendor; listed in My Parts). Their data is kept and comes back if the part is activated again.' },
+      { id: 'scope.deleted', group: 'Deleted in SAP / ENOVIA', title: 'Part Deleted', value: deletedParts, color: '#dc2626', icon: 'close-circle', onClick: onShowDeleted, hint: 'Parts deleted in SAP or ENOVIA (recalled from the vendor; listed in Part Allocation). Their data is kept and comes back if the part is activated again.' },
     ] },
     { id: 'ov-activities', title: 'Activities', icon: 'clipboard-list', className: 'min-w-[280px] flex-[6_1_560px]', tiles: [
       // Status

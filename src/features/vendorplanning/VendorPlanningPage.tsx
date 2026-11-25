@@ -1,5 +1,5 @@
 /**
- * Vendor Planning. Pick parts (or arrive from My Parts with ?parts=…&show=awaiting); every activity of those parts is listed
+ * Vendor Planning. Pick parts (or arrive from Part Allocation with ?parts=…&show=awaiting); every activity of those parts is listed
  * with the system's MRD reference date and the Planned Window calculated from it. The vendor plans a start and an end date. Each activity's definition says who sets its planned date (plannedDateOwner):
  *  - Vendor: the vendor enters and submits it; the PIC approves all of a part's submitted dates at one go, or sends
  *    them back with a comment (the vendor then changes and resubmits).
@@ -44,7 +44,7 @@ export function VendorPlanningPage() {
     () => workParts.filter((p) => !p.supersededBy && partInScope(p, role) && (!isVendor || isWorkableByVendor(p.partNo, partReleases, partAcks))),
     [workParts, role, isVendor, partReleases, partAcks]
   )
-  // Arriving from My Parts: ?parts=A,B&show=awaiting opens those parts' plans.
+  // Arriving from Part Allocation: ?parts=A,B&show=awaiting opens those parts' plans.
   const [params] = useSearchParams()
   const [fParts, setFParts] = useState<string[]>(() => (params.get('parts') ?? '').split(',').filter(Boolean))
   const [fModels, setFModels] = useState<string[]>([])
@@ -202,7 +202,7 @@ export function VendorPlanningPage() {
       {chosen.length === 0 && view !== 'status' ? (
         <div className="epmp-card px-6 py-12 text-center text-[12px] text-[var(--color-muted)]">
           Select one or more <strong>parts</strong> to list their activities with the planned window calculated from the MRD, then enter your planned start and end dates against each.
-          {isVendor && scoped.length === 0 && <div className="mt-2">No parts are released to you and acknowledged yet (My Parts).</div>}
+          {isVendor && scoped.length === 0 && <div className="mt-2">No parts are released to you and acknowledged yet (Part Allocation).</div>}
           <div className="mt-3"><Button variant="secondary" size="sm" onClick={() => setView('status')}>See the part-wise planning status</Button></div>
         </div>
       ) : (
