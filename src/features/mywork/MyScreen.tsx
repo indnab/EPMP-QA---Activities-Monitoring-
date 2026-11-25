@@ -331,7 +331,8 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const LIMIT = 8
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
-  type Row = { key: string; cells: React.ReactNode[]; onClick: () => void; title: string; xs: FilteredInstance[] }
+  /** `vals` = what each column sorts on (numbers sort numerically); `ftext` = what its filter box matches (default: vals). */
+  type Row = { key: string; cells: React.ReactNode[]; vals: (string | number)[]; ftext?: string[]; onClick: () => void; title: string; xs: FilteredInstance[] }
   const { head, rows } = useMemo((): { head: string[]; rows: Row[] } => {
     const group = (f: (i: FilteredInstance) => string) => {
       const m = new Map<string, FilteredInstance[]>()
@@ -374,6 +375,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its vendors', n: new Set(xs.map((i) => i.part.vendorCode)).size, detail: 'vendors' },
           ])],
+          vals: [m, new Set(xs.map((i) => i.part.partNo)).size, new Set(xs.map((i) => i.part.vendorCode)).size, s.n, pct(s.done, s.n), s.od, s.ng],
           sort: s.od * 1000 + s.ng } }).sort(bySort),
       }
     }
@@ -386,6 +388,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its models', n: [...new Set(xs.map((i) => i.part.model))].join(', '), detail: 'models' },
           ])],
+          vals: [`${p.vendorCode} ${p.vendorName}`, new Set(xs.map((i) => i.part.partNo)).size, [...new Set(xs.map((i) => i.part.model))].join(', '), s.n, pct(s.done, s.n), s.od, s.ng],
           sort: s.od * 1000 + s.ng } }).sort(bySort),
       }
     }
@@ -398,6 +401,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
             link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts')),
             link(`${p.vendorCode}: ${p.vendorName}`, `${p.vendorName}: its parts`, () => onPick([{ dim: 'vendor', value: p.vendorCode || p.vendorName }], 'parts')),
             ...numbers('part', no, no, s, [])],
+          vals: [`${no} ${p.partName}`, p.model, `${p.vendorCode}: ${p.vendorName}`, s.n, pct(s.done, s.n), s.od, s.ng],
           sort: s.od * 1000 + s.ng } }).sort(bySort),
       }
     }
@@ -410,6 +414,8 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         const d = late(i)
         return {
           xs: [i], key: `${i.row.id}|${i.part.partNo}`, title: 'Open the activity form', onClick: () => onOpen(i),
+          vals: [`${i.part.partNo} ${i.part.model}`, i.activity.name, trialLabelOf(i.row.milestoneId), i.dates.status === 'resolved' ? i.dates.end : '', taskOf(i, { releases: partReleases, acks: partAcks }) ?? '', b ? (b === 'Delayed' ? 'Overdue' : b) : ''],
+          ftext: [`${i.part.partNo} ${i.part.model} ${i.part.partName}`, i.activity.name, trialLabelOf(i.row.milestoneId), i.dates.status === 'resolved' ? `${fmtDate(i.dates.end)} ${i.dates.end}` : '', taskOf(i, { releases: partReleases, acks: partAcks }) ?? '', b ? (b === 'Delayed' ? 'Overdue' : b) : ''],
           cells: [
             <span key="p"><span className="font-mono text-[#101828]">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.model}</span></span>,
             i.activity.name, trialLabelOf(i.row.milestoneId),
@@ -422,25 +428,46 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, items, onPick, onOpen, partReleases, partAcks])
-  const shown = all ? rows : rows.slice(0, LIMIT)
+  // Sort by a column header (click: ascending, again: descending, again: back to the default order) and filter each
+  // column with its box. Both are remembered per kind of list.
+  const [sortBy, setSortBy] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null)
+  const [colFilter, setColFilter] = useState<Record<string, string>>({})
+  const cid = (c: number) => `${kind}:${c}`
+  const listed = useMemo(() => {
+    const active = head.map((_, c) => [c, (colFilter[cid(c)] ?? '').trim().toLowerCase()] as const).filter(([, q]) => q)
+    let out = active.length ? rows.filter((r) => active.every(([c, q]) => String((r.ftext ?? r.vals)[c] ?? '').toLowerCase().includes(q))) : rows
+    const c = sortBy && sortBy.col.startsWith(`${kind}:`) ? Number(sortBy.col.split(':')[1]) : -1
+    if (c >= 0 && sortBy) {
+      const dir = sortBy.dir === 'asc' ? 1 : -1
+      out = [...out].sort((a, b) => {
+        const x = a.vals[c], y = b.vals[c]
+        return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * dir
+      })
+    }
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, head, colFilter, sortBy, kind])
+  const clickSort = (c: number) => setSortBy((cur) => (!cur || cur.col !== cid(c) ? { col: cid(c), dir: 'asc' } : cur.dir === 'asc' ? { col: cid(c), dir: 'desc' } : null))
+  const hasColFilter = head.some((_, c) => (colFilter[cid(c)] ?? '').trim())
+  const shown = all ? listed : listed.slice(0, LIMIT)
   const noun = { models: 'model', vendors: 'vendor', parts: 'part', activities: 'activit' }[kind]
   const plural = (n: number) => (kind === 'activities' ? (n === 1 ? 'activity' : 'activities') : `${noun}${n === 1 ? '' : 's'}`)
   // Ticks that still match a listed row; the update tab works on those rows' activities, else on all listed.
-  const tickedRows = rows.filter((r) => picked.has(r.key))
+  const tickedRows = listed.filter((r) => picked.has(r.key))
   const chosen = useMemo(() => {
-    const src = tickedRows.length ? tickedRows.flatMap((r) => r.xs) : items
+    const src = tickedRows.length ? tickedRows.flatMap((r) => r.xs) : listed.flatMap((r) => r.xs)
     const seen = new Set<string>()
     return src.filter((i) => { const k = `${i.row.id}|${i.part.partNo}`; if (seen.has(k)) return false; seen.add(k); return true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tickedRows.length, picked, rows, items])
-  const allTicked = rows.length > 0 && tickedRows.length === rows.length
+  }, [tickedRows.length, picked, listed])
+  const allTicked = listed.length > 0 && tickedRows.length === listed.length
   const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
   const tabCls = (on: boolean) => `px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide ${on ? 'text-[#101828]' : 'text-[var(--color-muted)] hover:text-[#344054]'}`
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-white" data-tile-details={kind}>
       <div className="flex items-center gap-1 pr-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
         <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} pl-3`}>
-          {kind[0].toUpperCase() + kind.slice(1)} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{rows.length}</span>
+          {kind[0].toUpperCase() + kind.slice(1)} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{listed.length}</span>
         </button>
         <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} className={tabCls(tab === 'update')}>
           Activity Update <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{chosen.length}</span>
@@ -470,8 +497,26 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
           <div className="max-h-[300px] overflow-auto border-t border-[var(--color-border)]">
             <table className="w-full text-[10.5px]">
               <thead className="sticky top-0"><tr className="text-left">
-                <th className="w-7 px-2.5 py-1.5"><input type="checkbox" aria-label="Tick all" checked={allTicked} onChange={() => setPicked(allTicked ? new Set() : new Set(rows.map((r) => r.key)))} /></th>
-                {head.map((h) => <th key={h} className="px-2.5 py-1.5">{h}</th>)}
+                <th className="w-7 px-2.5 py-1.5"><input type="checkbox" aria-label="Tick all" checked={allTicked} onChange={() => setPicked(allTicked ? new Set() : new Set(listed.map((r) => r.key)))} /></th>
+                {head.map((h, c) => {
+                  const on = sortBy?.col === cid(c)
+                  return (
+                    <th key={h} className="px-2.5 py-1.5" aria-sort={on ? (sortBy!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                      <button type="button" onClick={() => clickSort(c)} title={`Sort by ${h}`} className="inline-flex items-center gap-1 font-medium hover:text-[var(--color-primary)]">
+                        {h}<span className={on ? 'text-[var(--color-primary)]' : 'text-[#98a2b3]'} aria-hidden="true">{on ? (sortBy!.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </button>
+                    </th>
+                  )
+                })}
+              </tr>
+              <tr className="text-left">
+                <th className="px-2.5 pb-1.5">{hasColFilter && <button type="button" onClick={() => setColFilter({})} title="Clear the column filters" className="text-[10px] font-semibold text-[var(--color-accent)] hover:underline">Clear</button>}</th>
+                {head.map((h, c) => (
+                  <th key={h} className="px-2.5 pb-1.5 font-normal">
+                    <input value={colFilter[cid(c)] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [cid(c)]: e.target.value }))} aria-label={`Filter ${h}`} placeholder="Filter"
+                      className="h-6 w-full min-w-[56px] rounded border border-[var(--color-border)] bg-white px-1.5 text-[10px] font-normal" />
+                  </th>
+                ))}
               </tr></thead>
               <tbody>
                 {shown.map((r) => (
@@ -485,9 +530,9 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
               </tbody>
             </table>
           </div>
-          {rows.length > LIMIT && (
+          {listed.length > LIMIT && (
             <button type="button" onClick={() => setAll((v) => !v)} className="w-full border-t border-[var(--color-border)] px-2.5 py-1 text-left text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
-              {all ? `Show first ${LIMIT}` : `Show all ${rows.length} ${plural(rows.length)}`}
+              {all ? `Show first ${LIMIT}` : `Show all ${listed.length} ${plural(listed.length)}`}
             </button>
           )}
         </>
