@@ -46,9 +46,12 @@ export function UsageReportPage() {
   const [role, setRole] = useState('All')
   const [grain, setGrain] = useState<Grain>('day')
   const [timeGrain, setTimeGrain] = useState<Grain>('day')
-  const [allUsers, setAllUsers] = useState(false)
-  const [allVendors, setAllVendors] = useState(false)
   const [q, setQ] = useState('')
+  // The headline tiles filter the tables below: all / active / inactive, for MSIL users and for vendors.
+  type StatusSel = 'all' | 'active' | 'inactive'
+  const [msilSel, setMsilSel] = useState<StatusSel>('all')
+  const [vendSel, setVendSel] = useState<StatusSel>('all')
+  const keepSel = (sel: StatusSel, active: boolean) => sel === 'all' || (sel === 'active') === active
 
   const dataFrom = data.from, dataTo = data.to < DEMO_TODAY ? data.to : DEMO_TODAY
   const clampD = (d: string) => (d < dataFrom ? dataFrom : d > dataTo ? dataTo : d)
@@ -81,27 +84,27 @@ export function UsageReportPage() {
   const bands = BANDS.map((b) => ({ band: b.label, MSIL: msil.filter((s) => b.test(s.since)).length, Vendors: vendors.filter((v) => b.test(v.since)).length }))
   const depts = useMemo(() => {
     const m = new Map<string, UserStat[]>()
-    for (const s of msil) m.set(s.user.dept, [...(m.get(s.user.dept) ?? []), s])
+    for (const s of msil.filter((x) => keepSel(msilSel, x.active))) m.set(s.user.dept, [...(m.get(s.user.dept) ?? []), s])
     return [...m.entries()].map(([d, xs]) => {
       const act = xs.filter((x) => x.active)
       return { dept: d, users: xs.length, active: act.length, inactive: xs.length - act.length, minutes: sum(xs, (x) => x.minutes), perMonth: avg(act.map((x) => x.perMonth)), minDay: avgTime(act, 'day') }
     }).sort((a, b) => b.minutes - a.minutes)
-  }, [msil]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [msil, msilSel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ql = q.trim().toLowerCase()
-  const userRows = [...msil].filter((s) => !ql || `${s.user.id} ${s.user.name} ${s.user.dept} ${s.user.role}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
-  const vendorRows = [...vendors].filter((v) => !ql || `${v.code} ${v.name}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
+  const userRows = [...msil].filter((s) => keepSel(msilSel, s.active)).filter((s) => !ql || `${s.user.id} ${s.user.name} ${s.user.dept} ${s.user.role}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
+  const vendorRows = [...vendors].filter((v) => keepSel(vendSel, v.active)).filter((v) => !ql || `${v.code} ${v.name}`.toLowerCase().includes(ql)).sort((a, b) => b.minutes - a.minutes)
   const maxU = Math.max(1, ...userRows.map((s) => s.minutes)), maxV = Math.max(1, ...vendorRows.map((v) => v.minutes))
   const deptOptions = [...new Set(stats.filter((s) => s.user.kind === 'MSIL').map((s) => s.user.dept))].sort()
   const vendorOptions = [...new Map(stats.filter((s) => s.user.vendorCode).map((s) => [s.user.vendorCode!, s.user.vendorName!])).entries()].sort()
 
 
-  const exportUsers = () => downloadCsv(`epmp-usage-msil-${from}-${to}.csv`, buildCsv(
+  const exportUsers = (rows: UserStat[]) => downloadCsv(`epmp-usage-msil-${from}-${to}.csv`, buildCsv(
     ['User ID', 'Name', 'Role', 'Department', 'Status', 'Login days', 'Login days / month', 'Avg min per login day', 'Total minutes', 'Last login'],
-    userRows.map((s) => [s.user.id, s.user.name, s.user.role, s.user.dept, s.active ? 'Active' : 'Inactive', s.loginDays, s.perMonth, s.minPerLoginDay, s.minutes, s.lastLogin ?? 'Never'])))
-  const exportVendors = () => downloadCsv(`epmp-usage-vendors-${from}-${to}.csv`, buildCsv(
+    rows.map((s) => [s.user.id, s.user.name, s.user.role, s.user.dept, s.active ? 'Active' : 'Inactive', s.loginDays, s.perMonth, s.minPerLoginDay, s.minutes, s.lastLogin ?? 'Never'])))
+  const exportVendors = (rows: VendorStat[]) => downloadCsv(`epmp-usage-vendors-${from}-${to}.csv`, buildCsv(
     ['Vendor code', 'Vendor name', 'Linked users', 'Active users', 'Status', 'Login days', 'Login days / month', 'Avg min per login day', 'Total minutes', 'Last login'],
-    vendorRows.map((v) => [v.code, v.name, v.users.length, v.activeUsers, v.active ? 'Active' : 'Inactive', v.loginDays, v.perMonth, v.loginDays ? Math.round(v.minutes / Math.max(1, v.users.reduce((n, u) => n + u.loginDays, 0))) : 0, v.minutes, v.lastLogin ?? 'Never'])))
+    rows.map((v) => [v.code, v.name, v.users.length, v.activeUsers, v.active ? 'Active' : 'Inactive', v.loginDays, v.perMonth, v.loginDays ? Math.round(v.minutes / Math.max(1, v.users.reduce((n, u) => n + u.loginDays, 0))) : 0, v.minutes, v.lastLogin ?? 'Never'])))
 
   const sel = 'h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-[11.5px] text-[#344054]'
   const seg = <T extends string>(value: T, set: (v: T) => void, opts: [T, string][]) => (
@@ -147,15 +150,21 @@ export function UsageReportPage() {
       {/* Users / vendors */}
       <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {([
-          ['MSIL Quality users', 'Total registered users (PIC, SIC, DPM)', 'users', MSIL, msil.length, msilActive.length],
-          ['Vendors', 'Vendor codes with parts in EPMP', 'users', VEND, vendors.length, vendActive.length],
-        ] as const).map(([t, sub, icon, c, total, act]) => (
+          ['MSIL Quality users', 'Total registered users (PIC, SIC, DPM)', 'users', MSIL, msil.length, msilActive.length, msilSel, setMsilSel, 'usage-msil-table'],
+          ['Vendors', 'Vendor codes with parts in EPMP', 'users', VEND, vendors.length, vendActive.length, vendSel, setVendSel, 'usage-vendor-table'],
+        ] as const).map(([t, sub, icon, c, total, act, sel, setSel, target]) => (
           <section key={t} className="epmp-card p-4">
             <div className="flex flex-wrap items-center gap-4">
               <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: `${c}18`, color: c }}><Icon name={icon} size={20} /></span>
-              <div className="min-w-[150px]"><div className="text-[11px] font-semibold uppercase tracking-wide text-[#344054]">{t}</div><div className="text-[26px] font-bold leading-tight text-[#101828]">{total.toLocaleString()}</div><div className="text-[10.5px] text-[var(--color-muted)]">{sub}</div></div>
-              <div className="border-l border-[var(--color-border)] pl-4"><div className="text-[22px] font-bold" style={{ color: c }}>{act}</div><div className="text-[10.5px] text-[var(--color-muted)]">Active</div></div>
-              <div className="border-l border-[var(--color-border)] pl-4"><div className="text-[22px] font-bold text-amber-500">{total - act}</div><div className="text-[10.5px] text-[var(--color-muted)]">Inactive (no login {INACTIVE_DAYS} d)</div></div>
+              {([['all', total, t.startsWith('MSIL') ? 'Total registered' : 'Total vendors', '#101828'], ['active', act, 'Active', c], ['inactive', total - act, `Inactive (no login ${INACTIVE_DAYS} d)`, '#f59e0b']] as const).map(([id, v, label, col], k) => (
+                <button key={id} type="button" onClick={() => { setSel(sel === id ? 'all' : id); setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }} aria-pressed={sel === id}
+                  title={sel === id && id !== 'all' ? 'Click again to show all' : `Show ${id === 'all' ? 'all' : id} ${t.startsWith('MSIL') ? 'users' : 'vendors'} in the tables below`}
+                  className={`rounded-lg px-2.5 py-1 text-left transition-colors hover:bg-[var(--color-surface)] ${k ? 'border-l border-[var(--color-border)] pl-4' : 'min-w-[150px]'} ${sel === id ? 'bg-secondary ring-1 ring-[#bfdbfe]' : ''}`}>
+                  {k === 0 && <div className="text-[11px] font-semibold uppercase tracking-wide text-[#344054]">{t}</div>}
+                  <div className={k === 0 ? 'text-[26px] font-bold leading-tight text-[#101828]' : 'text-[22px] font-bold'} style={k ? { color: col } : undefined}>{v.toLocaleString()}</div>
+                  <div className="text-[10.5px] text-[var(--color-muted)]">{k === 0 ? sub : label}</div>
+                </button>
+              ))}
             </div>
             <div className="mt-3 flex items-center gap-2">
               <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-amber-400"><div style={{ width: `${pct(act, total)}%`, background: c }} /></div>
@@ -224,20 +233,18 @@ export function UsageReportPage() {
         </section>
       </div>
       <div className="mb-3 grid grid-cols-1 gap-3">
-        <section className="epmp-card overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2"><h3 className="text-[12.5px] font-semibold text-[#101828]">Department-wise (MSIL)</h3></div>
-          <div className="max-h-[200px] overflow-auto">
-            <table className="w-full text-[10.5px]">
-              <thead className="sticky top-0"><tr className="text-left"><th className="px-3 py-1.5">Dept</th><th className="px-2 py-1.5">Users</th><th className="px-2 py-1.5">Active</th><th className="px-2 py-1.5">Inactive</th><th className="px-2 py-1.5">Total time</th><th className="px-2 py-1.5">Days / month</th><th className="px-2 py-1.5">Avg / day</th></tr></thead>
-              <tbody>{depts.map((d) => (
-                <tr key={d.dept} onClick={() => setDept(d.dept === dept ? 'All' : d.dept)} className={`cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-surface)] ${dept === d.dept ? 'bg-secondary' : ''}`} title="Filter the report to this department">
-                  <td className="px-3 py-1.5 font-semibold text-[#101828]">{d.dept}</td><td className="px-2 py-1.5">{d.users}</td><td className="px-2 py-1.5 text-blue-700">{d.active}</td><td className="px-2 py-1.5 text-amber-600">{d.inactive}</td>
-                  <td className="px-2 py-1.5 tabular-nums">{fmtMin(d.minutes)}</td><td className="px-2 py-1.5">{d.perMonth}</td><td className="px-2 py-1.5">{fmtMin(d.minDay)}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </section>
+        <UsageTable<(typeof depts)[number]> title="Department-wise (MSIL)" color={MSIL} note={msilSel === 'all' ? undefined : `${msilSel} users only`} onClearNote={() => setMsilSel('all')}
+          rows={depts} rowKey={(d) => d.dept} maxHeight="max-h-[260px]"
+          rowProps={(d) => ({ onClick: () => setDept(d.dept === dept ? 'All' : d.dept), title: 'Filter the report to this department', className: `cursor-pointer ${dept === d.dept ? 'bg-secondary' : ''}` })}
+          columns={[
+            { label: 'Dept', val: (d) => d.dept, cell: (d) => <span className="font-semibold text-[#101828]">{d.dept}</span> },
+            { label: 'Users', val: (d) => d.users, cell: (d) => d.users },
+            { label: 'Active', val: (d) => d.active, cell: (d) => <span className="text-blue-700">{d.active}</span> },
+            { label: 'Inactive', val: (d) => d.inactive, cell: (d) => <span className="text-amber-600">{d.inactive}</span> },
+            { label: 'Total time', val: (d) => d.minutes, cell: (d) => <span className="tabular-nums">{fmtMin(d.minutes)}</span> },
+            { label: 'Days / month', val: (d) => d.perMonth, cell: (d) => d.perMonth },
+            { label: 'Avg / day', val: (d) => d.minDay, cell: (d) => fmtMin(d.minDay) },
+          ]} />
       </div>
 
       {/* User-wise / vendor-wise */}
@@ -246,12 +253,31 @@ export function UsageReportPage() {
           className="h-8 w-72 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-[11px]" />
       </div>
       <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <UsageTable title="MSIL user-wise usage" color={MSIL} rows={userRows.length} all={allUsers} setAll={setAllUsers} onExport={exportUsers}
-          head={['User ID', 'Name', 'Role · Dept', 'Total time', 'Days / mo', 'Avg / login day', 'Last login']}
-          body={(allUsers ? userRows : userRows.slice(0, 8)).map((s) => <UserRow key={s.user.id} s={s} max={maxU} color={MSIL} fmtMin={fmtMin} />)} />
-        <UsageTable title="Vendor-wise usage" color={VEND} rows={vendorRows.length} all={allVendors} setAll={setAllVendors} onExport={exportVendors}
-          head={['Vendor code', 'Vendor name', 'Users (active)', 'Total time', 'Days / mo', 'Avg / login day', 'Last login']}
-          body={(allVendors ? vendorRows : vendorRows.slice(0, 8)).map((v) => <VendorRow key={v.code} v={v} max={maxV} color={VEND} fmtMin={fmtMin} />)} />
+        <UsageTable<UserStat> id="usage-msil-table" title="MSIL user-wise usage" color={MSIL} note={msilSel === 'all' ? undefined : `${msilSel} users only`} onClearNote={() => setMsilSel('all')}
+          rows={userRows} rowKey={(s) => s.user.id} limit={8} onExport={exportUsers}
+          columns={[
+            { label: 'User ID', val: (s) => s.user.id, cell: (s) => <span className="font-mono text-[#101828]">{s.user.id}</span> },
+            { label: 'Name', val: (s) => s.user.name, cell: (s) => s.user.name },
+            { label: 'Role · Dept', val: (s) => `${s.user.role} · ${s.user.dept}`, cell: (s) => <span className="text-[#475467]">{s.user.role} · {s.user.dept}</span> },
+            { label: 'Status', val: (s) => (s.active ? 'Active' : 'Inactive'), options: ['Active', 'Inactive'], cell: (s) => <StatusPill active={s.active} since={s.since} /> },
+            { label: 'Total time', val: (s) => s.minutes, text: (s) => fmtMin(s.minutes), cell: (s) => <TimeBar v={s.minutes} max={maxU} color={MSIL} fmtMin={fmtMin} /> },
+            { label: 'Days / mo', val: (s) => (s.active ? s.perMonth : -1), text: (s) => (s.active ? String(s.perMonth) : '—'), cell: (s) => <span className="tabular-nums">{s.active ? s.perMonth : '—'}</span> },
+            { label: 'Avg / login day', val: (s) => s.minPerLoginDay, text: (s) => (s.loginDays ? fmtMin(s.minPerLoginDay) : '—'), cell: (s) => (s.loginDays ? fmtMin(s.minPerLoginDay) : '—') },
+            { label: 'Last login', val: (s) => s.lastLogin ?? '', text: (s) => (s.lastLogin ? `${fmtDate(s.lastLogin)} ${s.lastLogin}` : 'Never'), cell: (s) => <span className="whitespace-nowrap">{s.lastLogin ? fmtDate(s.lastLogin) : 'Never'}</span> },
+          ]} />
+        <UsageTable<VendorStat> id="usage-vendor-table" title="Vendor-wise usage" color={VEND} note={vendSel === 'all' ? undefined : `${vendSel} vendors only`} onClearNote={() => setVendSel('all')}
+          rows={vendorRows} rowKey={(v) => v.code} limit={8} onExport={exportVendors}
+          rowProps={(v) => ({ title: v.users.map((u) => `${u.user.id} ${u.user.name}: ${fmtMin(u.minutes)}${u.lastLogin ? `, last ${u.lastLogin}` : ', never'}`).join('\n') })}
+          columns={[
+            { label: 'Vendor code', val: (v) => v.code, cell: (v) => <span className="font-mono text-[#101828]">{v.code}</span> },
+            { label: 'Vendor name', val: (v) => v.name, cell: (v) => v.name },
+            { label: 'Status', val: (v) => (v.active ? 'Active' : 'Inactive'), options: ['Active', 'Inactive'], cell: (v) => <StatusPill active={v.active} since={v.since} /> },
+            { label: 'Users (active)', val: (v) => v.users.length, text: (v) => `${v.users.length} (${v.activeUsers})`, cell: (v) => <span className="tabular-nums">{v.users.length} ({v.activeUsers})</span> },
+            { label: 'Total time', val: (v) => v.minutes, text: (v) => fmtMin(v.minutes), cell: (v) => <TimeBar v={v.minutes} max={maxV} color={VEND} fmtMin={fmtMin} /> },
+            { label: 'Days / mo', val: (v) => (v.active ? v.perMonth : -1), text: (v) => (v.active ? String(v.perMonth) : '—'), cell: (v) => <span className="tabular-nums">{v.active ? v.perMonth : '—'}</span> },
+            { label: 'Avg / login day', val: (v) => (v.minutes ? Math.round(v.minutes / Math.max(1, sumDays(v))) : 0), text: (v) => (v.minutes ? fmtMin(Math.round(v.minutes / Math.max(1, sumDays(v)))) : '—'), cell: (v) => (v.minutes ? fmtMin(Math.round(v.minutes / Math.max(1, sumDays(v)))) : '—') },
+            { label: 'Last login', val: (v) => v.lastLogin ?? '', text: (v) => (v.lastLogin ? `${fmtDate(v.lastLogin)} ${v.lastLogin}` : 'Never'), cell: (v) => <span className="whitespace-nowrap">{v.lastLogin ? fmtDate(v.lastLogin) : 'Never'}</span> },
+          ]} />
       </div>
 
       <p className="mt-2 text-[10px] text-[var(--color-muted)]">
@@ -262,29 +288,111 @@ export function UsageReportPage() {
   )
 }
 
-function UsageTable({ title, color, rows, all, setAll, onExport, head, body }: {
-  title: string; color: string; rows: number; all: boolean; setAll: (v: boolean) => void; onExport: () => void; head: string[]; body: React.ReactNode
+interface Col<T> {
+  label: string
+  /** What the column sorts on (numbers sort numerically). */
+  val: (r: T) => string | number
+  /** What the column's filter box matches (default: val). */
+  text?: (r: T) => string
+  /** A fixed set of values: the filter is a drop-down matching exactly. */
+  options?: string[]
+  cell: (r: T) => React.ReactNode
+}
+/**
+ * A usage table: click a header to sort (ascending, descending, back to the given order), type in a column's box to
+ * filter it. `limit` shows the top N with a "View all" switch; `onExport` gets the rows as listed.
+ */
+function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, rowKey, rowProps, limit, onExport, maxHeight }: {
+  id?: string; title: string; color: string; note?: string; onClearNote?: () => void
+  rows: T[]; columns: Col<T>[]; rowKey: (r: T) => string
+  rowProps?: (r: T) => { onClick?: () => void; title?: string; className?: string }
+  limit?: number; onExport?: (rows: T[]) => void; maxHeight?: string
 }) {
+  const [all, setAll] = useState(false)
+  const [sortBy, setSortBy] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(null)
+  const [filters, setFilters] = useState<Record<number, string>>({})
+  const listed = useMemo(() => {
+    const active = columns.map((c, i) => [c, i, (filters[i] ?? '').trim().toLowerCase()] as const).filter(([, , q]) => q)
+    let out = active.length ? rows.filter((r) => active.every(([c, , q]) => {
+      const t = String((c.text ?? c.val)(r)).toLowerCase()
+      return c.options ? t === q : t.includes(q)
+    })) : rows
+    if (sortBy) {
+      const c = columns[sortBy.col], dir = sortBy.dir === 'asc' ? 1 : -1
+      out = [...out].sort((a, b) => {
+        const x = c.val(a), y = c.val(b)
+        return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * dir
+      })
+    }
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, filters, sortBy])
+  const shown = limit && !all ? listed.slice(0, limit) : listed
+  const anyFilter = Object.values(filters).some((v) => v.trim())
+  const clickSort = (i: number) => setSortBy((cur) => (!cur || cur.col !== i ? { col: i, dir: 'asc' } : cur.dir === 'asc' ? { col: i, dir: 'desc' } : null))
   return (
-    <section className="epmp-card overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
+    <section id={id} className="epmp-card scroll-mt-3 overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
         <h3 className="text-[12.5px] font-semibold text-[#101828]">{title}</h3>
-        <span className="text-[10px] text-[var(--color-muted)]">{all ? `all ${rows}` : `top ${Math.min(8, rows)} of ${rows}`} · by time spent</span>
-        <button type="button" onClick={onExport} className="ml-auto text-[10.5px] font-semibold text-[var(--color-muted)] hover:underline"><Icon name="download" size={11} className="mr-0.5" />CSV</button>
-        <button type="button" onClick={() => setAll(!all)} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">{all ? 'Show top 8' : 'View all'}</button>
+        <span className="text-[10px] text-[var(--color-muted)]">{limit && !all ? `top ${Math.min(limit, listed.length)} of ${listed.length}` : `${listed.length} row${listed.length === 1 ? '' : 's'}`}{sortBy ? '' : ' · by time spent'}</span>
+        {note && (
+          <button type="button" onClick={onClearNote} title="Show all again" className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold capitalize text-primary hover:brightness-95">{note} ✕</button>
+        )}
+        {anyFilter && <button type="button" onClick={() => setFilters({})} className="text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Clear column filters</button>}
+        {onExport && <button type="button" onClick={() => onExport(listed)} className="ml-auto text-[10.5px] font-semibold text-[var(--color-muted)] hover:underline"><Icon name="download" size={11} className="mr-0.5" />CSV</button>}
+        {limit && <button type="button" onClick={() => setAll(!all)} className={`${onExport ? '' : 'ml-auto '}text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline`}>{all ? `Show top ${limit}` : 'View all'}</button>}
       </div>
-      <div className={all ? 'max-h-[460px] overflow-auto' : ''}>
+      <div className={all ? 'max-h-[460px] overflow-auto' : maxHeight ? `${maxHeight} overflow-auto` : 'overflow-x-auto'}>
         <table className="w-full text-[10.5px]">
-          <thead className="sticky top-0"><tr className="text-left">{head.map((h) => <th key={h} className="px-2.5 py-1.5">{h}</th>)}</tr></thead>
-          <tbody>{body}</tbody>
+          <thead className="sticky top-0">
+            <tr className="text-left">
+              {columns.map((c, i) => {
+                const on = sortBy?.col === i
+                return (
+                  <th key={c.label} className="px-2.5 py-1.5" aria-sort={on ? (sortBy!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => clickSort(i)} title={`Sort by ${c.label}`} className="inline-flex items-center gap-1 whitespace-nowrap font-medium hover:text-[var(--color-primary)]">
+                      {c.label}<span className={on ? 'text-[var(--color-primary)]' : 'text-[#98a2b3]'} aria-hidden="true">{on ? (sortBy!.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </button>
+                  </th>
+                )
+              })}
+            </tr>
+            <tr className="text-left">
+              {columns.map((c, i) => (
+                <th key={c.label} className="px-2.5 pb-1.5 font-normal">
+                  {c.options ? (
+                    <select value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`}
+                      className="h-6 w-full rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal"><option value="">All</option>{c.options.map((o) => <option key={o}>{o}</option>)}</select>
+                  ) : (
+                    <input value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`} placeholder="Filter"
+                      className="h-6 w-full min-w-[52px] rounded border border-[var(--color-border)] bg-white px-1.5 text-[10px] font-normal" />
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => {
+              const rp = rowProps?.(r)
+              return (
+                <tr key={rowKey(r)} onClick={rp?.onClick} title={rp?.title} className={`border-t border-[var(--color-border)] hover:bg-[var(--color-surface)] ${rp?.className ?? ''}`}>
+                  {columns.map((c) => <td key={c.label} className="px-2.5 py-1.5">{c.cell(r)}</td>)}
+                </tr>
+              )
+            })}
+            {shown.length === 0 && <tr><td colSpan={columns.length} className="px-3 py-6 text-center text-[var(--color-muted)]">No rows match.</td></tr>}
+          </tbody>
         </table>
       </div>
     </section>
   )
 }
-const status = (active: boolean, since?: number) =>
-  since === undefined ? <span className="rounded-full bg-slate-100 px-1.5 py-px text-[9px] font-semibold text-slate-600">Never</span>
-    : active ? null : <span className="rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-semibold text-amber-800">Inactive {since} d</span>
+/** Active / Inactive pill ("Inactive" also says how long, or that the user never logged in). */
+function StatusPill({ active, since }: { active: boolean; since?: number }) {
+  return active
+    ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-800">Active</span>
+    : <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[9.5px] font-semibold text-amber-800">Inactive{since === undefined ? ' · never logged in' : ` · ${since} d`}</span>
+}
 function TimeBar({ v, max, color, fmtMin }: { v: number; max: number; color: string; fmtMin: (m: number) => string }) {
   return (
     <span className="flex items-center gap-1.5">
@@ -293,30 +401,4 @@ function TimeBar({ v, max, color, fmtMin }: { v: number; max: number; color: str
     </span>
   )
 }
-function UserRow({ s, max, color, fmtMin }: { s: UserStat; max: number; color: string; fmtMin: (m: number) => string }) {
-  return (
-    <tr className="border-t border-[var(--color-border)]">
-      <td className="px-2.5 py-1.5 font-mono text-[#101828]">{s.user.id}</td>
-      <td className="px-2.5 py-1.5">{s.user.name} {status(s.active, s.since)}</td>
-      <td className="px-2.5 py-1.5 text-[#475467]">{s.user.role} · {s.user.dept}</td>
-      <td className="px-2.5 py-1.5"><TimeBar v={s.minutes} max={max} color={color} fmtMin={fmtMin} /></td>
-      <td className="px-2.5 py-1.5 tabular-nums">{s.active ? s.perMonth : '—'}</td>
-      <td className="px-2.5 py-1.5">{s.loginDays ? fmtMin(s.minPerLoginDay) : '—'}</td>
-      <td className="whitespace-nowrap px-2.5 py-1.5">{s.lastLogin ? fmtDate(s.lastLogin) : 'Never'}</td>
-    </tr>
-  )
-}
 const sumDays = (v: VendorStat) => v.users.reduce((n, u) => n + u.loginDays, 0)
-function VendorRow({ v, max, color, fmtMin }: { v: VendorStat; max: number; color: string; fmtMin: (m: number) => string }) {
-  return (
-    <tr className="border-t border-[var(--color-border)]" title={v.users.map((u) => `${u.user.id} ${u.user.name}: ${fmtMin(u.minutes)}${u.lastLogin ? `, last ${u.lastLogin}` : ', never'}`).join('\n')}>
-      <td className="px-2.5 py-1.5 font-mono text-[#101828]">{v.code}</td>
-      <td className="px-2.5 py-1.5">{v.name} {status(v.active, v.since)}</td>
-      <td className="px-2.5 py-1.5 tabular-nums">{v.users.length} ({v.activeUsers})</td>
-      <td className="px-2.5 py-1.5"><TimeBar v={v.minutes} max={max} color={color} fmtMin={fmtMin} /></td>
-      <td className="px-2.5 py-1.5 tabular-nums">{v.active ? v.perMonth : '—'}</td>
-      <td className="px-2.5 py-1.5">{v.minutes ? fmtMin(Math.round(v.minutes / Math.max(1, sumDays(v)))) : '—'}</td>
-      <td className="whitespace-nowrap px-2.5 py-1.5">{v.lastLogin ? fmtDate(v.lastLogin) : 'Never'}</td>
-    </tr>
-  )
-}
