@@ -208,42 +208,45 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             : 'Parts released to the vendor, waiting to be released, and returned by the vendor.'}
         </span>
       </div>
-      <div className={`grid grid-cols-2 gap-3 ${isVendor ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
-        {isVendor ? (
-          <>
+      {isVendor ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
             <Tile title="Planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
             <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
             <Tile title="Planning submitted for review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
-          </>
-        ) : (
-          <>
-            <Tile title={`Release overdue (> ${RELEASE_SLA_DAYS} d)`} count={tcount('relOverdue')} color="#b45309" active={slice === 'relOverdue'} onClick={() => choose('relOverdue')} />
-            <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
-            <Tile title="Vendor planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
-            <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
-            <Tile title="Vendor Plan Received for Review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
-          </>
-        )}
-      </div>
-      <div className={`mt-3 grid grid-cols-2 gap-3 ${isVendor ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
-        {isVendor ? (
-          <>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Tile title="Awaiting my acknowledgement" count={counts.awaiting} color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
             <Tile title="Acknowledged" count={counts.acknowledged} color="#16a34a" active={slice === 'acknowledged'} onClick={() => choose('acknowledged')} />
             <Tile title="Returned by me" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
-          </>
-        ) : (
-          <>
-            <Tile title="Released to vendor" count={counts.released} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
-            <Tile title="Pending acknowledgement" count={counts.awaiting} color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
-            <Tile title="Pending release" count={counts.pending} color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
-            <Tile title="Returned by vendor" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
-            <Tile title="Part Deleted" count={deletedRows.length} color="#991b1b" active={slice === 'deleted'} onClick={() => choose('deleted')} />
-          </>
-        )}
-      </div>
-
+          </div>
+        </>
+      ) : (
+        /* PIC side: two sections, what the PIC has to do and what the vendor has to do. */
+        <div className="space-y-3">
+          <section aria-label="PIC">
+            <h3 className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">PIC</h3>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+              <Tile title={`Release to Vendor Overdue (> ${RELEASE_SLA_DAYS} D)`} count={tcount('relOverdue')} color="#b45309" active={slice === 'relOverdue'} onClick={() => choose('relOverdue')} />
+              <Tile title="Released to Vendor" count={counts.released} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
+              <Tile title="Release to Vendor Pending" count={counts.pending} color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
+              <Tile title="Vendor Plan Received for Review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
+              <Tile title="Returned by Vendor" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
+              <Tile title="Part Deleted" count={deletedRows.length} color="#991b1b" active={slice === 'deleted'} onClick={() => choose('deleted')} />
+            </div>
+          </section>
+          <section aria-label="Vendor">
+            <h3 className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Vendor</h3>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+              <Tile title={`Vendor Acknowledgement Overdue (> ${ACK_SLA_DAYS} D)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
+              <Tile title="Vendor Acknowledgement Pending" count={counts.awaiting} color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
+              <Tile title="Vendor Plan Pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
+              <Tile title={`Vendor Plan Overdue (Ack + ${PLAN_SLA_DAYS} D)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
+            </div>
+          </section>
+        </div>
+      )}
       <div className="epmp-card mt-3 overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
           <span className="text-[11.5px] font-medium text-[var(--color-text)]">
