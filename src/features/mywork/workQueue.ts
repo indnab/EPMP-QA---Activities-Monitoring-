@@ -193,8 +193,8 @@ export const isReturnedToVendor = (inst: FilteredInstance) => {
   const r = returnedTo(inst)
   return !!r && r.to === 'Vendor' && (r.by === 'PIC' || r.by === 'SIC')
 }
-/** SIC screen: returned to the PIC by the SIC. */
+/** Returned to the PIC by the SIC or the DPM (an approval sent back to the PIC). */
 export const isReturnedToPicBySic = (inst: FilteredInstance) => {
   const r = returnedTo(inst)
-  return !!r && r.to === 'PIC' && r.by === 'SIC'
+  return !!r && r.to === 'PIC' && (r.by === 'SIC' || r.by === 'DPM')
 }

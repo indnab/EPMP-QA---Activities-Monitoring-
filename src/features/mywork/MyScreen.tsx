@@ -28,7 +28,7 @@ const DIM_LABEL: Record<Dim, string> = { model: 'Model', trial: 'Trial', vendor:
 
 type Ctx = {
   mine: MineKey | null; bucket: WorkBucket | null; stage: 'under' | 'developed' | 'past' | undefined
-  /** Returned to the vendor (by the PIC or SIC) / to the PIC by the SIC; a vendor delay reason waits for review. */
+  /** Returned to the vendor (by the PIC or SIC) / to the PIC by the SIC or DPM; a vendor delay reason waits for review. */
   toVendor: boolean; toPic: boolean; delayReview: boolean
   /** The part's timelines: release > 7 d, acknowledgement > 3 d, vendor planned dates pending / past ack + 15 d. */
   relOD: boolean; ackOD: boolean; planPend: boolean; planExc: boolean
@@ -127,8 +127,8 @@ export function MyScreen({ instances, parts, onOpen, filters = [], trials, delay
   const stageOf = useModelStages(parts)
   // One button per model (opens that model's dashboard, by trial).
   const TILES = useMemo<TileDef[]>(() => [
-    // Same tiles as My Work: "Returned to vendor" is the PIC's, "Returned to PIC" the SIC's.
-    ...STATIC_TILES.filter((t) => (t.id !== 'r.toVendor' || currentPersona === 'PIC') && (t.id !== 'r.toPic' || currentPersona === 'SIC') && (t.id !== 't.release' || currentPersona !== 'Vendor')),
+    // "Returned to vendor" is the PIC's tile; "Returned to PIC" (approvals the SIC or DPM sent back) follows it for the PIC and for those who return them.
+    ...STATIC_TILES.filter((t) => (t.id !== 'r.toVendor' || currentPersona === 'PIC') && (t.id !== 'r.toPic' || currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM') && (t.id !== 't.release' || currentPersona !== 'Vendor')),
     ...[...new Set(instances.map((i) => i.part.model))].sort().map((m): TileDef => ({
       id: `model:${m}`, group: 'Models', title: m, detail: 'parts', color: stageOf.get(m) === 'developed' ? '#10b981' : '#2153f5', icon: 'grid',
       drill: [{ dim: 'model', value: m }], test: (i) => i.part.model === m,
