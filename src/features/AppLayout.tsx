@@ -13,6 +13,7 @@ import { DemoTour } from './home/DemoTour'
 import { HeaderSearch } from './header/HeaderSearch'
 import { NotificationBell } from './header/NotificationBell'
 import { UpdateBanner, BUILD_ID } from './UpdateBanner'
+import { AiAssistant } from './assistant/AiAssistant'
 import { useQAStore } from '../store/qaStore'
 import epmpLogo from '../assets/epmp-logo.png'
 import epmpSub from '../assets/epmp-sub.png'
@@ -301,6 +302,7 @@ export function AppLayout() {
           <Outlet context={{ startTour: () => setTourOpen(true) } satisfies AppOutletContext} />
         </main>
         <Toaster />
+        <AiAssistant navCollapsed={navCollapsed} />
 
         <footer className="app-footer flex flex-none flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-1 text-[10px] text-[var(--color-muted)] lg:px-5">
           <span>QA Activity Tracker · EPMP design language</span>
