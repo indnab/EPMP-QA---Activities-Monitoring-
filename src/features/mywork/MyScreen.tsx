@@ -461,7 +461,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
       {open && tab === 'update' && (
         <div className="border-t border-[var(--color-border)] p-2.5" data-screen-update>
           <MaximizeHost max={maxed} onRestore={() => setMaxed(false)} title={`Activity Update · ${chosen.length} ${chosen.length === 1 ? 'activity' : 'activities'}`}>
-            <ActivityUpdatePanel instances={chosen} partCount={new Set(chosen.map((i) => i.part.partNo)).size} trials={trials} />
+            <ActivityUpdatePanel instances={chosen} partCount={new Set(chosen.map((i) => i.part.partNo)).size} trials={trials} fill={maxed} />
           </MaximizeHost>
         </div>
       )}
@@ -513,6 +513,11 @@ function MaximizeHost({ max, onRestore, title, children }: { max: boolean; onRes
     }
   }, [max, host])
   useEffect(() => () => { host.remove() }, [host])
+  // While full screen, the floating AI button and chat are hidden (see index.css).
+  useEffect(() => {
+    document.body.classList.toggle('epmp-max-open', max)
+    return () => document.body.classList.remove('epmp-max-open')
+  }, [max])
   useEffect(() => {
     if (!max) return
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role=dialog]')) onRestore() }

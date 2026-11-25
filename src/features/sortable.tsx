@@ -105,6 +105,11 @@ export function SortableSections({ sort, sections }: {
 }) {
   const byId = new Map(sections.map((x) => [x.id, x]))
   const [maxId, setMaxId] = useState<string | null>(null)
+  // A full-screen section hides the floating AI assistant (see index.css).
+  useEffect(() => {
+    document.body.classList.toggle('epmp-max-open', !!maxId)
+    return () => document.body.classList.remove('epmp-max-open')
+  }, [maxId])
   useEffect(() => {
     if (!maxId) return
     const esc = (e: KeyboardEvent | globalThis.KeyboardEvent) => {

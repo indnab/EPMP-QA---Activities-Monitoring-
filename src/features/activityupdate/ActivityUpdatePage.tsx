@@ -45,7 +45,9 @@ function rollup(items: FilteredInstance[]): { label: string; cls: string } {
  * The activity list of the given items (grouped by trial) and the update form, which opens in a right-side drawer.
  * Shared by the Activity Update page and the My Work Overview, which pass the items their filters select.
  */
-export function ActivityUpdatePanel({ instances, partCount, trials }: {
+export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
+  /** Full screen: the list and the form area stretch from the top to the bottom of the screen. */
+  fill?: boolean
   instances: FilteredInstance[]
   partCount: number
   /** Trials (milestone ids) to list, in order, even when they have no activities. Default: every trial. */
@@ -200,12 +202,12 @@ export function ActivityUpdatePanel({ instances, partCount, trials }: {
   return (
     <>
       {/* Activities of the selection, grouped by trial, on the left. Picking one opens its update form on the right. */}
-      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(380px,1fr)_minmax(0,1fr)]">
-      <section className="epmp-card flex min-h-0 flex-col overflow-hidden">
+      <div className={`grid grid-cols-1 gap-3 lg:grid-cols-[minmax(380px,1fr)_minmax(0,1fr)] ${fill ? 'h-[calc(100vh-4.75rem)] items-stretch' : 'items-start'}`}>
+      <section className={`epmp-card flex min-h-0 flex-col overflow-hidden ${fill ? 'h-full' : ''}`}>
         <h2 className="m-0 flex flex-wrap items-center gap-2 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">
           Activities ({activityCount}) · grouped by trial
         </h2>
-        <div className="max-h-[calc(100vh-300px)] space-y-2 overflow-y-auto p-2.5">
+        <div className={`space-y-2 overflow-y-auto p-2.5 ${fill ? 'min-h-0 flex-1' : 'max-h-[calc(100vh-300px)]'}`}>
           {groups.map((g) => {
             const open = !closedGroups.has(g.ms)
             const pct = g.total ? Math.round((g.done / g.total) * 100) : 0
@@ -251,7 +253,7 @@ export function ActivityUpdatePanel({ instances, partCount, trials }: {
         </div>
       </section>
       {/* Right: where the update form opens */}
-      <div className="hidden min-h-[240px] items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-6 text-center text-[11.5px] text-[var(--color-muted)] lg:flex">
+      <div className={`hidden items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-6 text-center text-[11.5px] text-[var(--color-muted)] lg:flex ${fill ? 'h-full' : 'min-h-[240px]'}`}>
         Pick an activity on the left to update it for the {partCount} selected part{partCount === 1 ? '' : 's'}. The form opens here, on the right.
       </div>
       </div>

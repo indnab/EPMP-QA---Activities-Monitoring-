@@ -326,3 +326,7 @@ h1, h2, h3, h4 { text-wrap: balance; }
 /* Part Workspace forms: the card already shows each field's label (with its source badge), so the
    renderer's own uppercase label would repeat it — hide that one. */
 .pw-fields > div > .flex-col > label:first-child { display: none; }
+
+/* A full-screen section hides the floating AI assistant. */
+body.epmp-max-open [data-ai-button],
+body.epmp-max-open [data-ai-panel] { display: none !important; }
