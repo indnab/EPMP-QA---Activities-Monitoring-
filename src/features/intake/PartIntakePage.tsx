@@ -6,9 +6,18 @@ import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { buildCsv, downloadCsv } from '../mywork/csv'
 import { partInScope, fmtDate } from '../scope'
-import { INTAKE_FIELDS } from '../../mock/partIntakeFields'
 import type { IntakeSource } from '../../mock/partIntakeFields'
-import { MultiSelect } from './MultiSelect'
+import { CompactFilterBar } from '../mywork/FilterBar'
+import type { LabeledOption } from '../mywork/FilterBar'
+import { PicViewProvider, usePicViewMatch } from '../mywork/picView'
+import { EMPTY_EXTRA, extraOptions, hasExtra, matchExtra } from '../mywork/extraFilters'
+import type { ExtraSel } from '../mywork/extraFilters'
+import type { SearchPick } from '../mywork/MasterSearch'
+import { ALL_MARKETS, EMPTY_ATTR_SEL, PART_ATTR_FIELDS, hasAttrSel, isAllMarkets, matchMarket, matchPartAttrs } from '../partAttrFilters'
+import type { PartAttrSel } from '../partAttrFilters'
+import { picLabel } from '../../domain/people'
+import { getPicOn } from '../../engine'
+import { DEMO_TODAY } from '../scope'
 import { ManualPartDialog } from './ManualPartDialog'
 import { DISPLAY_FIELDS, SOURCE_LABEL, intakeValue } from './intakeValues'
 import { getReleaseState, latestReturn } from '../../engine'
@@ -30,18 +39,28 @@ const SOURCE_TAG: Record<IntakeSource, string> = {
 }
 const ORIGIN_TAG: Record<Origin, string> = { SAP: 'bg-indigo-100 text-indigo-800', ENOVIA: 'bg-sky-100 text-sky-800', Manual: 'bg-amber-100 text-amber-800' }
 const originOf = (o: string | undefined): Origin => (o === 'ENOVIA' ? 'ENOVIA' : o === 'Manual' ? 'Manual' : 'SAP')
-const PRIMARY = INTAKE_FIELDS.filter((f) => f.primary)
-
 /** Every part that came in from SAP / ENOVIA (or was added manually), with its intake fields. */
-export function PartIntakePage({ embedded = false, actions }: { embedded?: boolean; actions?: IntakeActions }) {
+export function PartIntakePage(props: { embedded?: boolean; actions?: IntakeActions }) {
+  return <PicViewProvider><PartIntakeInner {...props} /></PicViewProvider>
+}
+
+function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; actions?: IntakeActions }) {
   const { parts, models, picAssignments, sections, partReleases, partAcks, setPartSourceDeleted } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const [params, setParams] = useSearchParams()
   const canAdd = currentPersona === 'SectionAdmin' || currentPersona === 'Admin' || currentPersona === 'PIC'
   const [addOpen, setAddOpen] = useState(params.get('add') === '1' && canAdd)
   const [origins, setOrigins] = useState<Origin[]>([])
-  const [filters, setFilters] = useState<Record<string, string[]>>({})
-  const [text, setText] = useState('')
+  // The same filters as the Workspace pages (My Parts): primary filters, master search and "More filters".
+  const [fModel, setFModel] = useState<string[]>([])
+  const [fDept, setFDept] = useState<string[]>([])
+  const [fPic, setFPic] = useState<string[]>([])
+  const [fPartNo, setFPartNo] = useState<string[]>([])
+  const [fVendorCode, setFVendorCode] = useState<string[]>([])
+  const [fAttrs, setFAttrs] = useState<PartAttrSel>(EMPTY_ATTR_SEL)
+  const [fMarket, setFMarket] = useState<string[]>(ALL_MARKETS)
+  const [fExtra, setFExtra] = useState<ExtraSel>(EMPTY_EXTRA)
+  const inView = usePicViewMatch()
   // "Deleted in SAP / ENOVIA" tile: show only those parts.
   const [deletedOnly, setDeletedOnly] = useState(false)
 
@@ -59,26 +78,67 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
         origin: originOf(p.origin),
         release: getReleaseState(p.partNo, partReleases, partAcks),
         returnedReason: getReleaseState(p.partNo, partReleases, partAcks) === 'Returned' ? latestReturn(p.partNo, partAcks)?.reason : undefined,
-        values: Object.fromEntries(DISPLAY_FIELDS.concat(PRIMARY).map((f) => [f.key, intakeValue(f, p, models, picAssignments)]))
+        values: Object.fromEntries(DISPLAY_FIELDS.map((f) => [f.key, intakeValue(f, p, models, picAssignments)]))
       })),
     [scoped, models, picAssignments, partReleases, partAcks]
   )
   const showActions = !!actions && (actions.canRelease || actions.canEcn)
-  const options = useMemo(() => {
-    const o: Record<string, string[]> = {}
-    for (const f of PRIMARY) o[f.key] = Array.from(new Set(rows.map((r) => r.values[f.key]).filter(Boolean))).sort()
-    return o
-  }, [rows])
-  const shown = useMemo(() => {
-    const q = text.trim().toLowerCase()
-    return rows
-      .filter((r) => origins.length === 0 || origins.includes(r.origin))
-      .filter((r) => !deletedOnly || !!r.part.sourceDeleted)
-      .filter((r) => PRIMARY.every((f) => !(filters[f.key]?.length) || filters[f.key].includes(r.values[f.key])))
-      .filter((r) => !q || Object.values(r.values).join(' ').toLowerCase().includes(q))
-      .sort((a, b) => a.part.partNo.localeCompare(b.part.partNo))
-  }, [rows, origins, filters, text, deletedOnly])
-  const anyFilter = deletedOnly || origins.length > 0 || text !== '' || Object.values(filters).some((v) => v.length)
+  const pass = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
+  const picOf = (p: PartRecord) => getPicOn(p, picAssignments, DEMO_TODAY).name
+  const shown = useMemo(
+    () =>
+      rows
+        .filter((r) => origins.length === 0 || origins.includes(r.origin))
+        .filter((r) => !deletedOnly || !!r.part.sourceDeleted)
+        .filter((r) => inView(r.part) && pass(fModel, r.part.model) && pass(fDept, r.part.department || 'Other') && pass(fVendorCode, r.part.vendorCode) &&
+          pass(fPic, picOf(r.part)) && pass(fPartNo, r.part.partNo) && matchPartAttrs(r.part, fAttrs) && matchMarket(r.part, fMarket) &&
+          matchExtra(r.part, fExtra, models, picAssignments))
+        .sort((a, b) => a.part.partNo.localeCompare(b.part.partNo)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, origins, deletedOnly, inView, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, fExtra, models, picAssignments]
+  )
+  // Option lists for the filter bar (over the parts in scope).
+  const uniq = <T,>(xs: T[], key: (x: T) => string) => { const m = new Map<string, T>(); for (const x of xs) { const k = key(x); if (k && !m.has(k)) m.set(k, x) } return [...m.values()] }
+  const modelOptions = useMemo(() => [...new Set(scoped.map((p) => p.model))].sort(), [scoped])
+  const deptOptions = useMemo(() => [...new Set(scoped.map((p) => p.department || 'Other'))].sort(), [scoped])
+  const vendorOptions = useMemo<LabeledOption[]>(() => uniq(scoped, (p) => p.vendorCode).map((p) => ({ value: p.vendorCode, label: `${p.vendorCode}: ${p.vendorName}` })).sort((a, b) => a.label.localeCompare(b.label)), [scoped])
+  const partOptions = useMemo<LabeledOption[]>(() => scoped.filter((p) => fModel.length === 0 || fModel.includes(p.model)).map((p) => ({ value: p.partNo, label: `${p.partNo}: ${p.partName}` })).sort((a, b) => a.label.localeCompare(b.label)), [scoped, fModel])
+  const allPartOptions = useMemo<LabeledOption[]>(() => scoped.map((p) => ({ value: p.partNo, label: `${p.partNo}: ${p.partName} (${p.model})` })).sort((a, b) => a.label.localeCompare(b.label)), [scoped])
+  const picOptions = useMemo<LabeledOption[]>(() => uniq(scoped, (p) => getPicOn(p, picAssignments, DEMO_TODAY).name).map((p) => { const n = getPicOn(p, picAssignments, DEMO_TODAY).name; return { value: n, label: picLabel(n) } }).sort((a, b) => a.label.localeCompare(b.label)), [scoped, picAssignments]) // eslint-disable-line react-hooks/exhaustive-deps
+  const extraOpts = useMemo(() => extraOptions(scoped, models, picAssignments), [scoped, models, picAssignments])
+  // Choosing models ticks all of their parts in the Part filter (untick any to narrow it), as on the Workspace pages.
+  const chooseModels = (next: string[]) => {
+    setFModel(next)
+    setFPartNo(next.length ? scoped.filter((p) => next.includes(p.model)).map((p) => p.partNo) : [])
+  }
+  const applySearch = (picks: SearchPick[]) => {
+    const by = (k: string) => picks.filter((x) => x.facet === k).map((x) => x.value)
+    const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
+    const partsPicked = by('part')
+    const models2 = union(fModel, union(by('model'), partsPicked.map((no) => scoped.find((p) => p.partNo === no)?.model).filter((m): m is string => !!m)))
+    if (partsPicked.length) { setFModel(models2); setFPartNo((prev) => union(prev, partsPicked)) } else if (by('model').length) chooseModels(models2)
+    if (by('vendor').length) setFVendorCode((prev) => union(prev, by('vendor')))
+    if (by('dept').length) setFDept((prev) => union(prev, by('dept')))
+    if (by('pic').length) setFPic((prev) => union(prev, by('pic')))
+    const attrPicks = PART_ATTR_FIELDS.filter((af) => by(af.key).length)
+    if (attrPicks.length) setFAttrs((prev) => ({ ...prev, ...Object.fromEntries(attrPicks.map((af) => [af.key, union(prev[af.key], by(af.key))])) }))
+    if (by('market').length) setFMarket((prev) => (isAllMarkets(prev) ? by('market') : union(prev, by('market'))))
+    const xs = picks.filter((x) => x.facet.startsWith('x:'))
+    if (xs.length) setFExtra((prev) => { const n = { ...prev }; for (const x of xs) { const k = x.facet.slice(2); n[k] = union(n[k] ?? [], [x.value]) } return n })
+  }
+  const removeSearch = ({ facet, value }: SearchPick) => {
+    const drop = (prev: string[]) => prev.filter((x) => x !== value)
+    if (facet === 'model') chooseModels(drop(fModel))
+    else if (facet === 'part') setFPartNo(drop)
+    else if (facet === 'vendor') setFVendorCode(drop)
+    else if (facet === 'dept') setFDept(drop)
+    else if (facet === 'pic') setFPic(drop)
+    else if (facet === 'market') setFMarket((prev) => { const n = drop(prev); return n.length ? n : ALL_MARKETS })
+    else if (facet.startsWith('x:')) setFExtra((prev) => ({ ...prev, [facet.slice(2)]: (prev[facet.slice(2)] ?? []).filter((x) => x !== value) }))
+    else if (PART_ATTR_FIELDS.some((af) => af.key === facet)) setFAttrs((prev) => ({ ...prev, [facet]: drop(prev[facet as keyof PartAttrSel]) }))
+  }
+  const hasFilters = [fModel, fDept, fPic, fPartNo, fVendorCode].some((v) => v.length > 0) || hasAttrSel(fAttrs) || !isAllMarkets(fMarket) || hasExtra(fExtra)
+  const clearFilters = () => { setFModel([]); setFDept([]); setFPic([]); setFPartNo([]); setFVendorCode([]); setFAttrs(EMPTY_ATTR_SEL); setFMarket(ALL_MARKETS); setFExtra(EMPTY_EXTRA) }
   const toggleOrigin = (o: Origin) => setOrigins((prev) => (prev.length === 1 && prev[0] === o ? [] : [o]))
   const closeAdd = () => {
     setAddOpen(false)
@@ -141,33 +201,24 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
           <div className="mt-0.5 text-2xl font-semibold text-red-600">{deletedCount}</div>
         </button>
       </div>
-      <section className="epmp-card mb-4 flex flex-wrap items-center gap-2.5 px-4 py-3.5">
-        <input
-          type="text"
-          placeholder="Search any column…"
-          aria-label="Search the part intake list"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          className="h-9 w-56 max-w-full rounded-lg border border-[var(--color-border)] bg-[#f9fafb] px-3 text-[10.5px] text-[#344054]"
-        />
-        {PRIMARY.map((f) => (
-          <MultiSelect
-            key={f.key}
-            label={f.label}
-            options={(options[f.key] ?? []).map((v) => ({ value: v }))}
-            selected={filters[f.key] ?? []}
-            onChange={(next) => setFilters((prev) => ({ ...prev, [f.key]: next }))}
-          />
-        ))}
-        {anyFilter && (
-          <button type="button" onClick={() => { setOrigins([]); setFilters({}); setText(''); setDeletedOnly(false) }} className="text-[10.5px] font-medium text-[var(--color-accent)] hover:underline">
-            Clear filters
-          </button>
-        )}
+      <CompactFilterBar partLevelOnly collapseKey="intake-filters"
+        model={fModel} setModel={chooseModels} modelOptions={modelOptions}
+        dept={fDept} setDept={setFDept} deptOptions={deptOptions}
+        vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
+        milestone={[]} setMilestone={() => {}} milestoneOptions={[]}
+        pic={fPic} setPic={setFPic} picOptions={picOptions} showPic={currentPersona !== 'PIC'}
+        partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
+        activity={[]} setActivity={() => {}} activityOptions={[]}
+        status={[]} setStatus={() => {}} statusOptions={[]}
+        attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket}
+        extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts}
+        allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
+        hasFilters={hasFilters} clearFilters={clearFilters} />
+      <div className="mb-3 flex items-center justify-end gap-3">
+        <span className="mr-auto text-[10.5px] text-[var(--color-muted)]">{shown.length} of {scoped.length} part{scoped.length === 1 ? '' : 's'}</span>
         <Button
           variant="secondary"
           size="sm"
-          className="ml-auto"
           disabled={shown.length === 0}
           onClick={() =>
             downloadCsv(
@@ -178,7 +229,7 @@ export function PartIntakePage({ embedded = false, actions }: { embedded?: boole
         >
           Download CSV ({shown.length})
         </Button>
-      </section>
+      </div>
       <Card flush>
         {shown.length === 0 ? (
           <p className="py-10 text-center text-sm text-[var(--color-muted)]">

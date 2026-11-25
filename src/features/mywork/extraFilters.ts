@@ -17,7 +17,7 @@ export type BoundKey = (typeof BOUND_KEYS)[number]
 
 export interface ExtraGroup { title: string; keys: string[] }
 export const EXTRA_GROUPS: ExtraGroup[] = [
-  { title: 'Part', keys: ['part_number', 'part_name', 'main_part_number', 'bundling_part_number', 'plant', 'technology_category', 'common_type', 'fitment_location', 'color', 'monitoring_reason', 'status'] },
+  { title: 'Part', keys: ['part_number', 'part_name', 'main_part_number', 'bundling_part_number', 'trial_status', 'plant', 'technology_category', 'common_type', 'fitment_location', 'color', 'monitoring_reason', 'status'] },
   { title: 'Vendor', keys: ['vendor_no', 'vendor_name', 'vendor_criteria'] },
   { title: 'People & departments', keys: ['qa_pic_staff_id', 'qa_pic_name', 'section_name', 'section_manager', 'dpm_id', 'dpm_name', 'engineering_dept', 'supply_chain_dept'] },
   { title: 'Activity', keys: ['activity'] },
