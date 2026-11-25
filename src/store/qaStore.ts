@@ -106,6 +106,8 @@ export interface QAStoreState {
   /** Create or update an archetype and sync its QA objects into activities (create / rename / checklist / retire). */
   saveArchetype: (archetype: ProjectArchetype) => void
   setArchetypeActive: (id: string, active: boolean) => void
+  /** Deletes an archetype that no project uses (else { ok: false }). Its Activity Builder activities are retired (work already built on them continues). */
+  deleteArchetype: (id: string) => { ok: boolean; reason?: string }
   /** Activity-to-activity dependencies, per technical category (Activity Dependencies module). */
   activityDependencies: ActivityDependency[]
   addActivityDependency: (dep: Omit<ActivityDependency, 'id'>) => void
@@ -461,6 +463,22 @@ export const useQAStore = create<QAStoreState>()(
               : [...state.archetypes, r.archetype]),
           }
         }),
+      deleteArchetype: (id) => {
+        const st = get()
+        if (!st.archetypes.some((a) => a.id === id)) return { ok: false, reason: 'Archetype not found.' }
+        const used = st.projects.filter((p) => p.archetypeId === id).length
+        if (used > 0) return { ok: false, reason: `${used} project${used === 1 ? ' is' : 's are'} initiated from this archetype. Mark it inactive instead.` }
+        set((state) => {
+          const archetypes = state.archetypes.filter((a) => a.id !== id)
+          return {
+            archetypes,
+            activities: state.activities.map((x) => (x.archetypeId === id ? { ...x, retired: true } : x)),
+            drafts: state.drafts.filter((d) => d.archetypeId !== id),
+            milestones: archetypes.length ? deriveMilestones(archetypes) : state.milestones,
+          }
+        })
+        return { ok: true }
+      },
       setArchetypeActive: (id, active) =>
         set((state) => ({ archetypes: state.archetypes.map((a) => (a.id === id ? { ...a, active } : a)) })),
 

@@ -4,7 +4,7 @@
  */
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PageHeader, Card, Button } from '../../components'
+import { PageHeader, Card, Button, Modal } from '../../components'
 import { Icon } from '../../components/Icon'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
@@ -31,11 +31,13 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
 }
 
 export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
-  const { archetypes, projects, activities, setArchetypeActive } = useQAStore()
+  const { archetypes, projects, activities, setArchetypeActive, deleteArchetype } = useQAStore()
   const { currentPersona } = usePersonaStore()
   const isAdmin = currentPersona === 'Admin'
   const navigate = useNavigate()
   const [filter, setFilter] = useState<ActiveFilter>('all')
+  const [toDelete, setToDelete] = useState<{ id: string; name: string; projects: number } | null>(null)
+  const [error, setError] = useState('')
 
   const rows = useMemo(
     () =>
@@ -129,6 +131,12 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
                         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-accent)] hover:bg-[var(--color-secondary)]">
                         <Icon name={isAdmin ? 'pen' : 'eye'} size={15} />
                       </button>
+                      {isAdmin && (
+                        <button type="button" onClick={() => { setError(''); setToDelete({ id: a.id, name: a.name, projects }) }} title="Delete archetype" aria-label={`Delete ${a.name}`}
+                          className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -137,6 +145,34 @@ export function ArchetypesPage({ embedded }: { embedded?: boolean } = {}) {
           </div>
         </Card>
       </ExportSection>
+      <Modal
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        title={toDelete ? `Delete ${toDelete.name}?` : 'Delete archetype'}
+        footer={
+          <>
+            <Button variant="secondary" size="md" onClick={() => setToDelete(null)}>{toDelete && toDelete.projects > 0 ? 'Close' : 'Cancel'}</Button>
+            {toDelete && toDelete.projects === 0 && (
+              <Button variant="primary" size="md" onClick={() => {
+                const r = deleteArchetype(toDelete.id)
+                if (r.ok) setToDelete(null); else setError(r.reason ?? 'Could not delete.')
+              }}>Confirm delete</Button>
+            )}
+          </>
+        }
+      >
+        {toDelete && toDelete.projects > 0 ? (
+          <p className="text-[11.5px] text-[#344054]">
+            This archetype has <strong>{toDelete.projects}</strong> project{toDelete.projects === 1 ? '' : 's'} initiated from it, so it cannot be deleted. Switch it to <strong>inactive</strong> to stop new projects from using it.
+          </p>
+        ) : (
+          <div className="space-y-2 text-[11.5px] text-[#344054]">
+            <p>No project uses this archetype. Deleting removes it from Governance and the Project Initiation list. This cannot be undone.</p>
+            <p>Its Activity Builder activities are retired: work already built on them keeps going, but they cannot be used for anything new.</p>
+          </div>
+        )}
+        {error && <p role="alert" className="mt-2 text-[11.5px] text-red-700">{error}</p>}
+      </Modal>
       <p className="mt-2 text-[10.5px] text-[var(--color-muted)]">
         Projects associated = projects initiated from the archetype (Project Initiation). WBS objects of type Activity Builder appear in the Activity Builder.
       </p>
