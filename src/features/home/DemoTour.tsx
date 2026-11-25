@@ -89,7 +89,7 @@ const TOUR_STEPS: TourStep[] = [
     id: 'vendor-mywork',
     title: 'Step 8 — Vendor: Workspace',
     body:
-      'Workspace → My Work lists everything waiting for the Vendor, grouped by activity and milestone across sections, with items sent back by the PIC first. Each group shows its date range and a count per state. "Open entry grid" opens all of that activity\'s parts in one table.',
+      'Workspace → My Screen shows everything waiting for the Vendor, grouped by activity and milestone across sections, with items sent back by the PIC first. Each group shows its date range and a count per state. "Open entry grid" opens all of that activity\'s parts in one table.',
     persona: 'Vendor',
     navigateTo: '/mywork',
     highlight: '[data-tour="nav-mywork"]',

@@ -5,9 +5,8 @@ import { QuickRangeControl, inQuickRange, mrdInWindow, useQuickRange } from './q
 import { picLabel } from '../../domain/people'
 import { CollapseButton, useCollapsed } from '../collapse'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
-import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, OVERDUE_TILES, mineBucket, useKpiCardsLayout } from './OverviewTab'
+import { OverviewKpis, PriorityModels, PEND_ROLES, MINE_KEYS, OVERDUE_TILES, mineBucket } from './OverviewTab'
 import { SortableSections, useSortable } from '../sortable'
-import { UpcomingMilestones } from './UpcomingMilestones'
 import { MyScreen } from './MyScreen'
 import { activeModelNames } from '../../domain/projects'
 import type { PendRole, MineKey } from './OverviewTab'
@@ -594,7 +593,7 @@ function MyWorkPageInner() {
       : viewParam === 'actions' ? 'actions'
       : viewParam === 'calendar' ? 'calendar'
       : viewParam === 'myscreen' ? 'myscreen'
-      : 'overview'
+      : 'actions' // the landing tab (there is no My Work tab any more)
   /** Switch tab (a new history entry); optionally pre-select an Insights status. */
   const setView = (t: MwTab, bucket?: WorkBucket, seg?: string) =>
     setSearchParams((prev) => {
@@ -651,7 +650,6 @@ function MyWorkPageInner() {
   const [listClosed, toggleList] = useCollapsed('ov-list')
   const [updateClosed, toggleUpdate] = useCollapsed('ov-update')
   const ovSort = useSortable('ov-sections', OV_SECTIONS)
-  const kpiLayout = useKpiCardsLayout()
   // Insights "Open form" opens the activity form as a drawer over Insights (closing returns here, not the Activity page).
   const [openInstance, setOpenInstance] = useState<FilteredInstance | null>(null)
   // Insights bulk fill: ticked rows (key = templateRowId|partNo) + the dialog.
@@ -1046,12 +1044,11 @@ function MyWorkPageInner() {
       {/* No page header here — the four-tab bar is the page's own heading. The 30-day toggle sits beside it. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-        {effectiveView !== 'overview' && <BackButton />}
+        <BackButton />
         <Tabs
           activeId={effectiveView}
           onChange={(id) => setView(id as MwTab)}
           items={[
-            { id: 'overview', label: 'My Work' },
             { id: 'actions', label: 'My Parts', badge: (releaseCounts.pending + releaseCounts.returned) || undefined },
             { id: 'worklist', label: 'My Approvals', badge: worklistCount || undefined },
             { id: 'calendar', label: 'My Calendar' },
@@ -1060,24 +1057,12 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {effectiveView === 'overview' && (
-            <UpcomingMilestones models={modelOptions} selModel={fModel} selMilestone={fMilestone}
-              onPick={(p) => {
-                // Acts as a milestone filter: the model + its trial (cleared with null).
-                chooseModels(p ? [p.model] : [])
-                setFMilestone(p ? [p.milestoneId] : [])
-              }} />
-          )}
-          {effectiveView === 'overview' && (ovSort.customized || kpiLayout.customized) && (
-            <button type="button" onClick={() => { ovSort.reset(); kpiLayout.reset() }} title="Put the sections and KPI cards back in their default order"
-              className="text-[11px] font-semibold text-[var(--color-accent)] hover:underline">Reset layout</button>
-          )}
           <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'My Parts', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Screen' }[effectiveView]}`} />
         </div>
       </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
-      {(effectiveView === 'overview' || effectiveView === 'myscreen') && (
+      {effectiveView === 'myscreen' && (
       <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
         <CompactFilterBar
           model={fModel} setModel={chooseModels} modelOptions={modelOptions}
@@ -1088,7 +1073,6 @@ function MyWorkPageInner() {
           partNo={fPartNo} setPartNo={setFPartNo} partOptions={partOptions}
           activity={fActivity} setActivity={setFActivity} activityOptions={activityOptions}
           status={fStatus} setStatus={setFStatus} statusOptions={[...WORK_BUCKETS]} showStatus
-          leading={effectiveView === 'overview' ? <BackButton /> : undefined}
           attrs={fAttrs} setAttrs={setFAttrs} market={fMarket} setMarket={setFMarket} extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts} allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
           hasFilters={hasFilters} clearFilters={clearFilters}
         />

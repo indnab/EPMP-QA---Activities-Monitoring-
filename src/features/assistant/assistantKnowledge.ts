@@ -156,7 +156,7 @@ export function answer(q: string, f: Facts): Answer {
   if (part) {
     return {
       text: `${part.name} · ${part.partName} (${part.model}, ${part.vendor}): ${plural(part.n, 'activity', 'activities')}, ${part.done} completed, ${part.overdue} overdue, ${part.ng} NG.`,
-      links: [{ label: 'Open in My Work', to: `/mywork?view=overview` }, { label: 'Vendor Planning', to: '/vendor-planning' }],
+      links: [{ label: 'Open in My Screen', to: `/mywork?view=myscreen` }, { label: 'Vendor Planning', to: '/vendor-planning' }],
     }
   }
   // A model or vendor named.
@@ -173,12 +173,12 @@ export function answer(q: string, f: Facts): Answer {
     return {
       text: `${plural(f.overdue, 'activity is', 'activities are')} overdue.${f.oldestOverdue ? ` The oldest is “${f.oldestOverdue.activity}” on ${f.oldestOverdue.partNo} (${f.oldestOverdue.model}), ${f.oldestOverdue.days} days late.` : ''}`,
       bullets: [...fmtTop(f.models, 'overdue').map((x) => `Model ${x}`), ...fmtTop(f.vendors, 'overdue').map((x) => `Vendor ${x}`)],
-      links: [{ label: 'Overdue in My Work', to: '/mywork?bucket=Delayed' }],
+      links: [{ label: 'Overdue in My Screen', to: '/mywork?view=myscreen' }],
     }
   }
   if (has('ng', 'rework', 'reject', 'sent back', 'quality')) {
     if (!f.ng) return { text: 'No activities are NG / in rework.' }
-    return { text: `${plural(f.ng, 'activity is', 'activities are')} NG / in rework.`, bullets: [...fmtTop(f.models, 'ng').map((x) => `Model ${x}`), ...fmtTop(f.vendors, 'ng').map((x) => `Vendor ${x}`)], links: [{ label: 'NG in My Work', to: '/mywork?bucket=NG' }] }
+    return { text: `${plural(f.ng, 'activity is', 'activities are')} NG / in rework.`, bullets: [...fmtTop(f.models, 'ng').map((x) => `Model ${x}`), ...fmtTop(f.vendors, 'ng').map((x) => `Vendor ${x}`)], links: [{ label: 'NG in My Screen', to: '/mywork?view=myscreen' }] }
   }
   if (has('vendor', 'supplier', 'risk')) {
     const risky = f.insights.filter((x) => x.tone === 'risk').slice(0, 3)
@@ -212,7 +212,7 @@ export function answer(q: string, f: Facts): Answer {
   if (has('how many part', 'parts', 'models')) return { text: `${plural(f.parts, 'part')} across ${plural(f.models.length, 'model')}, ${plural(f.vendors.length, 'vendor')}; ${plural(f.total, 'activity', 'activities')} in all.`, links: [{ label: 'My Screen', to: '/mywork?view=myscreen' }] }
   if (has('summary', 'overview', 'status', 'brief', 'insight', 'how am i', 'how are we', 'what should i')) {
     const sm = summary(f)
-    return { text: sm.lead, bullets: sm.bullets, links: [{ label: 'My Work', to: '/mywork' }] }
+    return { text: sm.lead, bullets: sm.bullets, links: [{ label: 'My Screen', to: '/mywork?view=myscreen' }] }
   }
   if (has('hello', 'hey', 'help') || s === 'hi') return { text: `Hello! I can brief you on ${f.role} work. Ask about overdue, NG, vendors, release and acknowledgement, planning, approvals, or name a part, model or vendor.` }
   return { text: 'I can answer about overdue and NG work, vendors, release and acknowledgement, planning timelines, approvals, or a part, model or vendor you name. Try one of the suggestions below.' }
