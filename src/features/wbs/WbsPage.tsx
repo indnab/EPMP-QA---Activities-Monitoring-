@@ -14,14 +14,14 @@ import { DEMO_TODAY, fmtDate } from '../scope'
 
 const MS_ORDER = ['PP', 'MPP', 'Pilot', 'SOP']
 
-export type NodeKind = 'part' | 'activity' | 'task'
+export type NodeKind = 'part' | 'milestone' | 'activity' | 'task'
 
 export interface WbsNode {
   id: string            // WBS id, e.g. '100', '100.1', '100.1.1'
   kind: NodeKind
   label: string
-  /** Activity rows: the trial it belongs to (shown as a tag; trials are calendar events, not rows). */
-  trial?: string
+  /** Rows under a milestone: its date (a milestone has one date, no start), drawn as a vertical line in the Gantt. */
+  msDate?: string
   /** Earned-value weightage % (rolls up at parent level). */
   weight: number
   /** Planned effort in days (activity = date span; parent = sum). */
@@ -62,6 +62,7 @@ function daySpan(start?: string, end?: string): number {
 
 export function WbsPage() {
   const { entries, activities, templateRows, models, milestones: msDefs, partReleases, partAcks } = useQAStore()
+  const modelRec = (name: string) => models.find((m) => m.name === name)
   // ?tab=gantt opens the Gantt chart.
   const [params, setParams] = useSearchParams()
   const view: 'table' | 'gantt' = params.get('tab') === 'gantt' ? 'gantt' : 'table'
@@ -77,48 +78,64 @@ export function WbsPage() {
     [entries, activities, parts, templateRows, models, model, attrFilter]
   )
 
-  // Build the tree: Part → Activity → Task. Trials / milestones are not line items (they are events in My Calendar):
-  // each activity carries its trial as a tag, and a part's activities run in trial order.
+  // Build the tree: Part → Milestone (PP / MPP / Pilot / SOP) → Activity → Task. A milestone has one date (the model's
+  // date for that trial), so it has no start and shows as a dot / vertical line, not a bar.
   const tree = useMemo<WbsNode[]>(() => {
     const k = (id: string) => { const n = msDefs.findIndex((m) => m.id === id); return n >= 0 ? n : 50 + (MS_ORDER.indexOf(id) + 1 || 49) }
     const byPart = new Map<string, FilteredInstance[]>()
     for (const inst of instances) byPart.set(inst.part.partNo, [...(byPart.get(inst.part.partNo) ?? []), inst])
     const nodes: WbsNode[] = []
+    const statusOf = (xs: WbsNode[]) => (xs.every((a) => a.status === 'Completed') ? 'Completed' : xs.some((a) => a.status === 'Ongoing' || a.status === 'Completed') ? 'Ongoing' : 'Open')
     Array.from(byPart.keys()).sort().forEach((pno, pi) => {
-      const insts = byPart.get(pno)!.sort((a, b) => k(a.row.milestoneId) - k(b.row.milestoneId) || a.activity.id.localeCompare(b.activity.id, undefined, { numeric: true }))
-      const part = insts[0].part
+      const all = byPart.get(pno)!
+      const part = all[0].part
       const partId = `${pi + 1}`
-      const actNodes: WbsNode[] = insts.map((inst, ai) => {
-        const start = inst.dates.status === 'resolved' ? inst.dates.start : undefined
-        const end = inst.dates.status === 'resolved' ? inst.dates.end : undefined
-        const actId = `${partId}.${ai + 1}`
-        // Tasks from the activity's flow (e.g. Vendor Submit → PIC Approve), with where the item stands.
-        const tasks: WbsNode[] = flowTasks(inst, { releases: partReleases, acks: partAcks }).map((t, ti) => ({
-          id: `${actId}.${ti + 1}`, kind: 'task', label: t.label, weight: 0, effort: daySpan(t.start, t.end),
-          start: t.start, end: t.end, depth: 2,
-          status: t.state === 'done' ? 'Completed' : t.state === 'current' ? 'Ongoing' : t.state === 'na' ? 'Not applicable' : 'Open',
-          current: t.state === 'current',
-        }))
+      const byMs = new Map<string, FilteredInstance[]>()
+      for (const inst of all) byMs.set(inst.row.milestoneId, [...(byMs.get(inst.row.milestoneId) ?? []), inst])
+      const msNodes: WbsNode[] = Array.from(byMs.keys()).sort((a, b) => k(a) - k(b)).map((ms, mi) => {
+        const msId = `${partId}.${mi + 1}`
+        const msDate = modelRec(part.model)?.mrds[ms] || undefined
+        const insts = byMs.get(ms)!.sort((a, b) => a.activity.id.localeCompare(b.activity.id, undefined, { numeric: true }))
+        const actNodes: WbsNode[] = insts.map((inst, ai) => {
+          const start = inst.dates.status === 'resolved' ? inst.dates.start : undefined
+          const end = inst.dates.status === 'resolved' ? inst.dates.end : undefined
+          const actId = `${msId}.${ai + 1}`
+          // Tasks from the activity's flow (e.g. Vendor Submit → PIC Approve), with where the item stands.
+          const tasks: WbsNode[] = flowTasks(inst, { releases: partReleases, acks: partAcks }).map((t, ti) => ({
+            id: `${actId}.${ti + 1}`, kind: 'task', label: t.label, weight: 0, effort: daySpan(t.start, t.end),
+            start: t.start, end: t.end, depth: 3, msDate,
+            status: t.state === 'done' ? 'Completed' : t.state === 'current' ? 'Ongoing' : t.state === 'na' ? 'Not applicable' : 'Open',
+            current: t.state === 'current',
+          }))
+          return {
+            id: actId, kind: 'activity', label: inst.activity.name, msDate,
+            weight: 5, effort: daySpan(start, end), start, end,
+            status: inst.notApplicable ? 'Open' : pmStatus(inst.status), depth: 2,
+            children: tasks,
+          }
+        })
         return {
-          id: actId, kind: 'activity', label: inst.activity.name, trial: trialLabelOf(inst.row.milestoneId),
-          weight: 5, effort: daySpan(start, end), start, end,
-          status: inst.notApplicable ? 'Open' : pmStatus(inst.status), depth: 1,
-          children: tasks,
+          id: msId, kind: 'milestone', label: `${trialLabelOf(ms)} milestone`, msDate,
+          weight: actNodes.reduce((n, a) => n + a.weight, 0),
+          effort: actNodes.reduce((n, a) => n + a.effort, 0),
+          start: undefined, end: msDate,
+          status: statusOf(actNodes), children: actNodes, depth: 1,
         }
       })
-      const starts = actNodes.map((a) => a.start).filter(Boolean).sort()
-      const ends = actNodes.map((a) => a.end).filter(Boolean).sort()
+      const acts = msNodes.flatMap((m) => m.children ?? [])
+      const starts = acts.map((a) => a.start).filter(Boolean).sort()
+      const ends = acts.map((a) => a.end).filter(Boolean).sort()
       nodes.push({
         id: partId, kind: 'part', label: `${part.partNo} — ${part.partName}`,
-        weight: actNodes.reduce((n, a) => n + a.weight, 0),
-        effort: actNodes.reduce((n, a) => n + a.effort, 0),
+        weight: acts.reduce((n, a) => n + a.weight, 0),
+        effort: acts.reduce((n, a) => n + a.effort, 0),
         start: starts[0], end: ends[ends.length - 1],
-        status: actNodes.every((a) => a.status === 'Completed') ? 'Completed' : actNodes.some((a) => a.status === 'Ongoing' || a.status === 'Completed') ? 'Ongoing' : 'Open',
-        children: actNodes, depth: 0
+        status: statusOf(acts),
+        children: msNodes, depth: 0
       })
     })
     return nodes
-  }, [instances, msDefs, partReleases, partAcks])
+  }, [instances, msDefs, partReleases, partAcks, models]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flatten respecting collapse state.
   const flat = useMemo<WbsNode[]>(() => {
@@ -143,6 +160,7 @@ export function WbsPage() {
 
   const kindTag: Record<NodeKind, string> = {
     part: 'bg-sky-100 text-sky-700',
+    milestone: 'bg-indigo-100 text-indigo-700',
     activity: 'bg-slate-100 text-slate-600',
     task: 'bg-violet-100 text-violet-700'
   }
@@ -152,7 +170,7 @@ export function WbsPage() {
       <PageHeader
         title="WBS Management"
         section="Project Execution"
-        description="Work breakdown structure per model — Part → Activity → Task (from the activity flow) — with planned effort, dates, dependency and status. Trial milestones are events in My Calendar."
+        description="Work breakdown structure per model — Part → Milestone → Activity → Task (from the activity flow) — with planned effort, dates, dependency and status. A milestone has one date, shown as a dot in the Gantt chart and as an event in My Calendar."
       />
 
       <section className="epmp-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
@@ -173,7 +191,7 @@ export function WbsPage() {
         <div className="ml-auto flex items-center gap-2 text-[10.5px]">
           <button onClick={() => setCollapsed(new Set())} className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]">Expand all</button>
           <button
-            onClick={() => setCollapsed(new Set(tree.flatMap((p) => [p.id, ...(p.children ?? []).map((a) => a.id)])))}
+            onClick={() => setCollapsed(new Set(tree.flatMap((p) => [p.id, ...(p.children ?? []).flatMap((m) => [m.id, ...(m.children ?? []).map((a) => a.id)])])))}
             className="rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1 font-medium text-[#344054] hover:border-[#bfdbfe]"
           >
             Collapse all
@@ -195,7 +213,7 @@ export function WbsPage() {
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[#dce8fb] text-left text-[10.5px] font-medium text-[#344054]">
                   <th className="px-4 py-3 min-w-[110px]">WBS ID</th>
-                  <th className="px-4 py-3 min-w-[280px]">Part / Activity / Task</th>
+                  <th className="px-4 py-3 min-w-[280px]">Part / Milestone / Activity / Task</th>
                   <th className="px-4 py-3 text-right">EV Weightage (%)</th>
                   <th className="px-4 py-3 text-right">Planned Effort (d)</th>
                   <th className="px-4 py-3">Planned Start</th>
@@ -209,7 +227,7 @@ export function WbsPage() {
                   const hasKids = !!n.children?.length
                   const isOpen = !collapsed.has(n.id)
                   return (
-                    <tr key={n.id} className={`border-b border-[var(--color-border)] last:border-0 ${n.kind === 'part' ? 'bg-[#f5f7ff]' : ''}`}>
+                    <tr key={n.id} className={`border-b border-[var(--color-border)] last:border-0 ${n.kind === 'part' ? 'bg-[#f5f7ff]' : n.kind === 'milestone' ? 'bg-[#f8f7ff]' : ''}`}>
                       <td className="px-4 py-2.5 font-mono text-[10.5px] text-[var(--color-muted)]">WBS-{n.id}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2" style={{ paddingLeft: `${n.depth * 20}px` }}>
@@ -219,8 +237,7 @@ export function WbsPage() {
                             </button>
                           ) : <span className="h-4 w-4 flex-none" />}
                           <span className={`flex-none rounded px-1.5 py-0.5 text-[9px] font-medium capitalize ${kindTag[n.kind]}`}>{n.kind}</span>
-                          {n.trial && <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[9px] font-semibold text-primary">{n.trial}</span>}
-                          <span className={`${n.kind === 'part' ? 'font-semibold text-[#101828]' : 'text-[#344054]'}`}>{n.label}</span>
+                          <span className={`${n.kind === 'part' ? 'font-semibold text-[#101828]' : n.kind === 'milestone' ? 'font-medium text-[#3730a3]' : 'text-[#344054]'}`}>{n.label}</span>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{n.kind === 'task' ? '—' : n.weight}</td>
