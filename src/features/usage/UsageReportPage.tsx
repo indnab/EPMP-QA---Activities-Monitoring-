@@ -43,7 +43,6 @@ export function UsageReportPage() {
   const [customTo, setCustomTo] = useState(DEMO_TODAY)
   const [dept, setDept] = useState('All')
   const [vendor, setVendor] = useState('All')
-  const [role, setRole] = useState('All')
   const [grain, setGrain] = useState<Grain>('day')
   const [timeGrain, setTimeGrain] = useState<Grain>('day')
   const [q, setQ] = useState('')
@@ -60,14 +59,14 @@ export function UsageReportPage() {
     ? { from: clampD(customBad ? addDays(DEMO_TODAY, -29) : customFrom), to: clampD(customBad ? DEMO_TODAY : customTo), label: 'Custom range' }
     : period.startsWith('m:') ? months.find((m) => m.id === period)! : { from: addDays(DEMO_TODAY, -(Number(period) - 1)), to: DEMO_TODAY, label: `Last ${period} days` }
   const { from, to } = range
-  const keepMsil = (u: { kind: string; dept: string; role: string }) => u.kind === 'MSIL' && (dept === 'All' || u.dept === dept) && (role === 'All' || u.role === role)
+  const keepMsil = (u: { kind: string; dept: string }) => u.kind === 'MSIL' && (dept === 'All' || u.dept === dept)
   const keepVendor = (u: { kind: string; vendorCode?: string }) => u.kind === 'Vendor' && (vendor === 'All' || u.vendorCode === vendor)
 
   const stats = useMemo(() => userStats(data, from, to), [data, from, to])
   const msil = stats.filter((s) => keepMsil(s.user))
   const vUsers = stats.filter((s) => keepVendor(s.user))
   const vendors = useMemo(() => vendorStats(vUsers, from, to), [vUsers, from, to])
-  const series = useMemo(() => trend(data, from, to, grain, (u) => keepMsil(u) || keepVendor(u)), [data, from, to, grain, dept, vendor, role]) // eslint-disable-line react-hooks/exhaustive-deps
+  const series = useMemo(() => trend(data, from, to, grain, (u) => keepMsil(u) || keepVendor(u)), [data, from, to, grain, dept, vendor]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
   const sum = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((n, x) => n + f(x), 0)
@@ -141,7 +140,6 @@ export function UsageReportPage() {
             {customBad && <span role="alert" className="text-[10.5px] font-semibold text-red-700">Pick a start on or before the end date.</span>}
           </span>
         )}
-        <select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role" className={sel}><option value="All">MSIL role: All</option>{['PIC', 'SIC', 'DPM'].map((r) => <option key={r}>{r}</option>)}</select>
         <select value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department" className={sel}><option value="All">Dept: All</option>{deptOptions.map((d) => <option key={d}>{d}</option>)}</select>
         <select value={vendor} onChange={(e) => setVendor(e.target.value)} aria-label="Vendor" className={`${sel} max-w-[220px]`}><option value="All">Vendor: All</option>{vendorOptions.map(([c, nm]) => <option key={c} value={c}>{c}: {nm}</option>)}</select>
         <span className="rounded-lg border border-[var(--color-border)] bg-white px-2 py-1 text-[9.5px] font-semibold text-[var(--color-muted)]">SAMPLE DATA</span>
