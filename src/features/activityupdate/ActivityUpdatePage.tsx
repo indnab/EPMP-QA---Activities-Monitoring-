@@ -83,6 +83,8 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
       })
   }, [instances, trials?.join(), milestones]) // eslint-disable-line react-hooks/exhaustive-deps
   const activityCount = groups.reduce((n, g) => n + g.list.length, 0)
+  // The models of the selection (shown in the list header).
+  const selectedModels = [...new Set(instances.map((i) => i.part.model))].sort()
 
   const active = groups.flatMap((g) => g.list).find((a) => a.key === activeKey)
   const items = active?.items ?? []
@@ -201,11 +203,11 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
 
   return (
     <>
-      {/* Activities of the selection, grouped by trial, on the left. Picking one opens its update form on the right. */}
+      {/* Activities of the selection (still grouped by trial below), on the left. Picking one opens its update form on the right. */}
       <div className={`grid grid-cols-1 gap-3 lg:grid-cols-[minmax(380px,1fr)_minmax(0,1fr)] ${fill ? 'h-[calc(100vh-4.75rem)] items-stretch' : 'items-start'}`}>
       <section className={`epmp-card flex min-h-0 flex-col overflow-hidden ${fill ? 'h-full' : ''}`}>
         <h2 className="m-0 flex flex-wrap items-center gap-2 bg-[var(--color-nav-bg)] px-4 py-2.5 text-[12.5px] font-semibold text-white">
-          Activities ({activityCount}) · grouped by trial
+          Activities ({activityCount}) · <span className="font-normal" title={selectedModels.join(', ')}>{selectedModels.length === 1 ? 'Model' : 'Models'}: {selectedModels.join(', ') || '—'}</span>
         </h2>
         <div className={`space-y-2 overflow-y-auto p-2.5 ${fill ? 'min-h-0 flex-1' : 'max-h-[calc(100vh-300px)]'}`}>
           {groups.map((g) => {
