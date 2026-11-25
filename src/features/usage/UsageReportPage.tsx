@@ -17,7 +17,7 @@ import type { Grain, UserStat, VendorStat } from './usageStats'
 
 const MSIL = '#2563eb'
 const VEND = '#0d9488'
-type PeriodId = '7' | '30' | '90' | '180' | `m:${string}`
+type PeriodId = '7' | '30' | '90' | '180' | 'custom' | `m:${string}`
 
 export function UsageReportPage() {
   const parts = useQAStore((s) => s.parts)
@@ -38,6 +38,9 @@ export function UsageReportPage() {
     return out
   }, [])
   const [period, setPeriod] = useState<PeriodId>('30')
+  // Custom date range (any start and end within the data the portal holds).
+  const [customFrom, setCustomFrom] = useState(() => addDays(DEMO_TODAY, -29))
+  const [customTo, setCustomTo] = useState(DEMO_TODAY)
   const [dept, setDept] = useState('All')
   const [vendor, setVendor] = useState('All')
   const [role, setRole] = useState('All')
@@ -47,7 +50,12 @@ export function UsageReportPage() {
   const [allVendors, setAllVendors] = useState(false)
   const [q, setQ] = useState('')
 
-  const range = period.startsWith('m:') ? months.find((m) => m.id === period)! : { from: addDays(DEMO_TODAY, -(Number(period) - 1)), to: DEMO_TODAY, label: `Last ${period} days` }
+  const dataFrom = data.from, dataTo = data.to < DEMO_TODAY ? data.to : DEMO_TODAY
+  const clampD = (d: string) => (d < dataFrom ? dataFrom : d > dataTo ? dataTo : d)
+  const customBad = !customFrom || !customTo || customFrom > customTo
+  const range = period === 'custom'
+    ? { from: clampD(customBad ? addDays(DEMO_TODAY, -29) : customFrom), to: clampD(customBad ? DEMO_TODAY : customTo), label: 'Custom range' }
+    : period.startsWith('m:') ? months.find((m) => m.id === period)! : { from: addDays(DEMO_TODAY, -(Number(period) - 1)), to: DEMO_TODAY, label: `Last ${period} days` }
   const { from, to } = range
   const keepMsil = (u: { kind: string; dept: string; role: string }) => u.kind === 'MSIL' && (dept === 'All' || u.dept === dept) && (role === 'All' || u.role === role)
   const keepVendor = (u: { kind: string; vendorCode?: string }) => u.kind === 'Vendor' && (vendor === 'All' || u.vendorCode === vendor)
@@ -118,7 +126,18 @@ export function UsageReportPage() {
         <select value={period} onChange={(e) => setPeriod(e.target.value as PeriodId)} aria-label="Period" className={sel}>
           <option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="180">Last 180 days</option>
           {months.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          <option value="custom">Custom range…</option>
         </select>
+        {period === 'custom' && (
+          <span className="flex items-center gap-1.5">
+            <label className="sr-only" htmlFor="usage-from">From</label>
+            <input id="usage-from" type="date" value={customFrom} min={dataFrom} max={customTo || dataTo} onChange={(e) => setCustomFrom(e.target.value)} className={sel} />
+            <span className="text-[11px] text-[var(--color-muted)]">to</span>
+            <label className="sr-only" htmlFor="usage-to">To</label>
+            <input id="usage-to" type="date" value={customTo} min={customFrom || dataFrom} max={dataTo} onChange={(e) => setCustomTo(e.target.value)} className={sel} />
+            {customBad && <span role="alert" className="text-[10.5px] font-semibold text-red-700">Pick a start on or before the end date.</span>}
+          </span>
+        )}
         <select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role" className={sel}><option value="All">MSIL role: All</option>{['PIC', 'SIC', 'DPM'].map((r) => <option key={r}>{r}</option>)}</select>
         <select value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department" className={sel}><option value="All">Dept: All</option>{deptOptions.map((d) => <option key={d}>{d}</option>)}</select>
         <select value={vendor} onChange={(e) => setVendor(e.target.value)} aria-label="Vendor" className={`${sel} max-w-[220px]`}><option value="All">Vendor: All</option>{vendorOptions.map(([c, nm]) => <option key={c} value={c}>{c}: {nm}</option>)}</select>
