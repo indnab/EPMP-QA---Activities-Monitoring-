@@ -31,6 +31,7 @@ import { WorkspacePage } from './features/workspace/WorkspacePage'
 import { ApplicabilityMatrixPage } from './features/applicability/ApplicabilityMatrixPage'
 import { MyWorkPage } from './features/mywork/MyWorkPage'
 import { VendorPlanningPage } from './features/vendorplanning/VendorPlanningPage'
+import { UsageReportPage } from './features/usage/UsageReportPage'
 import { DataEntryLandingPage } from './features/dataentry/DataEntryLandingPage'
 import { MyWorkGridPage } from './features/mywork/MyWorkGridPage'
 
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="data-entry" element={<DataEntryLandingPage />} />
           <Route path="activity-update" element={<ActivityUpdatePage />} />
           <Route path="vendor-planning" element={<VendorPlanningPage />} />
+          <Route path="usage" element={<UsageReportPage />} />
           <Route path="mywork" element={<MyWorkPage />} />
           <Route path="mywork/:activityId/:milestoneId" element={<MyWorkGridPage />} />
           <Route path="part-workspace" element={<PartWorkspacePage />} />
