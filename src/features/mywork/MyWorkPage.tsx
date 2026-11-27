@@ -722,6 +722,16 @@ function MyWorkPageInner() {
       }),
     [allInstances, fDept, fMilestone, fVendorCode, fPic, fPartNo, fActivity, fStatus, fAttrs, fMarket, fExtra, models, picAssignments]
   )
+  // The Priorities tab ranks over every filter except Model, Part and Vendor, so its lists stay whole while one is picked.
+  const priorityInstances = useMemo(
+    () =>
+      allInstances.filter((i) =>
+        inSel(fDept, i.part.department || 'Other') && inSel(fMilestone, i.row.milestoneId) && inSel(fPic, getPicOn(i.part, picAssignments, DEMO_TODAY).name) &&
+        inSel(fActivity, i.activity.name) && inSel(fStatus, workBucket(i) ?? '') && matchPartAttrs(i.part, fAttrs) && matchMarket(i.part, fMarket) &&
+        matchExtra(i.part, fExtra, models, picAssignments)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allInstances, fDept, fMilestone, fPic, fActivity, fStatus, fAttrs, fMarket, fExtra, models, picAssignments]
+  )
   const instances = useMemo(() => instancesAllModels.filter((i) => inSel(fModel, i.part.model)), [instancesAllModels, fModel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Overview: the role's parts (not superseded, in scope).
@@ -981,11 +991,13 @@ function MyWorkPageInner() {
         /></ExportSection>
       ) : effectiveView === 'myscreen' ? (
         <>
-          <div className="mb-3">
-            <PriorityModels instances={instancesAllModels} parts={partsAllModels} selected={fModel} collapseKey="ms-priority-models"
-              onPick={(m) => chooseModels(fModel.length === 1 && fModel[0] === m ? [] : [m])} />
-          </div>
-          <ExportSection id="mw-myscreen" label="My Parts"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys} /></ExportSection>
+          <ExportSection id="mw-myscreen" label="My Parts"><MyScreen instances={instances} parts={overviewParts} onOpen={setOpenInstance} filters={filterChips} trials={fMilestone.length ? fMilestone : undefined} delayKeys={delayKeys}
+            priority={{
+              instances: priorityInstances, selModels: fModel, selParts: fPartNo, selVendors: fVendorCode,
+              onModel: (m) => chooseModels(fModel.length === 1 && fModel[0] === m ? [] : [m]),
+              onPart: (no) => setFPartNo(fPartNo.length === 1 && fPartNo[0] === no ? [] : [no]),
+              onVendor: (c) => setFVendorCode(fVendorCode.length === 1 && fVendorCode[0] === c ? [] : [c]),
+            }} /></ExportSection>
         </>
       ) : effectiveView === 'calendar' ? (
         <ExportSection id="mw-calendar" label="Calendar"><CalendarTab instances={allInstances} onOpen={setOpenInstance} modelNames={modelOptions} /></ExportSection>

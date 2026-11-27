@@ -108,7 +108,18 @@ const labelOf = (d: Dim, v: string, items: FilteredInstance[]): string => {
   return v
 }
 
-export function MyScreen({ instances, parts, onOpen, filters = [], trials, delayKeys }: {
+/** What the Priorities tab lists, and how a pick filters the page (the page owns the filters). */
+export interface PriorityProps {
+  /** Every activity of the filters in force except Model, Part and Vendor (so the lists stay whole while one is picked). */
+  instances: FilteredInstance[]
+  selModels: string[]; selParts: string[]; selVendors: string[]
+  onModel: (model: string) => void
+  onPart: (partNo: string) => void
+  onVendor: (code: string) => void
+}
+
+export function MyScreen({ instances, parts, onOpen, filters = [], trials, delayKeys, priority }: {
+  priority?: PriorityProps
   instances: FilteredInstance[]
   parts: PartRecord[]
   onOpen: (i: FilteredInstance) => void
@@ -173,6 +184,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], trials, delay
     setTimeout(() => document.getElementById('my-screen-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40)
   }
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
+  const [leftTab, setLeftTab] = useState<'tiles' | 'priorities'>('tiles')
   // Insights for the filters: shown by itself whenever a filter is selected (and on an empty screen); it starts
   // again from the top whenever the filters change.
   const filterSig = filters.join('|')
@@ -185,8 +197,16 @@ export function MyScreen({ instances, parts, onOpen, filters = [], trials, delay
     <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[250px_minmax(0,1fr)]">
       {/* Left: the tiles as buttons */}
       <aside className="epmp-card p-2.5 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto" aria-label="Tiles">
+        <div className="mb-2 flex items-center gap-1 rounded-lg bg-[#eef0f4] p-0.5" role="tablist" aria-label="Left panel">
+          {([['tiles', 'Tiles'], ['priorities', 'Priorities']] as const).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={leftTab === id} onClick={() => setLeftTab(id)}
+              className={`flex-1 rounded-md px-2 py-1 text-[11px] font-semibold ${leftTab === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
+          ))}
+        </div>
+        {leftTab === 'priorities' ? (
+          priority ? <PriorityLists {...priority} stageOf={stageOf} /> : null
+        ) : (<>
         <div className="mb-1.5 flex items-center gap-2 px-1">
-          <h3 className="text-[12px] font-semibold text-[var(--color-text)]">Tiles</h3>
           {panels.length > 0 && (
             <button type="button" onClick={() => setPanels([])} className="ml-auto text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">Clear screen</button>
           )}
@@ -220,6 +240,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], trials, delay
             </div>
           )
         })}
+        </>)}
       </aside>
 
       {/* Right: the interactive dashboard */}
@@ -595,5 +616,80 @@ function MaximizeHost({ max, onRestore, title, children }: { max: boolean; onRes
         host
       )}
     </>
+  )
+}
+
+/**
+ * The Priorities tab: priority models, parts and vendors. Each is ranked by what needs attention first (delayed and NG
+ * activities), with its done / delayed / NG counts. Picking one filters the page to it; picking it again clears it.
+ */
+function PriorityLists({ instances, selModels, selParts, selVendors, onModel, onPart, onVendor, stageOf }: PriorityProps & { stageOf: Map<string, string> }) {
+  type Item = { key: string; title: string; sub: string; done: number; delayed: number; ng: number; badge?: string }
+  const rank = (keyOf: (i: FilteredInstance) => string, make: (xs: FilteredInstance[], k: string) => { title: string; sub: string; badge?: string }): Item[] => {
+    const m = new Map<string, FilteredInstance[]>()
+    for (const i of instances) { const k = keyOf(i); if (k) m.set(k, [...(m.get(k) ?? []), i]) }
+    return [...m.entries()].map(([k, xs]) => ({
+      key: k, ...make(xs, k),
+      done: xs.filter((i) => i.status === 'Approved').length,
+      delayed: xs.filter((i) => workBucket(i) === 'Delayed').length,
+      ng: xs.filter((i) => workBucket(i) === 'NG').length,
+    })).sort((a, b) => (b.delayed + b.ng) - (a.delayed + a.ng) || b.delayed - a.delayed || a.title.localeCompare(b.title))
+  }
+  const models = useMemo(() => rank((i) => i.part.model, (xs, k) => ({ title: k, sub: `${new Set(xs.map((x) => x.part.partNo)).size} parts`, badge: stageOf.get(k) === 'developed' ? 'Developed' : 'Under dev.' })), [instances, stageOf]) // eslint-disable-line react-hooks/exhaustive-deps
+  const partsL = useMemo(() => rank((i) => i.part.partNo, (xs) => ({ title: xs[0].part.partNo, sub: `${xs[0].part.partName} · ${xs[0].part.model}` })), [instances]) // eslint-disable-line react-hooks/exhaustive-deps
+  const vendors = useMemo(() => rank((i) => i.part.vendorCode || i.part.vendorName, (xs) => ({ title: xs[0].part.vendorName || xs[0].part.vendorCode, sub: `${xs[0].part.vendorCode} · ${new Set(xs.map((x) => x.part.partNo)).size} parts` })), [instances]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="space-y-3">
+      <PrioritySection title="Priority Models" hint="Delayed or NG activities first" items={models} sel={selModels} onPick={onModel} />
+      <PrioritySection title="Priority Parts" hint="Delayed or NG activities first" items={partsL} sel={selParts} onPick={onPart} />
+      <PrioritySection title="Priority Vendors" hint="Delayed or NG activities first" items={vendors} sel={selVendors} onPick={onVendor} />
+    </div>
+  )
+}
+function PrioritySection({ title, hint, items, sel, onPick }: {
+  title: string; hint: string
+  items: { key: string; title: string; sub: string; done: number; delayed: number; ng: number; badge?: string }[]
+  sel: string[]; onPick: (key: string) => void
+}) {
+  const [all, setAll] = useState(false)
+  const LIMIT = 5
+  const shown = all ? items : items.slice(0, LIMIT)
+  return (
+    <section aria-label={title}>
+      <div className="mb-1 flex items-center gap-1.5 px-1">
+        <h4 className="text-[10.5px] font-semibold uppercase tracking-wide text-[#344054]">{title}</h4>
+        <span className="rounded-full bg-secondary px-1.5 text-[10px] font-semibold tabular-nums text-primary">{items.length}</span>
+      </div>
+      <p className="mb-1 px-1 text-[9.5px] text-[var(--color-muted)]">{hint} · click one to filter</p>
+      {items.length === 0 ? <p className="px-1 py-2 text-[10.5px] text-[var(--color-muted)]">Nothing here for the current filters.</p> : (
+        <ul className="space-y-1">
+          {shown.map((it) => {
+            const on = sel.includes(it.key)
+            const hot = it.delayed + it.ng > 0
+            return (
+              <li key={it.key}>
+                <button type="button" onClick={() => onPick(it.key)} aria-pressed={on} data-priority-item={it.key}
+                  className={`w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors ${on ? 'border-[#bfdbfe] bg-secondary' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}
+                  style={{ boxShadow: `inset 3px 0 0 ${hot ? '#dc2626' : '#10b981'}` }}>
+                  <span className="flex items-center gap-1.5">
+                    <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-[#101828]" title={it.title}>{it.title}</span>
+                    {it.badge && <span className="flex-none rounded-full bg-blue-50 px-1.5 py-px text-[9px] font-semibold text-blue-700">{it.badge}</span>}
+                  </span>
+                  <span className="block truncate text-[10px] text-[var(--color-muted)]" title={it.sub}>{it.sub}</span>
+                  <span className="mt-0.5 flex items-center justify-between text-[10px] text-[var(--color-muted)]">
+                    <span>Done <strong className="text-emerald-600">{it.done}</strong></span>
+                    <span>Delayed <strong className="text-amber-500">{it.delayed}</strong></span>
+                    <span>NG <strong className="text-red-600">{it.ng}</strong></span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {items.length > LIMIT && (
+        <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 px-1 text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">{all ? `Show top ${LIMIT}` : `Show all ${items.length}`}</button>
+      )}
+    </section>
   )
 }
