@@ -1,4 +1,4 @@
-import { useMainPartCls } from '../bundleHooks'
+import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { PendingRoleChip } from '../pendency'
@@ -197,6 +197,7 @@ export function WorkspacePage() {
 
   // Filtered parts
   const mainCls = useMainPartCls()
+  const bundleTag = useBundleTag()
   const filteredParts = useMemo(() => {
     return applicableParts.filter((p) => {
       if (modelFilter !== 'All' && p.model !== modelFilter) return false
@@ -632,7 +633,7 @@ export function WorkspacePage() {
                         />
                       </td>
                       <td className={`px-3 py-2.5 font-mono text-xs text-[var(--color-text)] ${mainCls(part.partNo)}`}>{part.partNo}</td>
-                      <td className="px-3 py-2.5 text-[var(--color-text)] max-w-[180px] truncate">{part.partName}</td>
+                      <td className="px-3 py-2.5 text-[var(--color-text)] max-w-[180px] truncate">{part.partName}{bundleTag(part.partNo)}</td>
                       <td className="px-3 py-2.5">
                         {isNa ? (
                           <span

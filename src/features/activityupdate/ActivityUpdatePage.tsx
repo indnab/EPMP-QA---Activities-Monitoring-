@@ -6,7 +6,7 @@
  * before overwriting. Save as draft, Submit, or (for the validator) Approve, following the activity's flow.
  */
 import { bundledPartsOf } from '../../domain/bundling'
-import { useMainPartCls } from '../bundleHooks'
+import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { followsMainPart } from '../../engine'
 import { TrialName } from '../trialLabel'
 import { toast } from '../../components/Toast'
@@ -73,6 +73,7 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
   const bundledOf = (i: FilteredInstance) => bundledPartsOf(i.part.partNo, allParts).filter((b) => b.section === i.row.section)
   const ownOf = (i: FilteredInstance, no: string) => !!entries.find((e) => e.id === makeEntryId(i.row.id, no))?.bundleOwn
   const mainCls = useMainPartCls()
+  const bundleTag = useBundleTag()
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
   const groups = useMemo(() => {
     const byMs = new Map<string, Map<string, FilteredInstance[]>>()
@@ -351,14 +352,22 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
                         <td className="px-2.5 py-1.5">
                           {bundled.length > 0 && (
                             <button type="button" onClick={() => setBundleOpen((s) => { const n = new Set(s); if (n.has(key(i))) n.delete(key(i)); else n.add(key(i)); return n })}
-                              aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} the bundled part numbers of ${i.part.partNo}`} title={`${bundled.length} bundled part number${bundled.length === 1 ? '' : 's'}: data filled here applies to them too`} data-bundle-toggle
+                              aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} the bundled part numbers of ${i.part.partNo}`} title={`${bundled.length + 1} bundled part numbers (with the main part): data filled here applies to them too`} data-bundle-toggle
                               className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-primary)] align-[-2px] text-[11px] font-bold leading-none text-white">{isOpen ? '−' : '+'}</button>
                           )}
-                          <span className={`font-mono ${mainCls(i.part.partNo)}`}>{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
+                          <span className={`font-mono ${mainCls(i.part.partNo)}`}>{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}{bundleTag(i.part.partNo)}</span></td>
                         <td className="px-2.5 py-1.5">{i.part.model}</td>
                         <td className="px-2.5 py-1.5">{i.status === 'NotStarted' ? 'Not started' : i.status}</td>
                         <td className="px-2.5 py-1.5">{taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'}</td>
                       </tr>
+                      {isOpen && (
+                        <tr className="bg-[#f8faff] font-bold" data-bundle-row data-bundle-main>
+                          <td className="py-1 pl-8 pr-2.5"><span className={`font-mono ${mainCls(i.part.partNo)}`}>{i.part.partNo}</span> <span className="text-[#101828]">{i.part.partName}</span></td>
+                          <td className="px-2.5 py-1">{i.part.model}</td>
+                          <td className="px-2.5 py-1"><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">Main part</span></td>
+                          <td className="px-2.5 py-1 text-[10.5px] font-normal text-[var(--color-muted)]">filled above</td>
+                        </tr>
+                      )}
                       {isOpen && bundled.map((b) => {
                         const own = ownOf(i, b.partNo)
                         return (

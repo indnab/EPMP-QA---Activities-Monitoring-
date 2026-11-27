@@ -5,7 +5,7 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
-import { useMainPartCls } from '../bundleHooks'
+import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { create } from 'zustand'
@@ -16,6 +16,7 @@ import type { FilteredInstance, WorkBucket } from '../../engine'
 import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY, fmtDate } from '../scope'
 import { trialLabelOf } from '../trialLabel'
+import { trialStatusFor } from '../../mock/partIntakeFields'
 import { ActivityUpdatePanel } from '../activityupdate/ActivityUpdatePage'
 import { ColumnFilter } from '../ColumnFilter'
 import { mineBucket, useModelStages } from './OverviewTab'
@@ -89,6 +90,8 @@ interface Panel {
   key: string; tile: string; drill: { dim: Dim; value: string }[]; groupBy?: Dim | 'list'
   /** Set by clicking a number in the details list: what the list shows next (e.g. that model's parts). */
   detail?: DetailKind
+  /** Where the panel was before each drill (newest last), for the Back button. */
+  back?: { drill: { dim: Dim; value: string }[]; groupBy?: Dim | 'list'; detail?: DetailKind }[]
 }
 const useScreen = create<{ panels: Panel[]; setPanels: (p: Panel[]) => void }>()(
   persist((set) => ({ panels: [], setPanels: (panels) => set({ panels }) }), { name: 'qa-tracker-my-screen', version: 1 })
@@ -297,11 +300,23 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
     : baseKind !== 'activities' && used.includes(kindDim[baseKind]) ? (used.includes('part') ? 'activities' : 'parts')
       : baseKind
 
+  // Every move (drill in, a number, the breadcrumb) remembers where the panel was, so Back returns there.
+  const go = (to: Partial<Panel>) =>
+    onChange({ ...to, back: [...(panel.back ?? []), { drill: panel.drill, groupBy: panel.groupBy, detail: panel.detail }].slice(-20) })
+  const backTo = panel.back?.at(-1)
+  const goBack = () => { if (backTo) onChange({ ...backTo, back: panel.back!.slice(0, -1) }) }
   return (
     <section className="epmp-card @container flex min-h-[280px] min-w-0 flex-col p-3" aria-label={tile.title} data-screen-panel={panel.tile}>
       <div className="mb-2 flex items-center gap-2">
         <FbIcon name={tile.icon} size={14} style={{ color: tile.color }} />
         <h3 className="text-[12.5px] font-semibold text-[var(--color-text)]">{tile.title}</h3>
+        {backTo && (
+          <button type="button" onClick={goBack} data-panel-back title="Back to where you drilled in from"
+            className="ml-2 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white px-2 py-0.5 text-[10.5px] font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+            Back
+          </button>
+        )}
         <button type="button" onClick={onRemove} aria-label={`Remove ${tile.title}`} title="Remove from my screen"
           className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"><FbIcon name="close" size={13} /></button>
       </div>
@@ -309,11 +324,11 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
 
       {/* Breadcrumb */}
       <nav className="mb-2 flex flex-wrap items-center gap-1 text-[10.5px]" aria-label="Drill path">
-        <button type="button" onClick={() => onChange({ drill: tile.drill ?? [], groupBy: tile.groupBy, detail: undefined })} className={panel.drill.length ? 'text-[var(--color-accent)] hover:underline' : 'font-semibold text-[#101828]'}>All</button>
+        <button type="button" onClick={() => go({ drill: tile.drill ?? [], groupBy: tile.groupBy, detail: undefined })} className={panel.drill.length ? 'text-[var(--color-accent)] hover:underline' : 'font-semibold text-[#101828]'}>All</button>
         {panel.drill.map((d, n) => (
           <span key={n} className="inline-flex items-center gap-1">
             <span className="text-[var(--color-muted)]">›</span>
-            <button type="button" onClick={() => onChange({ drill: panel.drill.slice(0, n + 1), groupBy: undefined, detail: undefined })}
+            <button type="button" onClick={() => go({ drill: panel.drill.slice(0, n + 1), groupBy: undefined, detail: undefined })}
               className={n === panel.drill.length - 1 ? 'font-semibold text-[#101828]' : 'text-[var(--color-accent)] hover:underline'}>
               <span className="text-[var(--color-muted)]">{DIM_LABEL[d.dim]}:</span> {labelOf(d.dim, d.value, all)}
             </button>
@@ -325,7 +340,7 @@ function ScreenPanel({ panel, tile: given, items: all, onChange, onRemove, onOpe
         <p className="flex-1 py-6 text-center text-[11px] text-[var(--color-muted)]">Nothing here for the current filters.</p>
       ) : (
         <TileDetails kind={detailKind} items={items} color={tile.color} onOpen={onOpen} trials={trials}
-          onPick={(picks, detail) => onChange({ drill: [...panel.drill.filter((d) => !picks.some((x) => x.dim === d.dim)), ...picks], groupBy: undefined, detail })} />
+          onPick={(picks, detail) => go({ drill: [...panel.drill.filter((d) => !picks.some((x) => x.dim === d.dim)), ...picks], groupBy: undefined, detail })} />
       )}
     </section>
   )
@@ -344,8 +359,23 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   onOpen: (i: FilteredInstance) => void
   trials?: string[]
 }) {
-  const { partReleases, partAcks } = useQAStore()
+  const { partReleases, partAcks, models: modelRecs } = useQAStore()
+  // The model's next trial (PP, MPP, Pilot, SOP) whose date has not passed (the trial only; no date shown).
+  const upcoming = (model: string): { label: string; date?: string } => {
+    const mrds = modelRecs.find((m) => m.name === model)?.mrds
+    const t = trialStatusFor(mrds, DEMO_TODAY)
+    return t === 'Completed' || t === '—' ? { label: t === 'Completed' ? 'All trials done' : '—' } : { label: trialLabelOf(t), date: mrds?.[t] }
+  }
+  const upcomingCell = (model: string) => {
+    const u = upcoming(model)
+    return (
+      <span key="u" className="whitespace-nowrap">
+        {u.date ? <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{u.label}</span> : <span className="text-[var(--color-muted)]">{u.label}</span>}
+      </span>
+    )
+  }
   const mainCls = useMainPartCls()
+  const bundleTag = useBundleTag()
   const onDrill = (dim: Dim, value: string) => onPick([{ dim, value }])
   const [all, setAll] = useState(false)
   const [open, setOpen] = useState(true)
@@ -392,14 +422,14 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
     const bySort = (a: Row, b: Row) => (b as Row & { sort: number }).sort - (a as Row & { sort: number }).sort
     if (kind === 'models') {
       return {
-        head: ['Model', 'Parts', 'Vendors', 'Activities', 'Completed', 'Overdue', 'NG'],
+        head: ['Model', 'Upcoming trial', 'Parts', 'Vendors', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.model).map(([m, xs]) => { const s = stats(xs); return {
           xs, key: m, title: `Drill into ${m}`, onClick: () => onDrill('model', m),
-          cells: [<strong key="m" className="text-[#101828]">{m}</strong>, ...numbers('model', m, m, s, [
+          cells: [<strong key="m" className="text-[#101828]">{m}</strong>, upcomingCell(m), ...numbers('model', m, m, s, [
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its vendors', n: new Set(xs.map((i) => i.part.vendorCode)).size, detail: 'vendors' },
           ])],
-          vals: [m, new Set(xs.map((i) => i.part.partNo)).size, new Set(xs.map((i) => i.part.vendorCode)).size, s.n, pct(s.done, s.n), s.od, s.ng],
+          vals: [m, upcoming(m).label, new Set(xs.map((i) => i.part.partNo)).size, new Set(xs.map((i) => i.part.vendorCode)).size, s.n, pct(s.done, s.n), s.od, s.ng],
           sort: s.od * 1000 + s.ng } }).sort(bySort),
       }
     }
@@ -418,14 +448,15 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
     }
     if (kind === 'parts') {
       return {
-        head: ['Part', 'Model', 'Vendor', 'Activities', 'Completed', 'Overdue', 'NG'],
+        head: ['Part', 'Model', 'Upcoming trial', 'Vendor', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.partNo).map(([no, xs]) => { const s = stats(xs); const p = xs[0].part; return {
           xs, key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
-          cells: [<span key="p"><span className={`font-mono text-[#101828] ${mainCls(no)}`}>{no}</span> <span className="text-[var(--color-muted)]">{p.partName}</span></span>,
+          cells: [<span key="p"><span className={`font-mono text-[#101828] ${mainCls(no)}`}>{no}</span> <span className="text-[var(--color-muted)]">{p.partName}{bundleTag(no)}</span></span>,
             link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts')),
+            upcomingCell(p.model),
             link(`${p.vendorCode}: ${p.vendorName}`, `${p.vendorName}: its parts`, () => onPick([{ dim: 'vendor', value: p.vendorCode || p.vendorName }], 'parts')),
             ...numbers('part', no, no, s, [])],
-          vals: [`${no} ${p.partName}`, p.model, `${p.vendorCode}: ${p.vendorName}`, s.n, pct(s.done, s.n), s.od, s.ng],
+          vals: [`${no} ${p.partName}`, p.model, upcoming(p.model).label, `${p.vendorCode}: ${p.vendorName}`, s.n, pct(s.done, s.n), s.od, s.ng],
           sort: s.od * 1000 + s.ng } }).sort(bySort),
       }
     }
@@ -489,12 +520,12 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   }, [tickedRows.length, picked, listed])
   const allTicked = listed.length > 0 && tickedRows.length === listed.length
   const toggle = (k: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
-  const tabCls = (on: boolean) => `px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide ${on ? 'text-[#101828]' : 'text-[var(--color-muted)] hover:text-[#344054]'}`
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-white" data-tile-details={kind}>
       <div className="flex items-center gap-1 pr-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
-        <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} flex-none whitespace-nowrap pl-3`}>
-          {kind[0].toUpperCase() + kind.slice(1)} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{listed.length}</span>
+        <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} data-details-tab
+          className={`epmp-3d-btn-light my-1 ml-2 inline-flex h-7 flex-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[10.5px] font-semibold uppercase tracking-wide text-[#101828] ${tab === 'details' ? 'is-on' : ''}`}>
+          {kind[0].toUpperCase() + kind.slice(1)} <span className="rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}1f` }}>{listed.length}</span>
         </button>
         {/* Activity Update stands out as a raised blue button with white text (pressed in while open); fixed size, never wraps. */}
         <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} data-update-tab

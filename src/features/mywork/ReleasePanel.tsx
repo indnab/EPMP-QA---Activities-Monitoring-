@@ -1,4 +1,4 @@
-import { useMainPartCls } from '../bundleHooks'
+import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { activeModelNames } from '../../domain/projects'
@@ -69,6 +69,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
   const projects = useQAStore((s) => s.projects)
   const parts = useWorkParts()
   const mainCls = useMainPartCls()
+  const bundleTag = useBundleTag()
   const { currentPersona } = usePersonaStore()
   const isVendor = currentPersona === 'Vendor'
   const inView = usePicViewMatch()
@@ -316,7 +317,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="font-medium text-[#101828]">{part.partName}</div>
+                        <div className="font-medium text-[#101828]">{part.partName}{bundleTag(part.partNo)}</div>
                         <div className={`font-mono text-[10.5px] text-[var(--color-muted)] ${mainCls(part.partNo)}`}>{part.partNo}</div>
                       </td>
                       <td className="px-3 py-2">{part.model}</td>

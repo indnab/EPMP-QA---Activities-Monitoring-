@@ -363,3 +363,20 @@ body.epmp-max-open [data-ai-panel] { display: none !important; }
 .epmp-3d-btn:active { box-shadow: inset 0 2px 4px rgba(0,0,0,.28), 0 0 0 3px rgba(147,197,253,.6), 0 0 18px 6px rgba(59,130,246,.75) !important; }
 .epmp-3d-btn { -webkit-tap-highlight-color: transparent; }
 @media (hover: none) { .epmp-3d-btn:focus { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 3px rgba(147,197,253,.55), 0 0 16px 5px rgba(59,130,246,.7); } }
+
+/* The same raised button in white, for the tab beside Activity Update (Parts / Models / Vendors / Activities). */
+.epmp-3d-btn-light {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f5fa 60%, #e6eaf2 100%);
+  border: 1px solid #c9d1e0;
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgba(16,24,40,.08), 0 2px 0 #b6c0d3, 0 4px 8px rgba(16,24,40,.12);
+  transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.epmp-3d-btn-light:hover { box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgba(16,24,40,.08), 0 2px 0 #b6c0d3, 0 0 0 3px rgba(147,197,253,.45), 0 0 12px 3px rgba(59,130,246,.35); }
+.epmp-3d-btn-light:active, .epmp-3d-btn-light.is-on {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #e9eef8 0%, #dfe6f4 100%);
+  border-color: #93b4f0;
+  box-shadow: inset 0 2px 4px rgba(16,24,40,.18), 0 1px 0 #b6c0d3;
+}
+.epmp-3d-btn-light:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }

@@ -10,7 +10,7 @@
  * planned start → end as a bar on it; clicking a row places the bar's start there. The vendor sees only its own activities on
  * parts released to it and acknowledged.
  */
-import { useMainPartCls } from '../bundleHooks'
+import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { followsMainPart } from '../../engine'
 import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -38,6 +38,7 @@ export function VendorPlanningPage() {
   const { entries, activities, templateRows, models, milestones, partReleases, partAcks, submitVendorPlan, decideVendorPlans } = useQAStore()
   const workParts = useWorkParts()
   const mainCls = useMainPartCls()
+  const bundleTag = useBundleTag()
   const { currentPersona: role } = usePersonaStore()
   const isVendor = role === 'Vendor'
   const canDecide = role === 'PIC' || role === 'SIC' || role === 'Admin'
@@ -275,7 +276,7 @@ export function VendorPlanningPage() {
                         <td colSpan={9} className="px-3 py-1.5">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={`font-mono text-[11px] font-semibold text-[#101828] ${mainCls(r.i.part.partNo)}`}>{r.i.part.partNo}</span>
-                            <span className="text-[10.5px] text-[#475467]">{r.i.part.partName} · {r.i.part.model} · {vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)}</span>
+                            <span className="text-[10.5px] text-[#475467]">{r.i.part.partName}{bundleTag(r.i.part.partNo)} · {r.i.part.model} · {vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)}</span>
                             <PlanDueChip s={slaOf.get(r.i.part.partNo)} />
                             {missingChip(r.i.part.partNo)}
                             {waiting.length > 0 && <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-800">{waiting.length} awaiting approval</span>}

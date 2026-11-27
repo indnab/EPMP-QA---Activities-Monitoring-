@@ -881,7 +881,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
                 <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary"><TrialName id={row.milestoneId} /></span>
               </h2>
               <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
-                {part.partName} <span className={`font-mono text-xs text-[var(--color-muted)] ${bundled.length ? MAIN_PART_CLS : ''}`}>· {part.partNo}</span>
+                {part.partName}{bundled.length ? ` (${bundled.length + 1})` : ''} <span className={`font-mono text-xs text-[var(--color-muted)] ${bundled.length ? MAIN_PART_CLS : ''}`}>· {part.partNo}</span>
               </p>
             </div>
             <button
@@ -937,11 +937,17 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
               <button type="button" onClick={() => setBundleOpen((v) => !v)} aria-expanded={bundleOpen}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
                 <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[var(--color-primary)] text-[13px] font-bold leading-none text-white" aria-hidden="true">{bundleOpen ? '−' : '+'}</span>
-                Bundled part numbers ({bundled.length})
+                Bundled part numbers ({bundled.length + 1})
                 <span className="font-normal text-[var(--color-muted)]">· data filled here applies to them too</span>
               </button>
               {bundleOpen && (
                 <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
+                  {/* The main part is one of its own bundled parts: listed first, in bold (it is this form). */}
+                  <li className="flex flex-wrap items-center gap-2 px-3 py-1.5 font-bold" data-bundle-main>
+                    <span className={`font-mono ${MAIN_PART_CLS}`}>{part.partNo}</span>
+                    <span className="min-w-0 flex-1 truncate text-[#101828]">{part.partName}</span>
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">Main part · this form</span>
+                  </li>
                   {bundled.map((b) => {
                     const own = ownOf(b.partNo)
                     return (
