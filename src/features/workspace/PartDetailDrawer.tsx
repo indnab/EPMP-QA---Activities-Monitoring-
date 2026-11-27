@@ -1,3 +1,4 @@
+import { ModelTimelineButton } from '../models/ModelTimeline'
 import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { toast } from '../../components/Toast'
@@ -894,7 +895,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
             </button>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-xs text-[var(--color-muted)]">
-            <span>Model: <strong className="text-[var(--color-text)]">{part.model}</strong></span>
+            <span className="inline-flex items-center gap-0.5">Model: <strong className="text-[var(--color-text)]">{part.model}</strong><ModelTimelineButton model={part.model} /></span>
             <span>Vendor: <strong className="text-[var(--color-text)]">{part.vendorName}</strong></span>
             <span>Dept: <strong className="text-[var(--color-text)]">{part.department}</strong></span>
             <span>Section: <strong className="text-[var(--color-text)]">{part.section}</strong></span>

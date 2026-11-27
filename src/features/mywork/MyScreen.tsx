@@ -5,6 +5,7 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
+import { ModelTimelineButton } from '../models/ModelTimeline'
 import { useBundleTag, useMainPartCls } from '../bundleHooks'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -425,7 +426,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         head: ['Model', 'Upcoming trial', 'Parts', 'Vendors', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.model).map(([m, xs]) => { const s = stats(xs); return {
           xs, key: m, title: `Drill into ${m}`, onClick: () => onDrill('model', m),
-          cells: [<strong key="m" className="text-[#101828]">{m}</strong>, upcomingCell(m), ...numbers('model', m, m, s, [
+          cells: [<span key="m" className="inline-flex items-center gap-1"><strong className="text-[#101828]">{m}</strong><ModelTimelineButton model={m} /></span>, upcomingCell(m), ...numbers('model', m, m, s, [
             { label: 'its parts', n: new Set(xs.map((i) => i.part.partNo)).size, detail: 'parts' },
             { label: 'its vendors', n: new Set(xs.map((i) => i.part.vendorCode)).size, detail: 'vendors' },
           ])],
@@ -452,7 +453,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         rows: group((i) => i.part.partNo).map(([no, xs]) => { const s = stats(xs); const p = xs[0].part; return {
           xs, key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
           cells: [<span key="p"><span className={`font-mono text-[#101828] ${mainCls(no)}`}>{no}</span> <span className="text-[var(--color-muted)]">{p.partName}{bundleTag(no)}</span></span>,
-            link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts')),
+            <span key="mdl" className="inline-flex items-center gap-0.5">{link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts'))}<ModelTimelineButton model={p.model} /></span>,
             upcomingCell(p.model),
             link(`${p.vendorCode}: ${p.vendorName}`, `${p.vendorName}: its parts`, () => onPick([{ dim: 'vendor', value: p.vendorCode || p.vendorName }], 'parts')),
             ...numbers('part', no, no, s, [])],
