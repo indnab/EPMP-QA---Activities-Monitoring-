@@ -22,6 +22,10 @@ export const WBS_TYPES: { id: WbsObjectType; label: string }[] = [
   { id: 'ImportJira', label: 'Import Jira' },
   { id: 'EAReview', label: 'EA Review' },
 ]
+/** Types whose rows carry a QA checklist (the others have none). */
+export const hasChecklist = (t: WbsObjectType) => t === 'QA' || t === 'EAReview'
+/** The RiskSphere portal a RiskSphere row links to. Placeholder address: set the real one here. */
+export const RISKSPHERE_PORTAL_URL = 'https://risksphere.msil.example/portal'
 export const WBS_TYPE_LABEL = Object.fromEntries(WBS_TYPES.map((t) => [t.id, t.label])) as Record<WbsObjectType, string>
 
 export const DEP_TYPES: { id: DependencyType; label: string; short: string }[] = [
@@ -82,7 +86,10 @@ export function syncArchetype(
     if (!isBuildable(obj)) {
       // Changed away from Activity Builder: its activity is retired and the link dropped.
       if (obj.activityId) acts = acts.map((a) => (a.id === obj.activityId ? { ...a, retired: true } : a))
-      return { ...obj, activityId: undefined, checklist: undefined, qaOwnershipReleaseManager: undefined }
+      // Only QA and EA Review rows keep a checklist (it is not turned into an activity).
+      return hasChecklist(obj.type) && (obj.level ?? 'Activity') === 'Activity'
+        ? { ...obj, activityId: undefined }
+        : { ...obj, activityId: undefined, checklist: undefined, qaOwnershipReleaseManager: undefined }
     }
     const id = activityIdFor(arc, obj)
     const name = obj.name.trim() || 'Untitled activity'

@@ -14,7 +14,7 @@ import { toast } from '../../components/Toast'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import type { DependencyType, MilestoneDateType, ProjectArchetype, WbsChecklistItem, WbsDependency, WbsLevel, WbsObject, WbsObjectType } from '../../domain'
-import { DEP_LABEL, DEP_TYPES, WBS_TYPES, activityIdFor, nextArchetypeId } from '../../domain/governance'
+import { DEP_LABEL, DEP_TYPES, RISKSPHERE_PORTAL_URL, WBS_TYPES, activityIdFor, hasChecklist, nextArchetypeId } from '../../domain/governance'
 import { isBuildable } from '../../domain'
 import { WBS_LEVELS, WBS_LEVEL_LABEL, allowedLevels, dateOptions, reparent, subtreeIds, wbsTree } from '../../domain/wbsTree'
 
@@ -284,10 +284,6 @@ export function ArchetypeDetailsPage() {
                       ) : isBuildable(o) ? (
                         <span className="flex flex-wrap items-center justify-end gap-2">
                           <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATE_CLS[state]}`}>{state}</span>
-                          <button type="button" onClick={() => setChecklistFor(o.id)}
-                            className="whitespace-nowrap rounded-full border border-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-secondary)]">
-                            {o.checklist?.length ? `Checklist (${o.checklist.length})` : 'Select Checklist'}
-                          </button>
                           {isAdmin && (
                             <Button variant={state === 'Published' ? 'secondary' : 'primary'} size="sm" className="whitespace-nowrap"
                               disabled={!o.name.trim()}
@@ -297,10 +293,37 @@ export function ArchetypeDetailsPage() {
                             </Button>
                           )}
                         </span>
+                      ) : o.level === 'Activity' && hasChecklist(o.type) ? (
+                        // QA and EA Review rows: the checklist.
+                        <span className="flex justify-end">
+                          <button type="button" onClick={() => setChecklistFor(o.id)}
+                            className="whitespace-nowrap rounded-full border border-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-secondary)]">
+                            {o.checklist?.length ? `Checklist (${o.checklist.length})` : 'Select Checklist'}
+                          </button>
+                        </span>
+                      ) : o.level === 'Activity' && o.type === 'RiskSphere' ? (
+                        <span className="flex justify-end">
+                          <a href={RISKSPHERE_PORTAL_URL} target="_blank" rel="noopener noreferrer" title="Open the RiskSphere portal in a new tab"
+                            className="whitespace-nowrap rounded-full border border-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-secondary)]">
+                            RiskSphere Portal ↗
+                          </a>
+                        </span>
+                      ) : o.level === 'Activity' && o.type === 'ImportJira' ? (
+                        <span className="flex justify-end">
+                          <Button variant="secondary" size="sm" className="whitespace-nowrap" disabled={!isAdmin}
+                            title={isAdmin ? 'Import this activity from Jira' : 'Admin only'}
+                            onClick={() => toast('Jira import is not connected in this prototype yet.')}>Import Jira</Button>
+                        </span>
+                      ) : o.level === 'Activity' && o.type === 'VCF' ? (
+                        <span className="flex justify-end">
+                          <Button variant="secondary" size="sm" className="whitespace-nowrap" disabled={!isAdmin}
+                            title={isAdmin ? 'Update this activity from VCF' : 'Admin only'}
+                            onClick={() => toast('VCF update is not connected in this prototype yet.')}>Update VCF</Button>
+                        </span>
                       ) : (
                         <span className="block text-right text-[10.5px] text-[var(--color-muted)]"
-                          title={o.level === 'Activity' ? 'Set Type to Activity Builder to build it in detail' : 'Only activities are built in the Activity Builder'}>
-                          {o.level === 'Activity' ? 'NA · set Type to Activity Builder to build' : '—'}
+                          title={o.level === 'Activity' ? 'Nothing to set up for a General row' : 'Only activities carry an action'}>
+                          {o.level === 'Activity' ? 'NA' : '—'}
                         </span>
                       )}
                     </td>
