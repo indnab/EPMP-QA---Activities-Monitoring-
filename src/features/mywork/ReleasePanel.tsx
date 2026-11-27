@@ -44,19 +44,15 @@ const STATE_CLS: Record<ReleaseState, string> = {
   Returned: 'bg-red-100 text-red-800',
 }
 
-function Tile(props: { title: string; count: number; color: string; active: boolean; onClick: () => void }) {
+/** One tile as a button in the left list (like My Parts): colour dot, title, count. */
+function SideTile(props: { title: string; count: number; color: string; active: boolean; onClick: () => void }) {
   return (
-    <button
-      onClick={props.onClick}
-      aria-pressed={props.active}
-      className="epmp-card flex flex-col items-start px-3 py-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#bfdbfe]"
-      style={props.active ? { boxShadow: `inset 0 0 0 2px ${props.color}` } : undefined}
-    >
-      <span className="flex w-full items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: props.color }}>
-        <span className="inline-block h-2 w-2 rounded-full" style={{ background: props.color }} />
-        {props.title}
-        <span className="ml-auto text-[18px] font-bold leading-none">{props.count}</span>
-      </span>
+    <button type="button" onClick={props.onClick} aria-pressed={props.active} title={props.title}
+      className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${props.active ? 'border-[#bfdbfe] bg-secondary font-semibold text-[#101828]' : 'border-transparent text-[#344054] hover:border-[var(--color-border)] hover:bg-[var(--color-surface)]'}`}
+      style={props.active ? { boxShadow: `inset 3px 0 0 ${props.color}` } : undefined}>
+      <span className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: props.color }} />
+      <span className="min-w-0 flex-1 leading-tight">{props.title}</span>
+      <span className="flex-none rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color: props.color, background: `${props.color}14` }}>{props.count}</span>
     </button>
   )
 }
@@ -208,46 +204,45 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             : 'Parts released to the vendor, waiting to be released, and returned by the vendor.'}
         </span>
       </div>
-      {isVendor ? (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Tile title={`Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
-            <Tile title="Planned dates pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
-            <Tile title={`Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
-            <Tile title="Planning submitted for review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Tile title="Awaiting my acknowledgement" count={counts.awaiting} color="#2563eb" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
-            <Tile title="Acknowledged" count={counts.acknowledged} color="#16a34a" active={slice === 'acknowledged'} onClick={() => choose('acknowledged')} />
-            <Tile title="Returned by me" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
-          </div>
-        </>
-      ) : (
-        /* PIC side: two sections, what the PIC has to do and what the vendor has to do. */
-        <div className="space-y-3">
-          <section aria-label="PIC">
-            <h3 className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">PIC</h3>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <Tile title={`Release to Vendor Overdue (> ${RELEASE_SLA_DAYS} D)`} count={tcount('relOverdue')} color="#b45309" active={slice === 'relOverdue'} onClick={() => choose('relOverdue')} />
-              <Tile title="Released to Vendor" count={counts.released} color="#2563eb" active={slice === 'released'} onClick={() => choose('released')} />
-              <Tile title="Release to Vendor Pending" count={counts.pending} color="#d97706" active={slice === 'pending'} onClick={() => choose('pending')} />
-              <Tile title="Vendor Plan Received for Review" count={reviewParts.length} color="#0891b2" active={false} onClick={openReview} />
-              <Tile title="Returned by Vendor" count={counts.returned} color="#dc2626" active={slice === 'returned'} onClick={() => choose('returned')} />
-              <Tile title="Part Deleted" count={deletedRows.length} color="#991b1b" active={slice === 'deleted'} onClick={() => choose('deleted')} />
-            </div>
+      {/* Tiles on the left (grouped), the parts table on the right, as on My Parts. */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <aside className="epmp-card p-2.5 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto" aria-label="Tiles">
+        {(isVendor ? [
+          { title: 'Planning', tiles: [
+            { title: `Acknowledgement overdue (> ${ACK_SLA_DAYS} d)`, count: tcount('ackOverdue'), color: '#dc2626', active: slice === 'ackOverdue', onClick: () => choose('ackOverdue') },
+            { title: 'Planned dates pending', count: tcount('planPending'), color: '#ea580c', active: slice === 'planPending', onClick: () => choose('planPending') },
+            { title: `Planning time exceeded (ack + ${PLAN_SLA_DAYS} d)`, count: tcount('planExceeded'), color: '#991b1b', active: slice === 'planExceeded', onClick: () => choose('planExceeded') },
+            { title: 'Planning submitted for review', count: reviewParts.length, color: '#0891b2', active: false, onClick: openReview },
+          ] },
+          { title: 'Parts', tiles: [
+            { title: 'Awaiting my acknowledgement', count: counts.awaiting, color: '#2563eb', active: slice === 'awaiting', onClick: () => choose('awaiting') },
+            { title: 'Acknowledged', count: counts.acknowledged, color: '#16a34a', active: slice === 'acknowledged', onClick: () => choose('acknowledged') },
+            { title: 'Returned by me', count: counts.returned, color: '#dc2626', active: slice === 'returned', onClick: () => choose('returned') },
+          ] },
+        ] : [
+          { title: 'PIC', tiles: [
+            { title: `Release to Vendor Overdue (> ${RELEASE_SLA_DAYS} D)`, count: tcount('relOverdue'), color: '#b45309', active: slice === 'relOverdue', onClick: () => choose('relOverdue') },
+            { title: 'Released to Vendor', count: counts.released, color: '#2563eb', active: slice === 'released', onClick: () => choose('released') },
+            { title: 'Release to Vendor Pending', count: counts.pending, color: '#d97706', active: slice === 'pending', onClick: () => choose('pending') },
+            { title: 'Vendor Plan Received for Review', count: reviewParts.length, color: '#0891b2', active: false, onClick: openReview },
+            { title: 'Returned by Vendor', count: counts.returned, color: '#dc2626', active: slice === 'returned', onClick: () => choose('returned') },
+            { title: 'Part Deleted', count: deletedRows.length, color: '#991b1b', active: slice === 'deleted', onClick: () => choose('deleted') },
+          ] },
+          { title: 'Vendor', tiles: [
+            { title: `Vendor Acknowledgement Overdue (> ${ACK_SLA_DAYS} D)`, count: tcount('ackOverdue'), color: '#dc2626', active: slice === 'ackOverdue', onClick: () => choose('ackOverdue') },
+            { title: 'Vendor Acknowledgement Pending', count: counts.awaiting, color: '#7c3aed', active: slice === 'awaiting', onClick: () => choose('awaiting') },
+            { title: 'Vendor Plan Pending', count: tcount('planPending'), color: '#ea580c', active: slice === 'planPending', onClick: () => choose('planPending') },
+            { title: `Vendor Plan Overdue (Ack + ${PLAN_SLA_DAYS} D)`, count: tcount('planExceeded'), color: '#991b1b', active: slice === 'planExceeded', onClick: () => choose('planExceeded') },
+          ] },
+        ]).map((g) => (
+          <section key={g.title} aria-label={g.title} className="mb-2 last:mb-0">
+            <h3 className="mb-1 px-1 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-[var(--color-muted)]">{g.title}</h3>
+            <div className="space-y-0.5">{g.tiles.map((t) => <SideTile key={t.title} {...t} />)}</div>
           </section>
-          <section aria-label="Vendor">
-            <h3 className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Vendor</h3>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <Tile title={`Vendor Acknowledgement Overdue (> ${ACK_SLA_DAYS} D)`} count={tcount('ackOverdue')} color="#dc2626" active={slice === 'ackOverdue'} onClick={() => choose('ackOverdue')} />
-              <Tile title="Vendor Acknowledgement Pending" count={counts.awaiting} color="#7c3aed" active={slice === 'awaiting'} onClick={() => choose('awaiting')} />
-              <Tile title="Vendor Plan Pending" count={tcount('planPending')} color="#ea580c" active={slice === 'planPending'} onClick={() => choose('planPending')} />
-              <Tile title={`Vendor Plan Overdue (Ack + ${PLAN_SLA_DAYS} D)`} count={tcount('planExceeded')} color="#991b1b" active={slice === 'planExceeded'} onClick={() => choose('planExceeded')} />
-            </div>
-          </section>
-        </div>
-      )}
-      <div className="epmp-card mt-3 overflow-hidden">
+        ))}
+      </aside>
+      <div className="min-w-0">
+      <div className="epmp-card overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
           <span className="text-[11.5px] font-medium text-[var(--color-text)]">
             {shown.length} part{shown.length === 1 ? '' : 's'}
@@ -279,7 +274,7 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
         {shown.length === 0 ? (
           <p className="px-4 py-5 text-center text-[11.5px] text-[var(--color-muted)]">No parts here.</p>
         ) : (
-          <div className="max-h-[260px] overflow-auto">
+          <div className="max-h-[calc(100vh-250px)] overflow-auto">
             <table className="w-full text-[11.5px]">
               <thead className="sticky top-0 bg-[var(--color-surface)]">
                 <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-muted)]">
@@ -358,6 +353,8 @@ export function ReleasePanel({ partFilter }: { partFilter?: (p: PartRecord) => b
             </table>
           </div>
         )}
+      </div>
+      </div>
       </div>
 
       <Modal
