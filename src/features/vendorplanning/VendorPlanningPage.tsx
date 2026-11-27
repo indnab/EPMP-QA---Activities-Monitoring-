@@ -29,6 +29,7 @@ import { MultiSelect } from '../intake/MultiSelect'
 import { DEMO_TODAY, fmtDate, partInScope } from '../scope'
 import { trialLabelOf } from '../trialLabel'
 import { PLAN_SLA_DAYS, usePlanningSla } from './planningSla'
+import { PlanVsActual } from './PlanVsActual'
 import type { PartSla } from './planningSla'
 
 const key = (i: FilteredInstance) => `${i.row.id}|${i.part.partNo}`
@@ -52,15 +53,22 @@ export function VendorPlanningPage() {
   const [params] = useSearchParams()
   const [fParts, setFParts] = useState<string[]>(() => (params.get('parts') ?? '').split(',').filter(Boolean))
   const [fModels, setFModels] = useState<string[]>([])
+  const [fVendors, setFVendors] = useState<string[]>([]) // vendor codes
   const [trial, setTrial] = useState('All')
-  const [view, setView] = useState<'table' | 'gantt' | 'status'>('table')
+  const [view, setView] = useState<'table' | 'gantt' | 'timeline' | 'status'>('table')
   const [show, setShow] = useState<'all' | 'unplanned' | 'late' | 'awaiting' | 'sentback'>(() => (['awaiting', 'sentback', 'late', 'unplanned'] as const).find((x) => x === params.get('show')) ?? 'all')
   const modelOptions = [...new Set(scoped.map((p) => p.model))].sort().map((value) => ({ value }))
+  const vendorOptions = [...new Map(scoped.filter((p) => p.vendorCode).map((p) => [p.vendorCode, p.vendorName])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1])).map(([value, name]) => ({ value, label: `${value}: ${name}` }))
+  const inFilters = (p: { model: string; vendorCode: string }) => (fModels.length === 0 || fModels.includes(p.model)) && (fVendors.length === 0 || fVendors.includes(p.vendorCode))
   const partOptions = scoped
-    .filter((p) => fModels.length === 0 || fModels.includes(p.model))
+    .filter(inFilters)
     .map((p) => ({ value: p.partNo, label: `${p.partNo}: ${p.partName} (${p.model})` }))
     .sort((a, b) => a.label.localeCompare(b.label))
-  const chosen = fParts.filter((n) => scoped.some((p) => p.partNo === n && (fModels.length === 0 || fModels.includes(p.model))))
+  // Picked parts (within the Model / Vendor filters). A vendor picked without parts brings all of its parts.
+  const chosen = fParts.length
+    ? fParts.filter((n) => scoped.some((p) => p.partNo === n && inFilters(p)))
+    : fVendors.length ? scoped.filter(inFilters).map((p) => p.partNo) : []
 
   // The vendor's activities for the chosen parts (flows that start with the vendor), in trial order.
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
@@ -184,8 +192,15 @@ export function VendorPlanningPage() {
       <section className="epmp-card mb-3 flex flex-wrap items-center gap-2 px-3 py-2.5">
         <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Model</span>
         <MultiSelect label="Model" options={modelOptions} selected={fModels} onChange={setFModels} />
+        {!isVendor && (
+          <>
+            <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Vendor</span>
+            <MultiSelect label="Vendor" options={vendorOptions} selected={fVendors} onChange={setFVendors} />
+          </>
+        )}
         <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">Parts</span>
-        <MultiSelect label="Part" options={partOptions} selected={chosen} onChange={setFParts} />
+        <MultiSelect label="Part" options={partOptions} selected={fParts.length ? chosen : []} onChange={setFParts} />
+        {fVendors.length > 0 && fParts.length === 0 && chosen.length > 0 && <span className="text-[10.5px] text-[var(--color-muted)]">all parts of the vendor{fVendors.length === 1 ? '' : 's'}</span>}
         {rows.length > 0 && (
           <>
             <select value={trial} onChange={(e) => setTrial(e.target.value)} aria-label="Trial" className={sel}>
@@ -214,7 +229,7 @@ export function VendorPlanningPage() {
           <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] px-4 py-2.5">
             <span className="text-[12px] font-semibold text-[var(--color-text)]">{view === 'status' ? 'Part-wise planning status' : `Planning · ${shown.length} activit${shown.length === 1 ? 'y' : 'ies'}`}</span>
             <div className="inline-flex rounded-lg bg-[#eef0f4] p-0.5" role="group" aria-label="View">
-              {([['table', 'Table'], ['gantt', 'Gantt'], ['status', 'Part status']] as const).map(([id, label]) => (
+              {([['table', 'Table'], ['gantt', 'Gantt'], ['timeline', 'MSIL timeline'], ['status', 'Part status']] as const).map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
                   className={`rounded-md px-2.5 py-1 text-[10.5px] font-medium ${view === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
               ))}
@@ -227,7 +242,7 @@ export function VendorPlanningPage() {
                 <Button variant="primary" size="sm" onClick={() => decide(awaitingParts, 'Approve')}><Icon name="check" size={12} className="mr-1" />Approve all ({counts.awaiting})</Button>
               </span>
             )}
-            {canEdit && view !== 'status' && (
+            {canEdit && view !== 'status' && view !== 'timeline' && (
               <span className="ml-auto flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={fillWindow} title="Fill the empty start and end dates with the planned window's dates">Use window dates for blanks</Button>
                 {partialParts.length > 0 && <span className="text-[10.5px] font-semibold text-amber-700">{partialParts.length} part{partialParts.length === 1 ? '' : 's'} incomplete: all activities of a part go together</span>}
@@ -239,6 +254,16 @@ export function VendorPlanningPage() {
           {view === 'status' ? (
             <PartStatus rows={slaAll.filter((s) => (chosen.length ? chosen.includes(s.part.partNo) : scoped.some((p) => p.partNo === s.part.partNo)) && (s.state !== 'Acknowledged' || s.planRequired > 0 || !isVendor))}
               actions={partActions} onOpenPart={(no) => { setFParts([no]); setView('table') }} />
+          ) : view === 'timeline' ? (
+            // All MSIL timelines on one line per model, the vendor's activities under it: planned vs actual.
+            <PlanVsActual msOrder={msOrder}
+              models={[...new Set(rows.map((x) => x.i.part.model))].sort().map((name) => ({ name, mrds: models.find((m) => m.name === name)?.mrds ?? {} }))}
+              rows={shown.filter((x) => x.owner === 'Vendor').map((x) => {
+                const pl = x.plan?.current
+                const plan = pl?.date ? { start: pl.start ?? x.win?.start ?? pl.date, end: pl.date, source: 'vendor' as const }
+                  : x.win ? { start: x.win.start, end: x.win.end, source: 'window' as const } : null
+                return { k: key(x.i), part: x.i.part, activity: x.i.activity.name, milestoneId: x.i.row.milestoneId, plan, entry: x.i.entry }
+              })} />
           ) : view === 'gantt' ? (
             <PlanGantt partInfo={(no) => <><PlanDueChip s={slaOf.get(no)} />{missingChip(no)}</>} partActions={partActions} rows={shown.map((r) => ({
               k: key(r.i), part: r.i.part, activity: r.i.activity.name, trial: trialLabelOf(r.i.row.milestoneId), win: r.win,
