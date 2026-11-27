@@ -313,7 +313,7 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
     const active = columns.map((c, i) => [c, i, (filters[i] ?? '').trim().toLowerCase()] as const).filter(([, , q]) => q)
     let out = active.length ? rows.filter((r) => active.every(([c, , q]) => {
       const t = String((c.text ?? c.val)(r)).toLowerCase()
-      return c.options ? t === q : t.includes(q)
+      return t === q
     })) : rows
     if (sortBy) {
       const c = columns[sortBy.col], dir = sortBy.dir === 'asc' ? 1 : -1
@@ -326,6 +326,8 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, filters, sortBy])
   const shown = limit && !all ? listed.slice(0, limit) : listed
+  /** The values a column holds (its drop-down lists them). */
+  const valuesOf = (c: Col<T>) => [...new Set(rows.map((r) => String((c.text ?? c.val)(r))).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   const anyFilter = Object.values(filters).some((v) => v.trim())
   const clickSort = (i: number) => setSortBy((cur) => (!cur || cur.col !== i ? { col: i, dir: 'asc' } : cur.dir === 'asc' ? { col: i, dir: 'desc' } : null))
   return (
@@ -358,13 +360,11 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
             <tr className="text-left">
               {columns.map((c, i) => (
                 <th key={c.label} className="px-2.5 pb-1.5 font-normal">
-                  {c.options ? (
-                    <select value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`}
-                      className="h-6 w-full rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal"><option value="">All</option>{c.options.map((o) => <option key={o}>{o}</option>)}</select>
-                  ) : (
-                    <input value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`} placeholder="Filter"
-                      className="h-6 w-full min-w-[52px] rounded border border-[var(--color-border)] bg-white px-1.5 text-[10px] font-normal" />
-                  )}
+                  <select value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`}
+                    className="h-6 w-full min-w-[64px] max-w-[190px] rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal">
+                    <option value="">All</option>
+                    {(c.options ?? valuesOf(c)).map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
                 </th>
               ))}
             </tr>

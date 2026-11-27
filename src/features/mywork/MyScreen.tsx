@@ -435,7 +435,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   const cid = (c: number) => `${kind}:${c}`
   const listed = useMemo(() => {
     const active = head.map((_, c) => [c, (colFilter[cid(c)] ?? '').trim().toLowerCase()] as const).filter(([, q]) => q)
-    let out = active.length ? rows.filter((r) => active.every(([c, q]) => String((r.ftext ?? r.vals)[c] ?? '').toLowerCase().includes(q))) : rows
+    let out = active.length ? rows.filter((r) => active.every(([c, q]) => String(r.vals[c] ?? '').toLowerCase() === q)) : rows
     const c = sortBy && sortBy.col.startsWith(`${kind}:`) ? Number(sortBy.col.split(':')[1]) : -1
     if (c >= 0 && sortBy) {
       const dir = sortBy.dir === 'asc' ? 1 : -1
@@ -449,6 +449,9 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   }, [rows, head, colFilter, sortBy, kind])
   const clickSort = (c: number) => setSortBy((cur) => (!cur || cur.col !== cid(c) ? { col: cid(c), dir: 'asc' } : cur.dir === 'asc' ? { col: cid(c), dir: 'desc' } : null))
   const hasColFilter = head.some((_, c) => (colFilter[cid(c)] ?? '').trim())
+  // The values each column holds, for its drop-down filter (dates show as dd Mon yyyy).
+  const optionsOf = (c: number) => [...new Set(rows.map((r) => String(r.vals[c] ?? '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  const optLabel = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? fmtDate(v) : v)
   const shown = all ? listed : listed.slice(0, LIMIT)
   const noun = { models: 'model', vendors: 'vendor', parts: 'part', activities: 'activit' }[kind]
   const plural = (n: number) => (kind === 'activities' ? (n === 1 ? 'activity' : 'activities') : `${noun}${n === 1 ? '' : 's'}`)
@@ -513,8 +516,11 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
                 <th className="px-2.5 pb-1.5">{hasColFilter && <button type="button" onClick={() => setColFilter({})} title="Clear the column filters" className="text-[10px] font-semibold text-[var(--color-accent)] hover:underline">Clear</button>}</th>
                 {head.map((h, c) => (
                   <th key={h} className="px-2.5 pb-1.5 font-normal">
-                    <input value={colFilter[cid(c)] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [cid(c)]: e.target.value }))} aria-label={`Filter ${h}`} placeholder="Filter"
-                      className="h-6 w-full min-w-[56px] rounded border border-[var(--color-border)] bg-white px-1.5 text-[10px] font-normal" />
+                    <select value={colFilter[cid(c)] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [cid(c)]: e.target.value }))} aria-label={`Filter ${h}`}
+                      className="h-6 w-full min-w-[64px] max-w-[200px] rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal">
+                      <option value="">All</option>
+                      {optionsOf(c).map((o) => <option key={o} value={o}>{optLabel(o)}</option>)}
+                    </select>
                   </th>
                 ))}
               </tr></thead>
