@@ -243,7 +243,8 @@ export function AppLayout() {
             aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
             className="hidden items-center gap-2.5 text-[10.5px] text-[#dadcfb] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:flex"
           >
-            <svg width="16" height="12" viewBox="0 0 42 32" fill="#f0f7fd" aria-hidden="true">
+            {/* Points left to collapse; mirrored (points right) when collapsed, to expand. */}
+            <svg width="16" height="12" viewBox="0 0 42 32" fill="#f0f7fd" aria-hidden="true" className={navCollapsed ? '-scale-x-100' : ''}>
               <path d="M9.52 18.92a1.5 1.5 0 01-1.06-.44L.55 10.76a1.5 1.5 0 010-2.1L8.17.46a1.5 1.5 0 112.17 2.08L4.6 9.4l6.26 6.26a1.5 1.5 0 01-1.34 2.26z" />
               <path d="M20.9 11.3H1.9a1.9 1.9 0 010-3.8h19a1.9 1.9 0 010 3.8z" />
               <rect x="11.4" y="18.9" width="30.5" height="3.8" rx="1.9" />
