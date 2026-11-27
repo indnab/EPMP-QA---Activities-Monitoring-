@@ -177,16 +177,16 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
       <div className="mb-3 flex flex-wrap items-center gap-3">
       <div className="flex min-w-0 flex-1 flex-wrap gap-2" data-tour="intake-summary">
         {tile('all', 'Total parts', scoped.length)}
-        {tile('SAP', 'Received from SAP', counts.SAP, 'SAP')}
-        {tile('ENOVIA', 'Received from ENOVIA', counts.ENOVIA, 'ENOVIA')}
-        {tile('Manual', 'Added manually (dummy)', counts.Manual, 'Manual')}
+        {tile('SAP', 'SAP', counts.SAP, 'SAP')}
+        {tile('ENOVIA', 'Enovia', counts.ENOVIA, 'ENOVIA')}
+        {tile('Manual', 'Manual', counts.Manual, 'Manual')}
         <button type="button" onClick={() => setDeletedOnly((v) => !v)} aria-pressed={deletedOnly}
           className={`epmp-card min-w-[120px] px-3 py-1.5 text-left transition-colors ${deletedOnly ? 'ring-2 ring-red-500' : 'hover:bg-[var(--color-surface)]'}`}>
           <div className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">Part Deleted (SAP / ENOVIA)</div>
           <div className="mt-0.5 text-lg font-semibold leading-tight text-red-600">{deletedCount}</div>
         </button>
       </div>
-      {/* On the same line as the tiles: the minimized filter icon, Download CSV and Add part manually. */}
+      {/* On the same line as the tiles: the minimized filter icon, Download CSV and Add Part. */}
       <div className="ml-auto flex flex-none items-center gap-2">
         <span id="intake-filter-slot" className="flex items-center" />
         <Button
@@ -204,7 +204,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         </Button>
         {canAdd && (
           <Button variant="primary" size="md" onClick={() => setAddOpen(true)}>
-            + Add part manually
+            + Add Part
           </Button>
         )}
       </div>

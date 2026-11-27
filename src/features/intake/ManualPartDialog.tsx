@@ -93,7 +93,7 @@ export function ManualPartDialog({ onClose, sections }: { onClose: () => void; s
     <Modal
       open
       onClose={onClose}
-      title="Add part manually"
+      title="Add Part"
       footer={
         <>
           <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
