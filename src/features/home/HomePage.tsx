@@ -48,7 +48,6 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
     title: 'Section-In-Charge', job: 'Review submitted entries, assign PICs and approve deviations.',
     links: [
       { to: '/mywork', label: 'Workspace', desc: 'Entries to validate', icon: 'check' },
-      { to: '/pics', label: 'PIC Assignments', desc: 'Who owns which part', icon: 'person' },
       { to: '/exceptions', label: 'Exceptions', desc: 'Deviations, actions, delays', icon: 'alert' },
       { to: '/dashboards', label: 'Dashboards', desc: 'Section view', icon: 'chart' }
     ]
@@ -76,7 +75,6 @@ const ROLE_HOME: Record<PersonaId, { title: string; job: string; links: RoleLink
     links: [
       { to: '/template', label: 'Section Template', desc: 'Activities and offsets', icon: 'grid' },
       { to: '/parts', label: 'Part Intake', desc: 'Intake and dummy parts', icon: 'box' },
-      { to: '/pics', label: 'PIC Assignments', desc: 'Who owns which part', icon: 'person' },
       { to: '/activities', label: 'Activities', desc: 'Catalogue', icon: 'list' }
     ]
   },

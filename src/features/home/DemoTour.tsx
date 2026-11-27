@@ -74,7 +74,6 @@ const TOUR_STEPS: TourStep[] = [
       'A section template applies an activity to every part, but only the PIC knows which parts it does not fit. Where the Admin has allowed it for an activity, the PIC ticks those parts here (or selects rows in the activity\'s Workspace) with an optional reason. Those parts become their own "Not applicable" group, leave the completion % and RYG, and the change is logged with the PIC\'s name. PIC, SIC and Admin can reverse it.',
     persona: 'PIC',
     navigateTo: '/applicability',
-    highlight: '[data-tour="nav-applicability"]',
   },
   {
     id: 'persona-vendor',

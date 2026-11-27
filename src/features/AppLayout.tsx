@@ -109,12 +109,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/template',   label: 'Section Template', group: 'Modules', tour: 'nav-template',
     roles: ['SectionAdmin', 'Admin'],
     icon: ico(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 17h7M17 14v7" /></>) },
-  { to: '/pics',       label: 'PIC Assignments', group: 'Modules', tour: 'nav-pics',
-    roles: ['SIC', 'DPM', 'SectionAdmin', 'PIC', 'Admin'],
-    icon: ico(<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M17 8h4M19 6v4" /></>) },
-  { to: '/applicability', label: 'Applicability', group: 'Modules', tour: 'nav-applicability',
-    roles: ['PIC', 'SIC', 'Admin'],
-    icon: ico(<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3v18" /><path d="M12 13l3 3M15 13l-3 3" /></>) },
+  // PIC Assignments and Applicability are not in the menu (their pages stay reachable by address).
   { to: '/parts',      label: 'Part Intake', group: 'Modules', tour: 'nav-parts',
     roles: ['PIC', 'SIC', 'DPM', 'SectionAdmin', 'ModelCoordinator', 'Admin'],
     icon: ico(<><path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 7v10l9 4 9-4V7" /><path d="M12 11v10" /></>) },
