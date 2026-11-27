@@ -1,3 +1,4 @@
+import { useMainPartCls } from '../bundleHooks'
 import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { PendingRoleChip } from '../pendency'
@@ -14,6 +15,7 @@ import type { RygStatus } from '../../components/RygDot'
 import type { StatusValue } from '../../components/StatusPill'
 import type { PartRecord } from '../../domain'
 import { makeEntryId } from '../../domain'
+import { mainPartOf } from '../../domain/bundling'
 import { BulkFillDialog } from '../bulk/BulkFillDialog'
 import { PartDetailDrawer } from './PartDetailDrawer'
 import { listColumnFields, listCellTexts } from '../listColumns'
@@ -152,7 +154,10 @@ export function WorkspacePage() {
     const map = new Map<string, ReturnType<typeof resolveTrackedDates>>()
     if (!row) return map
     for (const p of applicableParts) {
-      const entry = entries.find((e) => e.templateRowId === row.id && e.partNo === p.partNo)
+      // A bundled part following its main part tracks the main part's entry.
+      const own = entries.find((e) => e.templateRowId === row.id && e.partNo === p.partNo)
+      const main = mainPartOf(p)
+      const entry = main && !own?.bundleOwn ? entries.find((e) => e.templateRowId === row.id && e.partNo === main) : own
       map.set(p.partNo, resolveTrackedDates(row, modelRecords.find((m) => m.name === p.model), entry, activity, p))
     }
     return map
@@ -179,10 +184,19 @@ export function WorkspacePage() {
     for (const e of entries) {
       if (e.templateRowId === id) map.set(e.partNo, e)
     }
+    // Bundled parts that follow their main part show its entry (status, values).
+    for (const p of applicableParts) {
+      const main = mainPartOf(p)
+      if (!main || map.get(p.partNo)?.bundleOwn) continue
+      const m = map.get(main)
+      if (m) map.set(p.partNo, m)
+      else map.delete(p.partNo)
+    }
     return map
-  }, [entries, id])
+  }, [entries, id, applicableParts])
 
   // Filtered parts
+  const mainCls = useMainPartCls()
   const filteredParts = useMemo(() => {
     return applicableParts.filter((p) => {
       if (modelFilter !== 'All' && p.model !== modelFilter) return false
@@ -617,7 +631,7 @@ export function WorkspacePage() {
                           aria-label={`Select ${part.partNo}`}
                         />
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-xs text-[var(--color-text)]">{part.partNo}</td>
+                      <td className={`px-3 py-2.5 font-mono text-xs text-[var(--color-text)] ${mainCls(part.partNo)}`}>{part.partNo}</td>
                       <td className="px-3 py-2.5 text-[var(--color-text)] max-w-[180px] truncate">{part.partName}</td>
                       <td className="px-3 py-2.5">
                         {isNa ? (

@@ -1,3 +1,4 @@
+import { followsMainPart } from '../../engine'
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Button } from '../../components'
@@ -70,7 +71,7 @@ export function BulkEntryPage() {
   // All (part × activity) instances for the current filters.
   const instances = useMemo<FilteredInstance[]>(() => {
     let out = getFilteredData(entries, activities, parts, templateRows, models, filters, 'overview', DEMO_TODAY)
-      .filter((i) => matchPart(i.part))
+      .filter((i) => matchPart(i.part) && !followsMainPart(i))
     if (partFilter !== 'All') out = out.filter((i) => i.part.partNo === partFilter)
     // PIC default: only activities due or starting in the next 30 days (the checkbox turns this off).
     if (upcomingOnly) out = out.filter((i) => isUpcoming(i.dates))

@@ -21,7 +21,7 @@ import type {
   PartRelease,
   TemplateRow
 } from '../domain'
-import { addDays, getFilteredData, resolveInstanceDates, evaluateCalculatedFields, evaluateConditionalRules, getMilestoneMrd, rowsFromActivityTable, rowsFromCount } from '../engine'
+import { addDays, followsMainPart, getFilteredData, resolveInstanceDates, evaluateCalculatedFields, evaluateConditionalRules, getMilestoneMrd, rowsFromActivityTable, rowsFromCount } from '../engine'
 import { subTypeMrdKey } from '../domain/timelineCatalog'
 import { sapTier2Rows } from './index'
 import { sampleIntakeAttrs } from './partIntakeFields'
@@ -41,9 +41,12 @@ interface DemoPartSeed {
   release: 'ack' | 'wait' | 'none'
   /** Just arrived and not released yet: only the PIC's own activities have been started (the vendor can't see it). */
   fresh?: boolean
+  /** Bundled part: its main part number (same part name; the main part's data applies to it). */
+  main?: string
 }
 
-const DEMO_PARTS: DemoPartSeed[] = [
+const DEMO_PARTS_BASE: DemoPartSeed[] = [
+
   { partNo: '31100-M74LD0', partName: 'Headlamp Assy LH', model: 'Swift', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Lighting', pic: 'Rahul Verma', type: 'NewPart', release: 'ack' },
   { partNo: '31100-M74LD1', partName: 'Headlamp Assy RH', model: 'Swift', vendorName: 'Minda Industries', vendorCode: 'V1001', department: 'Lighting', pic: 'Rahul Verma', type: 'ECN', release: 'ack' },
   { partNo: '71811-M82P00', partName: 'Front Bumper Panel', model: 'Brezza', vendorName: 'Subros Limited', vendorCode: 'V1004', department: 'Body', pic: 'Anita Desai', type: 'NewPart', release: 'ack' },
@@ -66,6 +69,21 @@ const DEMO_PARTS: DemoPartSeed[] = [
   { partNo: '95100-M82P11', partName: 'Centre Console Panel', model: 'Fronx', vendorName: 'Denso India', vendorCode: 'V1002', department: 'Interior', pic: 'Anita Desai', type: 'NewPart', release: 'ack' },
   { partNo: '39100-M74F01', partName: 'Door Sill Plate', model: 'Grand Vitara', vendorName: 'Sanden Vikas', vendorCode: 'V1005', department: 'Body', pic: 'Rahul Verma', type: 'NewPart', release: 'ack' }
 ]
+/** Bundled parts of a main part in DEMO_PARTS_BASE: copies of it with their own part numbers. */
+function bundle(main: string, partNos: string[]): DemoPartSeed[] {
+  const m = DEMO_PARTS_BASE.find((p) => p.partNo === main)!
+  return partNos.map((partNo) => ({ ...m, partNo, main }))
+}
+const DEMO_PARTS: DemoPartSeed[] = [
+  ...DEMO_PARTS_BASE,
+  // Bundling: colour / variant part numbers bundled with a main part. Same part name, vendor, PIC and model as the main
+  // part; the main part's data applies to them, so each activity is worked once (one of them has its own data).
+  ...bundle('31100-M74LD0', ['31100-M74LD0-ZCD', '31100-M74LD0-ZJ3']),
+  ...bundle('71811-M82P00', ['71811-M82P00-ZNC', '71811-M82P00-ZQN', '71811-M82P00-ZMV']),
+  ...bundle('84701-M55R10', ['84701-M55R10-A01']),
+]
+/** The bundled part in the sample that has its own data for one activity (the rest follow their main part). */
+const OWN_DATA_PART = '71811-M82P00-ZQN'
 
 /** A plausible value for one field. `n` varies the pick between parts/fields so the lists look mixed. */
 function sampleValue(field: FieldDefinition, n: number, mrd: string, partNo: string): any {
@@ -151,10 +169,24 @@ export function buildDemoData(
     }
     return { ...rec, technicalCategory: deriveTechnicalCategory(rec) }
   })
+  // Bundling: a bundled part carries its main part's attributes, with the main part number and a shared bundle number
+  // (also set on the main part).
+  for (const seed of DEMO_PARTS) {
+    if (!seed.main) continue
+    const main = parts.find((x) => x.partNo === seed.main)
+    const p = parts.find((x) => x.partNo === seed.partNo)
+    if (!main || !p) continue
+    const bundleNo = `BND-${seed.main}`
+    main.attrs = { ...main.attrs, bundling_part_number: bundleNo }
+    p.attrs = { ...main.attrs, main_part_number: seed.main, bundling_part_number: bundleNo }
+    p.receivedAt = main.receivedAt
+  }
   const partReleases: PartRelease[] = []
   const partAcks: PartAck[] = []
-  DEMO_PARTS.forEach((p, idx) => {
+  DEMO_PARTS.forEach((p, i) => {
     if (p.release === 'none') return
+    // A bundled part is released and acknowledged with its main part.
+    const idx = p.main ? DEMO_PARTS.findIndex((x) => x.partNo === p.main) : i
     // Acknowledged on different days, so some vendors are inside their 15-day planning time and some past it.
     const ackOn = addDays('2026-10-05', -((idx * 5) % 18))
     partReleases.push({ id: `rel-${p.partNo}`, partNo: p.partNo, released: true, by: p.pic, byRole: 'PIC', at: `${addDays(ackOn, -1)}T10:00:00Z` })
@@ -166,6 +198,8 @@ export function buildDemoData(
   const entries: ActivityEntry[] = []
   const actById = new Map(activities.map((a) => [a.id, a]))
   parts.forEach((part, pi) => {
+    // Bundled parts have no entries of their own: they show their main part's.
+    if (DEMO_PARTS[pi].main) return
     const model = models.find((m) => m.name === part.model)
     templateRows
       .filter((r) => r.section === part.section)
@@ -333,6 +367,20 @@ export function buildDemoData(
   planPart('35520-M68P00', 'partial')
   ;['31100-M74LD0', '71811-M82P00', '84701-M55R10', '31100-M74LD2', '71811-M82P02', '35520-M68P01', '84701-M55R11', '95100-M82P11', '39100-M74F01']
     .forEach((no, n) => planPart(no, 'review', n))
+  // One bundled part with its own data for an activity: a copy of its main part's entry (after the main part's vendor
+  // plan is seeded, so the copy carries it), then changed for this part.
+  {
+    const seed = DEMO_PARTS.find((x) => x.partNo === OWN_DATA_PART)
+    const src = seed?.main ? entries.find((e) => e.partNo === seed.main && e.validationState === 'Draft' && Object.keys(e.values).length > 0) ?? entries.find((e) => e.partNo === seed.main) : undefined
+    if (seed && src) {
+      const textKey = Object.keys(src.values).find((k) => typeof src.values[k] === 'string')
+      entries.push({
+        ...src, id: makeEntryId(src.templateRowId, OWN_DATA_PART), partNo: OWN_DATA_PART, bundleOwn: true,
+        values: textKey ? { ...src.values, [textKey]: `${src.values[textKey]} (${OWN_DATA_PART.slice(-3)} colour)` } : { ...src.values },
+        history: [...src.history, { timestamp: '2026-10-09T10:00:00Z', persona: 'PIC', actorName: seed.pic, action: `Own data for this bundled part (copied from main part ${seed.main})` }],
+      })
+    }
+  }
   delayReasons.push(...seedVendorDelays(entries, parts, activities, templateRows, models, partReleases, partAcks, delayReasons))
   return { parts, entries, partReleases, partAcks, delayReasons, models }
 }
@@ -363,7 +411,7 @@ function seedVendorDelays(
   ).filter((i) => {
     const a = i.activity
     return (
-      acked.has(i.part.partNo) && released.has(i.part.partNo) && !i.notApplicable &&
+      acked.has(i.part.partNo) && released.has(i.part.partNo) && !i.notApplicable && !followsMainPart(i) &&
       i.dates.status === 'resolved' && i.dates.end < SAMPLE_TODAY &&
       a.flow.steps[0]?.role === 'Vendor' && a.fields.some((f) => f.enteredBy === 'Vendor' && f.source !== 'calculated') &&
       !taken.has(makeEntryId(i.row.id, i.part.partNo))

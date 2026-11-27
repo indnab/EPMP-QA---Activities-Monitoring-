@@ -32,6 +32,7 @@ import type {
 import type { PersonaId } from './personaStore'
 import { makeEntryId, makeTemplateRowId, DELAY_REASON_OTHERS } from '../domain'
 import { syncArchetype } from '../domain/governance'
+import { mainPartOf } from '../domain/bundling'
 import { putBlob, deleteBlob, clearBlobs } from './docBlobs'
 import { DEMO_TODAY, canMarkNotApplicable, canReverseNotApplicable } from '../features/scope'
 import {
@@ -290,6 +291,8 @@ export interface QAStoreState {
   // Entry Actions
   addEntry: (entry: ActivityEntry) => void
   updateEntry: (id: string, entry: Partial<ActivityEntry>) => void
+  /** Bundling: give a bundled part its own data for one activity (a copy of its main part's), or make it follow the main part again. */
+  setBundleOwn: (templateRowId: string, partNo: string, own: boolean, by: PersonaId) => void
   updateEntryValues: (
     templateRowId: string,
     partNo: string,
@@ -417,6 +420,25 @@ export interface QAStoreState {
   loadSampleParts: () => void
   /** TEMPORARY: remove all parts and their activity data (leaves the activity list). */
   unloadParts: () => void
+}
+
+/**
+ * The entry a bundled part edits on its own. If it still follows its main part, its own entry starts as a copy of the
+ * main part's (values, state, history) and is marked bundleOwn. Main parts and non-bundled parts: their entry as is.
+ */
+function ownBundleEntry(entries: ActivityEntry[], templateRowId: string, part: PartRecord, by?: string): ActivityEntry | undefined {
+  const id = makeEntryId(templateRowId, part.partNo)
+  const own = entries.find((e) => e.id === id)
+  const main = mainPartOf(part)
+  if (!main || own?.bundleOwn) return own
+  const src = entries.find((e) => e.id === makeEntryId(templateRowId, main))
+  if (!src) return undefined
+  const now = new Date().toISOString()
+  return {
+    ...src, id, partNo: part.partNo, bundleOwn: true,
+    history: [...src.history, { timestamp: now, persona: (by || 'System') as PersonaId, action: `Own data for this bundled part (copied from main part ${main})` }],
+    updatedAt: now,
+  }
 }
 
 export const useQAStore = create<QAStoreState>()(
@@ -1161,13 +1183,40 @@ export const useQAStore = create<QAStoreState>()(
           )
         })),
 
+      setBundleOwn: (templateRowId, partNo, own, by) =>
+        set((state) => {
+          const part = state.parts.find((p) => p.partNo === partNo)
+          const main = mainPartOf(part)
+          if (!part || !main) return {}
+          const id = makeEntryId(templateRowId, partNo)
+          if (own) {
+            const e = ownBundleEntry(state.entries, templateRowId, part, by)
+            if (!e) {
+              // The main part has nothing yet: start an empty draft of this part's own.
+              const row = state.templateRows.find((r) => r.id === templateRowId)
+              if (!row) return {}
+              const now = new Date().toISOString()
+              const fresh: ActivityEntry = { id, templateRowId, activityId: row.activityId, partNo, values: {}, validationState: 'Draft', currentStepIndex: 0, bundleOwn: true,
+                history: [{ timestamp: now, persona: by, action: `Own data for this bundled part (main part ${main})` }], updatedAt: now, updatedBy: by }
+              return { entries: [...state.entries.filter((x) => x.id !== id), fresh] }
+            }
+            return { entries: state.entries.some((x) => x.id === id) ? state.entries.map((x) => (x.id === id ? e : x)) : [...state.entries, e] }
+          }
+          const now = new Date().toISOString()
+          return {
+            entries: state.entries.map((x) => (x.id === id
+              ? { ...x, bundleOwn: false, history: [...x.history, { timestamp: now, persona: by, action: `Follows main part ${main} again` }], updatedAt: now, updatedBy: by }
+              : x)),
+          }
+        }),
       updateEntryValues: (templateRowId, partNo, newValues, currentPersona) =>
         set((state) => {
           const entryId = makeEntryId(templateRowId, partNo)
-          const existingEntry = state.entries.find((e) => e.id === entryId)
           const row = state.templateRows.find((r) => r.id === templateRowId)
           const activity = row ? state.activities.find((a) => a.id === row.activityId) : undefined
           const part = state.parts.find((p) => p.partNo === partNo)
+          // A bundled part that followed its main part gets its own data from here on, starting from the main part's.
+          const existingEntry = part ? ownBundleEntry(state.entries, templateRowId, part, currentPersona) : state.entries.find((e) => e.id === entryId)
 
           if (!row || !activity || !part) return {}
           if (part.supersededBy) return {} // Superseded part is read-only; work on the new part
@@ -1205,6 +1254,7 @@ export const useQAStore = create<QAStoreState>()(
               templateRowId,
               activityId,
               partNo,
+              ...(mainPartOf(part) ? { bundleOwn: true } : {}),
               values: calculatedValues,
               validationState: 'Draft',
               currentStepIndex: 0,

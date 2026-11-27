@@ -1,3 +1,4 @@
+import { followsMainPart } from '../../engine'
 import { useMemo } from 'react'
 import type { ActivityDefinition, ActivityEntry, DelayReason } from '../../domain'
 import { makeEntryId } from '../../domain'
@@ -102,7 +103,7 @@ export function useDelayRows() {
     const instances = getFilteredData(
       entries, activities, parts, templateRows, models,
       { milestone: 'All', section: 'All', model: 'All', vendor: 'All', type: 'All' }, 'overview', DEMO_TODAY
-    ).filter((i) => partInScope(i.part, currentPersona) && isWorkableByVendor(i.part.partNo, partReleases, partAcks) && match(i.part, i.row.id))
+    ).filter((i) => partInScope(i.part, currentPersona) && isWorkableByVendor(i.part.partNo, partReleases, partAcks) && match(i.part, i.row.id) && !followsMainPart(i))
     const out = new Map<string, DelayRow>()
     for (const inst of instances) {
       const key = makeEntryId(inst.row.id, inst.part.partNo)

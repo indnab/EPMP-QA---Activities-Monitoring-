@@ -1,3 +1,4 @@
+import { useMainPartCls } from '../bundleHooks'
 import { RELEASE_LABEL } from '../mywork/ReleasePanel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -62,6 +63,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
   const [fMarket, setFMarket] = useState<string[]>(ALL_MARKETS)
   const [fExtra, setFExtra] = useState<ExtraSel>(EMPTY_EXTRA)
   const inView = usePicViewMatch()
+  const mainCls = useMainPartCls()
   // The table runs down to the bottom of the page: its height is what is left below its top edge (re-measured when the
   // window or the filter bar above changes size).
   const rootRef = useRef<HTMLDivElement>(null)
@@ -392,7 +394,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
                     {DISPLAY_FIELDS.map((f) => {
                       const v = values[f.key]
                       return (
-                        <td key={f.key} className={`whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 ${f.key === 'part_number' ? 'font-medium text-[var(--color-text)]' : 'text-[#344054]'}`}>
+                        <td key={f.key} className={`whitespace-nowrap border-b border-[var(--color-border)] px-3 py-2 ${f.key === 'part_number' ? `font-medium text-[var(--color-text)] ${mainCls(part.partNo)}` : f.key === 'main_part_number' ? `text-[#344054] ${mainCls(values[f.key])}` : 'text-[#344054]'}`}>
                           {v ? (f.type === 'date' ? fmtDate(v) : v) : <span className="text-[var(--color-muted)]">—</span>}
                         </td>
                       )

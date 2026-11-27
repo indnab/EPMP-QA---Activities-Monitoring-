@@ -5,6 +5,7 @@
  * "Group by" picks another breakdown at any level. In the activity list a row opens the activity form.
  * The panels (and where each is drilled to) are remembered in this browser. The page filters apply.
  */
+import { useMainPartCls } from '../bundleHooks'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { create } from 'zustand'
@@ -344,6 +345,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   trials?: string[]
 }) {
   const { partReleases, partAcks } = useQAStore()
+  const mainCls = useMainPartCls()
   const onDrill = (dim: Dim, value: string) => onPick([{ dim, value }])
   const [all, setAll] = useState(false)
   const [open, setOpen] = useState(true)
@@ -419,7 +421,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         head: ['Part', 'Model', 'Vendor', 'Activities', 'Completed', 'Overdue', 'NG'],
         rows: group((i) => i.part.partNo).map(([no, xs]) => { const s = stats(xs); const p = xs[0].part; return {
           xs, key: no, title: `Drill into ${no}`, onClick: () => onDrill('part', no),
-          cells: [<span key="p"><span className="font-mono text-[#101828]">{no}</span> <span className="text-[var(--color-muted)]">{p.partName}</span></span>,
+          cells: [<span key="p"><span className={`font-mono text-[#101828] ${mainCls(no)}`}>{no}</span> <span className="text-[var(--color-muted)]">{p.partName}</span></span>,
             link(p.model, `${p.model}: its parts`, () => onPick([{ dim: 'model', value: p.model }], 'parts')),
             link(`${p.vendorCode}: ${p.vendorName}`, `${p.vendorName}: its parts`, () => onPick([{ dim: 'vendor', value: p.vendorCode || p.vendorName }], 'parts')),
             ...numbers('part', no, no, s, [])],
@@ -439,7 +441,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
           vals: [`${i.part.partNo} ${i.part.model}`, i.activity.name, trialLabelOf(i.row.milestoneId), i.dates.status === 'resolved' ? i.dates.end : '', taskOf(i, { releases: partReleases, acks: partAcks }) ?? '', b ? (b === 'Delayed' ? 'Overdue' : b) : ''],
           ftext: [`${i.part.partNo} ${i.part.model} ${i.part.partName}`, i.activity.name, trialLabelOf(i.row.milestoneId), i.dates.status === 'resolved' ? `${fmtDate(i.dates.end)} ${i.dates.end}` : '', taskOf(i, { releases: partReleases, acks: partAcks }) ?? '', b ? (b === 'Delayed' ? 'Overdue' : b) : ''],
           cells: [
-            <span key="p"><span className="font-mono text-[#101828]">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.model}</span></span>,
+            <span key="p"><span className={`font-mono text-[#101828] ${mainCls(i.part.partNo)}`}>{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.model}</span></span>,
             i.activity.name, trialLabelOf(i.row.milestoneId),
             <span key="e" className="whitespace-nowrap">{i.dates.status === 'resolved' ? fmtDate(i.dates.end) : '—'}{b === 'Delayed' && d > 0 ? <span className="ml-1 font-semibold text-amber-600">+{d} d</span> : null}</span>,
             taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—',

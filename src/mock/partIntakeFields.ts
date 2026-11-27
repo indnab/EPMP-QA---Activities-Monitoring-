@@ -78,9 +78,9 @@ export function sampleIntakeAttrs(partNo: string, i: number): Record<string, str
   const h = Array.from(partNo).reduce((n, c) => n + c.charCodeAt(0), 0) + i
   const pick = (a: string[]) => a[h % a.length]
   return {
-    // Parts ending in a digit 1-9 are bundled with the main part ending in 0; main parts and their first bundled parts share a bundle number.
-    main_part_number: /[1-9]$/.test(partNo) ? `${partNo.slice(0, -1)}0` : partNo,
-    bundling_part_number: /[0-2]$/.test(partNo) ? `BND-${partNo.slice(0, 5)}-${partNo.slice(-5, -1)}` : '',
+    // A part is its own main part unless the feed bundles it with another (set per part by the sample data).
+    main_part_number: partNo,
+    bundling_part_number: '',
     part_category: pick(['A', 'AR', 'A/AR', 'G', 'F']),
     model_variant: pick(['Domestic', 'Export', 'Domestic + Export']),
     fuel_type: pick(['Petrol', 'CNG', 'Petrol+CNG']),

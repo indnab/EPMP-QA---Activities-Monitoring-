@@ -5,9 +5,12 @@
  * to every selected part of that activity (bulk update), after showing what each part already holds and asking
  * before overwriting. Save as draft, Submit, or (for the validator) Approve, following the activity's flow.
  */
+import { bundledPartsOf } from '../../domain/bundling'
+import { useMainPartCls } from '../bundleHooks'
+import { followsMainPart } from '../../engine'
 import { TrialName } from '../trialLabel'
 import { toast } from '../../components/Toast'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, PageHeader, getFieldRenderer, SourceBadge, Tabs } from '../../components'
 import type { SourceType, TabItem } from '../../components'
@@ -53,7 +56,7 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
   /** Trials (milestone ids) to list, in order, even when they have no activities. Default: every trial. */
   trials?: string[]
 }) {
-  const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState, entries, documents } = useQAStore()
+  const { milestones, partReleases, partAcks, updateEntryValues, transitionEntryState, entries, documents, parts: allParts } = useQAStore()
   const { currentPersona: role } = usePersonaStore()
   const [activeKey, setActiveKey] = useState<string | null>(null) // `${activityId}|${milestoneId}`
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
@@ -64,6 +67,12 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
   // Drawer tab (Form = the bulk update; the others are the part form's tabs) and, for those, which part they show.
   const [tab, setTab] = useState('form')
   const [tabPart, setTabPart] = useState<string | null>(null)
+  // Bundling: the "+" on a main part lists its bundled part numbers; one can be opened to view or change its own data.
+  const [bundleOpen, setBundleOpen] = useState<Set<string>>(new Set())
+  const [bundleForm, setBundleForm] = useState<{ partNo: string; inst: FilteredInstance } | null>(null)
+  const bundledOf = (i: FilteredInstance) => bundledPartsOf(i.part.partNo, allParts).filter((b) => b.section === i.row.section)
+  const ownOf = (i: FilteredInstance, no: string) => !!entries.find((e) => e.id === makeEntryId(i.row.id, no))?.bundleOwn
+  const mainCls = useMainPartCls()
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
   const groups = useMemo(() => {
     const byMs = new Map<string, Map<string, FilteredInstance[]>>()
@@ -333,14 +342,41 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
                     <tr><th className="px-2.5 py-1.5">Part</th><th className="px-2.5 py-1.5">Model</th><th className="px-2.5 py-1.5">Status</th><th className="px-2.5 py-1.5">Task</th></tr>
                   </thead>
                   <tbody>
-                    {items.map((i) => (
-                      <tr key={key(i)} className="border-t border-[var(--color-border)]">
-                        <td className="px-2.5 py-1.5"><span className="font-mono">{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
+                    {items.map((i) => {
+                      const bundled = bundledOf(i)
+                      const isOpen = bundleOpen.has(key(i))
+                      return (
+                      <Fragment key={key(i)}>
+                      <tr className="border-t border-[var(--color-border)]">
+                        <td className="px-2.5 py-1.5">
+                          {bundled.length > 0 && (
+                            <button type="button" onClick={() => setBundleOpen((s) => { const n = new Set(s); if (n.has(key(i))) n.delete(key(i)); else n.add(key(i)); return n })}
+                              aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} the bundled part numbers of ${i.part.partNo}`} title={`${bundled.length} bundled part number${bundled.length === 1 ? '' : 's'}: data filled here applies to them too`} data-bundle-toggle
+                              className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-primary)] align-[-2px] text-[11px] font-bold leading-none text-white">{isOpen ? '−' : '+'}</button>
+                          )}
+                          <span className={`font-mono ${mainCls(i.part.partNo)}`}>{i.part.partNo}</span> <span className="text-[var(--color-muted)]">{i.part.partName}</span></td>
                         <td className="px-2.5 py-1.5">{i.part.model}</td>
                         <td className="px-2.5 py-1.5">{i.status === 'NotStarted' ? 'Not started' : i.status}</td>
                         <td className="px-2.5 py-1.5">{taskOf(i, { releases: partReleases, acks: partAcks }) ?? '—'}</td>
                       </tr>
-                    ))}
+                      {isOpen && bundled.map((b) => {
+                        const own = ownOf(i, b.partNo)
+                        return (
+                          <tr key={b.partNo} className="bg-[#f8faff]" data-bundle-row>
+                            <td className="py-1 pl-8 pr-2.5"><span className="font-mono">{b.partNo}</span> <span className="text-[var(--color-muted)]">{b.partName}</span></td>
+                            <td className="px-2.5 py-1">{b.model}</td>
+                            <td className="px-2.5 py-1"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${own ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>{own ? 'Own data' : 'Same as main'}</span></td>
+                            <td className="px-2.5 py-1">
+                              <button type="button" onClick={() => setBundleForm({ partNo: b.partNo, inst: i })} className="rounded-md border border-[var(--color-border)] bg-white px-2 py-0.5 text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+                                {own ? 'Open' : 'View / change'}
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      </Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -365,6 +401,7 @@ export function ActivityUpdatePanel({ instances, partCount, trials, fill }: {
               </>)}
             </div>
 
+            {bundleForm && <PartDetailDrawer activity={bundleForm.inst.activity} row={bundleForm.inst.row} partNo={bundleForm.partNo} onClose={() => setBundleForm(null)} />}
             {/* Footer (the bulk form's buttons) */}
             {tab === 'form' && (
             <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-t border-[var(--color-border)] px-5 py-3 max-sm:px-4">
@@ -412,7 +449,7 @@ export function ActivityUpdatePage() {
     if (selectedParts.length === 0) return []
     const sel = new Set(selectedParts)
     return getFilteredData(entries, activities, scoped.filter((p) => sel.has(p.partNo)), templateRows, models, { ...ALL }, 'overview', DEMO_TODAY)
-      .filter((i) => !i.notApplicable)
+      .filter((i) => !i.notApplicable && !followsMainPart(i)) // bundled parts follow their main part
   }, [entries, activities, scoped, templateRows, models, selectedParts])
   const msOrder = (id: string) => { const k = milestones.findIndex((m) => m.id === id); return k < 0 ? 99 : k }
   const trialOptions = [...new Set(allOfParts.map((i) => i.row.milestoneId))].sort((a, b) => msOrder(a) - msOrder(b))

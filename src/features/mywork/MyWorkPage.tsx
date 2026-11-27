@@ -1,3 +1,4 @@
+import { followsMainPart } from '../../engine'
 import { TrialName, trialLabelOf } from '../trialLabel'
 import { CompactFilterBar } from './FilterBar'
 import type { LabeledOption } from './FilterBar'
@@ -553,7 +554,8 @@ function MyWorkPageInner() {
       )
         .filter((i) => partInScope(i.part, currentPersona) && inView(i.part))
         .filter((i) => currentPersona !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
-        .filter((i) => !i.notApplicable),
+        // Bundled parts that follow their main part are worked there, so they are not separate tasks.
+        .filter((i) => !i.notApplicable && !followsMainPart(i)),
     [entries, activities, parts, templateRows, models, currentPersona, partReleases, partAcks, inView]
   )
   // Quick date filter for the whole page (MRDs in next 30 days / Activities due in next 30 days / All).

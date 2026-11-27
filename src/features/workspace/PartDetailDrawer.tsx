@@ -5,6 +5,7 @@ import { picLabel } from '../../domain/people'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { ActivityDefinition, FieldDefinition, ActivityEntry, TemplateRow, PartRecord } from '../../domain'
 import { makeEntryId } from '../../domain'
+import { MAIN_PART_CLS, bundledPartsOf, mainPartOf } from '../../domain/bundling'
 import { useQAStore } from '../../store/qaStore'
 import { usePersonaStore } from '../../store/personaStore'
 import { fetchFromEnovia, fetchFromSap, fetchFromEdoc, fetchFromRegApp } from '../../mock'
@@ -59,12 +60,25 @@ function isFetchedSource(source: string): boolean {
 }
 
 export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: PartDetailDrawerProps) {
-  const { entries, activities, models, picAssignments, parts, partReleases, partAcks, delayReasons, updateEntryValues, transitionEntryState, markEntryNg, logAudit, documents, setNotApplicable, releasePart, setVendorTimeline, addAction, updateAction, deleteAction, addDeviation, advanceDeviation } = useQAStore()
+  const { entries, activities, models, picAssignments, parts, partReleases, partAcks, delayReasons, updateEntryValues, transitionEntryState, markEntryNg, logAudit, documents, setNotApplicable, releasePart, setVendorTimeline, addAction, updateAction, deleteAction, addDeviation, advanceDeviation, setBundleOwn } = useQAStore()
   const { currentPersona } = usePersonaStore()
 
   const part = parts.find((p) => p.partNo === partNo)
   const entryId = makeEntryId(row.id, partNo)
-  const entry = entries.find((e) => e.id === entryId)
+  // Bundling: a bundled part shows its main part's data (read-only here) until it is given its own.
+  const mainNo = mainPartOf(part)
+  const ownEntry = entries.find((e) => e.id === entryId)
+  const following = !!mainNo && !ownEntry?.bundleOwn
+  const entry = following ? entries.find((e) => e.id === makeEntryId(row.id, mainNo!)) : ownEntry
+  // A main part's bundled parts (the "+" in the header), and the one opened over this form.
+  const bundled = useMemo(() => (part && !mainNo ? bundledPartsOf(part.partNo, parts).filter((b) => b.section === row.section) : []), [part, mainNo, parts, row.section])
+  const [bundleOpen, setBundleOpen] = useState(false)
+  // Switching between "follows main part" and "own data" reloads the form from the entry now in force.
+  const lastSource = useRef(following)
+  const [bundleForm, setBundleForm] = useState<string | null>(null)
+  const ownOf = (no: string) => !!entries.find((e) => e.id === makeEntryId(row.id, no))?.bundleOwn
+  /** Field editable here: never while a bundled part follows its main part. */
+  const canEditHere = (...a: Parameters<typeof canPersonaEdit>) => !following && canPersonaEdit(...a)
 
   // Milestone MRD of this part's model, and the planned dates resolved from the row's offsets
   const model = part ? models.find((m) => m.name === part.model) : undefined
@@ -74,6 +88,12 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
   const dates = resolveTrackedDates(row, model, entry, activity, part)
 
   const [localValues, setLocalValues] = useState<Record<string, any>>(entry?.values ?? {})
+  useEffect(() => {
+    if (lastSource.current === following) return
+    lastSource.current = following
+    setLocalValues(entry?.values ?? {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following])
   const [fetchState, setFetchState] = useState<Record<string, FetchEntry>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [picComment, setPicComment] = useState('')
@@ -234,7 +254,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
       if (!state?.visible) continue
       const isMandatory = state.mandatory
       if (!isMandatory) continue
-      if (!canPersonaEdit(field, currentPersona, entry)) continue
+      if (!canEditHere(field, currentPersona, entry)) continue
       const val = localValues[field.key]
       if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
         errors[field.key] = `${field.label} is required`
@@ -247,7 +267,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
   // Auto-save on close: unsaved changes to the fields this role may edit are kept as a draft (no validation).
   const blankToNull = (v: unknown) => (v === undefined || v === '' || (Array.isArray(v) && v.length === 0) ? null : v)
   const unsavedKeys = activity.fields
-    .filter((f) => !f.dataOnly && f.source !== 'calculated' && canPersonaEdit(f, currentPersona, entry))
+    .filter((f) => !f.dataOnly && f.source !== 'calculated' && canEditHere(f, currentPersona, entry))
     .map((f) => f.key)
     .filter((k) => JSON.stringify(blankToNull(localValues[k])) !== JSON.stringify(blankToNull(entry?.values?.[k])))
   function closeForm() {
@@ -316,13 +336,14 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
   const entryState = entry?.validationState ?? 'Draft'
   const isNa = !!entry?.notApplicable
   // A Not-applicable part is frozen: no entering, submitting or validating until it is reversed
-  const isSubmitted = entryState === 'Submitted' && !isNa
+  // A bundled part following its main part takes no actions here (they happen on the main part).
+  const isSubmitted = entryState === 'Submitted' && !isNa && !following
   const isPic = currentPersona === 'PIC' || currentPersona === 'SIC' || currentPersona === 'DPM'
-  const canSubmit = (entryState === 'Draft' || entryState === 'Sent back') && !isNa
+  const canSubmit = (entryState === 'Draft' || entryState === 'Sent back') && !isNa && !following
   const canVendorEdit = currentPersona === 'Vendor' && canSubmit
   const canPicEnter = isPic && canSubmit
-  const showMarkNa = !isNa && activity.allowNotApplicable === true && canMarkNotApplicable(currentPersona)
-  const showReverseNa = isNa && canReverseNotApplicable(currentPersona)
+  const showMarkNa = !isNa && !following && activity.allowNotApplicable === true && canMarkNotApplicable(currentPersona)
+  const showReverseNa = isNa && !following && canReverseNotApplicable(currentPersona)
 
   function handleNaConfirm(reason: string) {
     setNotApplicable(row.id, [partNo], naDialog === 'mark', currentPersona, reason)
@@ -377,7 +398,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
         model: part.model,
         editable: (id) => {
           const f = activity.fields.find((x) => x.key === id)
-          return !!f && canPersonaEdit(f, currentPersona, entry) && conditionalState[id]?.visible !== false
+          return !!f && canEditHere(f, currentPersona, entry) && conditionalState[id]?.visible !== false
         },
         value: (id) => localValues[id]
       }
@@ -551,6 +572,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
               currentPersona={isNa ? '' : currentPersona}
               onFieldChange={handleFieldChange}
               onFetchField={handleFetchField}
+              following={following}
             />
           )}
           {activeTab === 'history' && (
@@ -859,7 +881,7 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
                 <span className="flex-none rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary"><TrialName id={row.milestoneId} /></span>
               </h2>
               <p className="mt-0.5 truncate text-[12px] text-[#344054]" title={`${part.partName} · ${part.partNo}`}>
-                {part.partName} <span className="font-mono text-xs text-[var(--color-muted)]">· {part.partNo}</span>
+                {part.partName} <span className={`font-mono text-xs text-[var(--color-muted)] ${bundled.length ? MAIN_PART_CLS : ''}`}>· {part.partNo}</span>
               </p>
             </div>
             <button
@@ -896,6 +918,47 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
               </strong>
             </span>
           </div>
+          {/* Bundling: a bundled part follows its main part (or has its own data); a main part lists its bundled parts. */}
+          {mainNo && (
+            <div className={`mt-2 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[11px] ${following ? 'border-[#bfdbfe] bg-secondary text-primary' : 'border-amber-200 bg-amber-50 text-amber-900'}`} data-bundle-note>
+              <span className="min-w-0 flex-1">
+                Bundled with main part <strong className="font-mono">{mainNo}</strong>.{' '}
+                {following ? 'It shows the main part\'s data, which applies to it automatically.' : 'It has its own data for this activity.'}
+              </span>
+              {following ? (
+                <Button variant="secondary" size="sm" onClick={() => { setBundleOwn(row.id, partNo, true, currentPersona); toast(`${partNo} now has its own data for ${activity.name}, starting from ${mainNo}'s.`) }}>Edit for this part</Button>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => { setBundleOwn(row.id, partNo, false, currentPersona); toast(`${partNo} follows main part ${mainNo} again.`) }}>Use main part's data</Button>
+              )}
+            </div>
+          )}
+          {bundled.length > 0 && (
+            <div className="mt-2 rounded-lg border border-[var(--color-border)] text-[11px]" data-bundle-list>
+              <button type="button" onClick={() => setBundleOpen((v) => !v)} aria-expanded={bundleOpen}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left font-semibold text-[#344054] hover:bg-[var(--color-surface)]">
+                <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[var(--color-primary)] text-[13px] font-bold leading-none text-white" aria-hidden="true">{bundleOpen ? '−' : '+'}</span>
+                Bundled part numbers ({bundled.length})
+                <span className="font-normal text-[var(--color-muted)]">· data filled here applies to them too</span>
+              </button>
+              {bundleOpen && (
+                <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
+                  {bundled.map((b) => {
+                    const own = ownOf(b.partNo)
+                    return (
+                      <li key={b.partNo} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                        <span className="font-mono font-semibold text-[#101828]">{b.partNo}</span>
+                        <span className="min-w-0 flex-1 truncate text-[var(--color-muted)]">{b.partName}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${own ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>{own ? 'Own data' : 'Same as main'}</span>
+                        <button type="button" onClick={() => setBundleForm(b.partNo)} className="rounded-md border border-[var(--color-border)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)]">
+                          {own ? 'Open' : 'View / change'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -1052,6 +1115,11 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
 
         {/* Footer */}
         <div className="border-t border-[var(--color-border)] px-5 py-3 flex-shrink-0 max-lg:sticky max-lg:bottom-0 max-lg:mt-auto max-lg:bg-white max-sm:px-4">
+          {following && (
+            <p className="mb-2 text-xs text-[var(--color-muted)]" data-bundle-footer>
+              Follows main part <strong className="font-mono text-[var(--color-text)]">{mainNo}</strong>: work this activity there, or use <strong>Edit for this part</strong> above to give this part its own data.
+            </p>
+          )}
           {/* PIC validation actions */}
           {isPic && isSubmitted && (
             <div className="mb-3">
@@ -1118,6 +1186,8 @@ export function PartDetailDrawer({ activity, row, partNo, onClose, embedTab }: P
         </div>
       </div>
 
+      {/* A bundled part's form, opened from the main part's "Bundled part numbers" list (closing returns here). */}
+      {bundleForm && <PartDetailDrawer activity={activity} row={row} partNo={bundleForm} onClose={() => setBundleForm(null)} />}
       <ApplicabilityDialog
         open={naDialog !== null}
         markNotApplicable={naDialog === 'mark'}
@@ -1219,9 +1289,12 @@ interface FormTabProps {
   currentPersona: string
   onFieldChange: (key: string, value: any) => void
   onFetchField: (field: FieldDefinition) => void
+  /** Bundled part following its main part: every field is read-only. */
+  following?: boolean
 }
 
 function FormTab({
+  following = false,
   part,
   milestoneLabel,
   milestoneMrd,
@@ -1235,6 +1308,7 @@ function FormTab({
   onFieldChange,
   onFetchField,
 }: FormTabProps) {
+  const canEditHere = (...a: Parameters<typeof canPersonaEdit>) => !following && canPersonaEdit(...a)
   const sentBackFields = useMemo(() => {
     if (!entry?.fieldMeta) return {} as Record<string, string>
     const out: Record<string, string> = {}
@@ -1259,7 +1333,7 @@ function FormTab({
       {visibleFields.map((field) => {
         const fieldState = conditionalState[field.key]
         const isMandatory = fieldState?.mandatory ?? field.mandatory
-        const isEditable = canPersonaEdit(field, currentPersona, entry)
+        const isEditable = canEditHere(field, currentPersona, entry)
         const renderer = getFieldRenderer(field.type)
         const value = localValues[field.key]
         const fs = fetchState[field.key]
@@ -1287,7 +1361,7 @@ function FormTab({
                     field: { ...field, mandatory: isMandatory },
                     value,
                     onChange: (v) => onFieldChange(field.key, v),
-                    disabled: !tableOwnsAColumn,
+                    disabled: following || !tableOwnsAColumn,
                     currentPersona
                   })
                 : isEditable

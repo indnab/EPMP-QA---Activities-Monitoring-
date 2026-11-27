@@ -6,6 +6,7 @@
  * Past a deadline the part counts as overdue (tiles, bell alerts). Planned-date rejections (sent back by the PIC) are
  * collected per part for tracking.
  */
+import { followsMainPart } from '../../engine'
 import { useMemo } from 'react'
 import { plannedDateOwner } from '../../domain'
 import type { PartRecord, ReleaseState } from '../../domain'
@@ -71,7 +72,7 @@ export function usePlanningSla(): PartSla[] {
     const today = DEMO_TODAY
     const live = parts.filter((p) => !p.supersededBy)
     const inst = getFilteredData(entries, activities, live, templateRows, models, { ...EMPTY_FILTERS }, 'overview', today)
-      .filter((i) => !i.notApplicable && plannedDateOwner(i.activity) === 'Vendor')
+      .filter((i) => !i.notApplicable && !followsMainPart(i) && plannedDateOwner(i.activity) === 'Vendor')
     const byPart = new Map<string, typeof inst>()
     for (const i of inst) byPart.set(i.part.partNo, [...(byPart.get(i.part.partNo) ?? []), i])
     const latest = <T extends { partNo: string; at: string }>(xs: T[], no: string) =>

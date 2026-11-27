@@ -779,6 +779,11 @@ export interface ActivityEntry {
    * window (MRD-based). Tracking still follows the planned window; the plan shows the vendor's commitment.
    */
   vendorPlan?: VendorPlan
+  /**
+   * Bundled part only (see domain/bundling): true = this part has its own data for the activity. Otherwise it follows
+   * its main part's entry and this entry (if any) is ignored.
+   */
+  bundleOwn?: boolean
   /** Actions / recommendations raised on this activity for the part (often assigned to the vendor). */
   actions?: Action[]
   /** Deviations raised on this activity for the part, each moving through the activity's deviation flow. */

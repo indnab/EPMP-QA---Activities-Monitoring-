@@ -1,3 +1,4 @@
+import { followsMainPart } from '../../engine'
 import { useMemo } from 'react'
 import { usePicViewMatch } from './picView'
 import { makeEntryId } from '../../domain'
@@ -86,7 +87,7 @@ export function useApprovalRows(): ApprovalRow[] {
     const insts = getFilteredData(
       entries, activities, parts, templateRows, models,
       { milestone: 'All', section: 'All', model: 'All', vendor: 'All', type: 'All' }, 'overview', DEMO_TODAY
-    ).filter((i) => partInScope(i.part, currentPersona))
+    ).filter((i) => partInScope(i.part, currentPersona) && !followsMainPart(i)) // bundled parts are worked on their main part
 
     const STATUS_LABEL: Record<string, string> = { NotStarted: 'Not started', Draft: 'Draft', 'Sent back': 'Sent back' }
 

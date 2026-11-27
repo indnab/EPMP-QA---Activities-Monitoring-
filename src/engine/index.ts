@@ -1,3 +1,4 @@
+import { mainPartOf } from '../domain/bundling'
 import type { PersonaId } from '../store/personaStore'
 import { picLabel, SIC_BY_SECTION, vendorLabel } from '../domain/people'
 import { makeEntryId } from '../domain'
@@ -1012,7 +1013,14 @@ export interface FilteredInstance {
   status: InstanceStatus
   /** True when the PIC marked this activity Not applicable for the part. */
   notApplicable: boolean
+  /**
+   * Bundled part following its main part: the main part's number. The instance then shows the main part's entry, and
+   * work lists leave it out (the activity is worked on the main part).
+   */
+  bundledTo?: string
 }
+/** A bundled part's activity that follows its main part (worked there, so not a separate task). */
+export const followsMainPart = (i: { bundledTo?: string }) => !!i.bundledTo
 
 /** True when the entry carries a Not-applicable marker. */
 export function isNotApplicable(entry: ActivityEntry | undefined): boolean {
@@ -1084,7 +1092,11 @@ export function getFilteredData(
         if (!getMilestoneMrd(model, subTypeMrdKey(row.milestoneId, row.subType))) continue
       }
       const entryId = makeEntryId(row.id, p.partNo)
-      const entry = entries.find((e) => e.id === entryId)
+      // A bundled part shows its main part's entry unless it has its own data for this activity.
+      const mainNo = mainPartOf(p)
+      const own = entries.find((e) => e.id === entryId)
+      const following = !!mainNo && !own?.bundleOwn
+      const entry = following ? entries.find((e) => e.id === makeEntryId(row.id, mainNo!)) : own
       // Tracked dates follow a vendor-set timeline when present, else the activity's sub-type timeline template, else the row offsets.
       const dates = resolveTrackedDates(row, model, entry, act, p)
 
@@ -1107,7 +1119,8 @@ export function getFilteredData(
         // Not applicable takes precedence over Awaiting MRD and over the date-based RYG
         ryg: notApplicable ? 'NA' : calculateRYG(dates, entry && !entry.feedOnly ? entry.validationState : 'Draft', currentDate),
         status: entry && !entry.feedOnly ? entry.validationState : 'NotStarted',
-        notApplicable
+        notApplicable,
+        bundledTo: following ? mainNo : undefined,
       }
       if (!matchesInstanceFilters(inst, filters)) continue
       result.push(inst)

@@ -1,3 +1,4 @@
+import { followsMainPart } from '../../engine'
 import { TrialName, trialLabelOf } from '../trialLabel'
 import { Icon as FbIcon } from '../../components/Icon'
 import { usePicViewMatch, PicViewSelect, PicViewProvider } from './picView'
@@ -104,7 +105,7 @@ function MyWorkGridPageInner() {
       activityId,
       DEMO_TODAY
     )
-      .filter((i) => partInScope(i.part, role) && inView(i.part))
+      .filter((i) => partInScope(i.part, role) && inView(i.part) && !followsMainPart(i)) // bundled parts: on the main part
       // Release gate: the vendor works only on parts it has acknowledged after the PIC released them.
       .filter((i) => role !== 'Vendor' || isWorkableByVendor(i.part.partNo, partReleases, partAcks))
       .filter((i) => (validating ? isWaitingForRole(i, role) : true))

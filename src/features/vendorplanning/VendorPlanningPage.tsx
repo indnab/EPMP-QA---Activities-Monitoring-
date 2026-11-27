@@ -10,6 +10,8 @@
  * planned start → end as a bar on it; clicking a row places the bar's start there. The vendor sees only its own activities on
  * parts released to it and acknowledged.
  */
+import { useMainPartCls } from '../bundleHooks'
+import { followsMainPart } from '../../engine'
 import { Fragment, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal, PageHeader } from '../../components'
@@ -35,6 +37,7 @@ const days = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) 
 export function VendorPlanningPage() {
   const { entries, activities, templateRows, models, milestones, partReleases, partAcks, submitVendorPlan, decideVendorPlans } = useQAStore()
   const workParts = useWorkParts()
+  const mainCls = useMainPartCls()
   const { currentPersona: role } = usePersonaStore()
   const isVendor = role === 'Vendor'
   const canDecide = role === 'PIC' || role === 'SIC' || role === 'Admin'
@@ -64,7 +67,7 @@ export function VendorPlanningPage() {
     if (!chosen.length) return []
     const sel = new Set(chosen)
     return getFilteredData(entries, activities, scoped.filter((p) => sel.has(p.partNo)), templateRows, models, { ...EMPTY_FILTERS }, 'overview', DEMO_TODAY)
-      .filter((i) => !i.notApplicable)
+      .filter((i) => !i.notApplicable && !followsMainPart(i)) // planned once, on the main part
       .map((i) => {
         const win = resolveInstanceDates(i.row, i.model, i.activity, i.part)
         const plan = i.entry?.vendorPlan
@@ -271,7 +274,7 @@ export function VendorPlanningPage() {
                       <tr className="border-t-2 border-[var(--color-border)] bg-[#f5f7ff]">
                         <td colSpan={9} className="px-3 py-1.5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[11px] font-semibold text-[#101828]">{r.i.part.partNo}</span>
+                            <span className={`font-mono text-[11px] font-semibold text-[#101828] ${mainCls(r.i.part.partNo)}`}>{r.i.part.partNo}</span>
                             <span className="text-[10.5px] text-[#475467]">{r.i.part.partName} · {r.i.part.model} · {vendorLabel(r.i.part.vendorName, r.i.part.vendorCode)}</span>
                             <PlanDueChip s={slaOf.get(r.i.part.partNo)} />
                             {missingChip(r.i.part.partNo)}
@@ -282,7 +285,7 @@ export function VendorPlanningPage() {
                       </tr>
                     )}
                     <tr className={`border-t border-[var(--color-border)] ${changed ? 'bg-[#fffbeb]' : ''}`}>
-                      <td className="px-3 py-2"><span className="font-mono">{r.i.part.partNo}</span><div className="text-[10px] text-[var(--color-muted)]">{r.i.part.partName} · {r.i.part.model}</div></td>
+                      <td className="px-3 py-2"><span className={`font-mono ${mainCls(r.i.part.partNo)}`}>{r.i.part.partNo}</span><div className="text-[10px] text-[var(--color-muted)]">{r.i.part.partName} · {r.i.part.model}</div></td>
                       <td className="px-3 py-2">{r.i.activity.name}</td>
                       <td className="px-3 py-2"><span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-primary">{trialLabelOf(r.i.row.milestoneId)}</span></td>
                       <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${r.owner === 'Vendor' ? 'bg-orange-50 text-orange-700' : 'bg-violet-50 text-violet-700'}`}>{r.owner}</span></td>
