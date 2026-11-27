@@ -198,7 +198,7 @@ export function MyScreen({ instances, parts, onOpen, filters = [], trials, delay
       {/* Left: the tiles as buttons */}
       <aside className="epmp-card p-2.5 lg:sticky lg:top-2 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto" aria-label="Tiles">
         <div className="mb-2 flex items-center gap-1 rounded-lg bg-[#eef0f4] p-0.5" role="tablist" aria-label="Left panel">
-          {([['tiles', 'Tiles'], ['priorities', 'Priorities']] as const).map(([id, label]) => (
+          {([['tiles', 'Overview'], ['priorities', 'Priorities']] as const).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={leftTab === id} onClick={() => setLeftTab(id)}
               className={`flex-1 rounded-md px-2 py-1 text-[11px] font-semibold ${leftTab === id ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{label}</button>
           ))}
@@ -493,8 +493,10 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
         <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} pl-3`}>
           {kind[0].toUpperCase() + kind.slice(1)} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{listed.length}</span>
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} className={tabCls(tab === 'update')}>
-          Activity Update <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{chosen.length}</span>
+        {/* Activity Update stands out as a button: blue with white text (darker and ringed while open). */}
+        <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} data-update-tab
+          className={`my-1 ml-1 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-white shadow-sm transition-colors ${tab === 'update' ? 'bg-[#1d4ed8] ring-2 ring-[#93c5fd]' : 'bg-[#2563eb] hover:bg-[#1d4ed8]'}`}>
+          Activity Update <span className="rounded-full bg-white/25 px-1.5 text-[10.5px] font-bold tabular-nums text-white">{chosen.length}</span>
         </button>
         <span className="ml-auto hidden text-[9.5px] text-[var(--color-muted)] sm:inline">
           {tab === 'update' ? (tickedRows.length ? `for the ${tickedRows.length} ticked ${plural(tickedRows.length)}` : 'for everything listed (tick rows to choose)') : kind === 'activities' ? 'tick rows to update them, or click a row to open it' : 'tick rows to update them, click a name to drill in, a number to list it'}
@@ -638,29 +640,41 @@ function PriorityLists({ instances, selModels, selParts, selVendors, onModel, on
   const models = useMemo(() => rank((i) => i.part.model, (xs, k) => ({ title: k, sub: `${new Set(xs.map((x) => x.part.partNo)).size} parts`, badge: stageOf.get(k) === 'developed' ? 'Developed' : 'Under dev.' })), [instances, stageOf]) // eslint-disable-line react-hooks/exhaustive-deps
   const partsL = useMemo(() => rank((i) => i.part.partNo, (xs) => ({ title: xs[0].part.partNo, sub: `${xs[0].part.partName} · ${xs[0].part.model}` })), [instances]) // eslint-disable-line react-hooks/exhaustive-deps
   const vendors = useMemo(() => rank((i) => i.part.vendorCode || i.part.vendorName, (xs) => ({ title: xs[0].part.vendorName || xs[0].part.vendorCode, sub: `${xs[0].part.vendorCode} · ${new Set(xs.map((x) => x.part.partNo)).size} parts` })), [instances]) // eslint-disable-line react-hooks/exhaustive-deps
+  // One page size (3 or 6 per page) for the three lists.
+  const [pageSize, setPageSize] = useState<3 | 6>(3)
   return (
     <div className="space-y-3">
-      <PrioritySection title="Priority Models" hint="Delayed or NG activities first" items={models} sel={selModels} onPick={onModel} />
-      <PrioritySection title="Priority Parts" hint="Delayed or NG activities first" items={partsL} sel={selParts} onPick={onPart} />
-      <PrioritySection title="Priority Vendors" hint="Delayed or NG activities first" items={vendors} sel={selVendors} onPick={onVendor} />
+      <div className="flex items-center gap-1.5 px-1 text-[10px] text-[var(--color-muted)]">
+        <span>Per page</span>
+        <div className="inline-flex rounded-md bg-[#eef0f4] p-0.5" role="group" aria-label="Items per page">
+          {([3, 6] as const).map((n) => (
+            <button key={n} type="button" onClick={() => setPageSize(n)} aria-pressed={pageSize === n}
+              className={`rounded px-2 py-0.5 text-[10.5px] font-semibold ${pageSize === n ? 'bg-white text-[#101828] shadow-sm' : 'text-[#475467]'}`}>{n}</button>
+          ))}
+        </div>
+      </div>
+      <PrioritySection title="Priority Models" items={models} sel={selModels} onPick={onModel} pageSize={pageSize} />
+      <PrioritySection title="Priority Parts" items={partsL} sel={selParts} onPick={onPart} pageSize={pageSize} />
+      <PrioritySection title="Priority Vendors" items={vendors} sel={selVendors} onPick={onVendor} pageSize={pageSize} />
     </div>
   )
 }
-function PrioritySection({ title, hint, items, sel, onPick }: {
-  title: string; hint: string
+function PrioritySection({ title, items, sel, onPick, pageSize }: {
+  title: string
   items: { key: string; title: string; sub: string; done: number; delayed: number; ng: number; badge?: string }[]
-  sel: string[]; onPick: (key: string) => void
+  sel: string[]; onPick: (key: string) => void; pageSize: number
 }) {
-  const [all, setAll] = useState(false)
-  const LIMIT = 5
-  const shown = all ? items : items.slice(0, LIMIT)
+  const [page, setPage] = useState(0)
+  const pages = Math.max(1, Math.ceil(items.length / pageSize))
+  const cur = Math.min(page, pages - 1)
+  const shown = items.slice(cur * pageSize, cur * pageSize + pageSize)
   return (
     <section aria-label={title}>
       <div className="mb-1 flex items-center gap-1.5 px-1">
         <h4 className="text-[10.5px] font-semibold uppercase tracking-wide text-[#344054]">{title}</h4>
         <span className="rounded-full bg-secondary px-1.5 text-[10px] font-semibold tabular-nums text-primary">{items.length}</span>
+        <span className="ml-auto text-[9.5px] text-[var(--color-muted)]">delayed / NG first</span>
       </div>
-      <p className="mb-1 px-1 text-[9.5px] text-[var(--color-muted)]">{hint} · click one to filter</p>
       {items.length === 0 ? <p className="px-1 py-2 text-[10.5px] text-[var(--color-muted)]">Nothing here for the current filters.</p> : (
         <ul className="space-y-1">
           {shown.map((it) => {
@@ -668,18 +682,18 @@ function PrioritySection({ title, hint, items, sel, onPick }: {
             const hot = it.delayed + it.ng > 0
             return (
               <li key={it.key}>
-                <button type="button" onClick={() => onPick(it.key)} aria-pressed={on} data-priority-item={it.key}
-                  className={`w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors ${on ? 'border-[#bfdbfe] bg-secondary' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}
+                <button type="button" onClick={() => onPick(it.key)} aria-pressed={on} data-priority-item={it.key} title={`${it.title} · ${it.sub}`}
+                  className={`w-full rounded-lg border px-2 py-1 text-left transition-colors ${on ? 'border-[#bfdbfe] bg-secondary' : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'}`}
                   style={{ boxShadow: `inset 3px 0 0 ${hot ? '#dc2626' : '#10b981'}` }}>
                   <span className="flex items-center gap-1.5">
-                    <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-[#101828]" title={it.title}>{it.title}</span>
-                    {it.badge && <span className="flex-none rounded-full bg-blue-50 px-1.5 py-px text-[9px] font-semibold text-blue-700">{it.badge}</span>}
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#101828]">{it.title}</span>
+                    {it.badge && <span className="flex-none rounded-full bg-blue-50 px-1.5 py-px text-[8.5px] font-semibold text-blue-700">{it.badge}</span>}
                   </span>
-                  <span className="block truncate text-[10px] text-[var(--color-muted)]" title={it.sub}>{it.sub}</span>
-                  <span className="mt-0.5 flex items-center justify-between text-[10px] text-[var(--color-muted)]">
-                    <span>Done <strong className="text-emerald-600">{it.done}</strong></span>
-                    <span>Delayed <strong className="text-amber-500">{it.delayed}</strong></span>
-                    <span>NG <strong className="text-red-600">{it.ng}</strong></span>
+                  <span className="flex items-center gap-2 text-[9.5px] text-[var(--color-muted)]">
+                    <span className="min-w-0 flex-1 truncate">{it.sub}</span>
+                    <span className="flex-none"><strong className="text-emerald-600">{it.done}</strong> done</span>
+                    <span className="flex-none"><strong className="text-amber-500">{it.delayed}</strong> late</span>
+                    <span className="flex-none"><strong className="text-red-600">{it.ng}</strong> NG</span>
                   </span>
                 </button>
               </li>
@@ -687,8 +701,14 @@ function PrioritySection({ title, hint, items, sel, onPick }: {
           })}
         </ul>
       )}
-      {items.length > LIMIT && (
-        <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 px-1 text-[10.5px] font-semibold text-[var(--color-accent)] hover:underline">{all ? `Show top ${LIMIT}` : `Show all ${items.length}`}</button>
+      {items.length > pageSize && (
+        <div className="mt-1 flex items-center justify-between px-1 text-[10.5px] text-[var(--color-muted)]">
+          <button type="button" onClick={() => setPage(cur - 1)} disabled={cur === 0} aria-label={`Previous ${title} page`}
+            className="rounded px-1.5 py-0.5 font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)] disabled:opacity-30">‹ Prev</button>
+          <span className="tabular-nums" aria-live="polite">{cur * pageSize + 1}–{Math.min(items.length, cur * pageSize + pageSize)} of {items.length}</span>
+          <button type="button" onClick={() => setPage(cur + 1)} disabled={cur >= pages - 1} aria-label={`Next ${title} page`}
+            className="rounded px-1.5 py-0.5 font-semibold text-[var(--color-accent)] hover:bg-[var(--color-surface)] disabled:opacity-30">Next ›</button>
+        </div>
       )}
     </section>
   )
