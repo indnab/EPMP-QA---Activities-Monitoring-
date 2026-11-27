@@ -157,49 +157,57 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         type="button"
         onClick={() => (origin ? toggleOrigin(origin) : setOrigins([]))}
         aria-pressed={active}
-        className={`epmp-card min-w-[150px] flex-1 px-4 py-3 text-left transition-colors ${active ? 'ring-2 ring-[var(--color-accent)]' : 'hover:bg-[var(--color-surface)]'}`}
+        className={`epmp-card min-w-[120px] px-3 py-1.5 text-left transition-colors ${active ? 'ring-2 ring-[var(--color-accent)]' : 'hover:bg-[var(--color-surface)]'}`}
       >
-        <div className="text-[10.5px] font-medium text-[var(--color-muted)]">{label}</div>
-        <div className="mt-0.5 text-2xl font-semibold text-[var(--color-text)]">{value}</div>
+        <div className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">{label}</div>
+        <div className="mt-0.5 text-lg font-semibold leading-tight text-[var(--color-text)]">{value}</div>
       </button>
     )
   }
 
   return (
     <div>
-      {embedded ? (
-        canAdd && (
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-[var(--color-muted)]">Parts received from SAP and ENOVIA, and parts added manually. Each column shows which system supplies it.</p>
-            <Button variant="primary" size="md" onClick={() => setAddOpen(true)}>
-              + Add part manually
-            </Button>
-          </div>
-        )
-      ) : (
-      <PageHeader
-        title="Part Intake"
-        section="Modules"
-        description="Parts received from SAP and ENOVIA, and parts added manually. Each column shows which system supplies it."
-        actions={
-          canAdd ? (
-            <Button variant="primary" size="md" onClick={() => setAddOpen(true)}>
-              + Add part manually
-            </Button>
-          ) : undefined
-        }
-      />
+      {!embedded && (
+        <PageHeader
+          title="Part Intake"
+          section="Modules"
+          description="Parts received from SAP and ENOVIA, and parts added manually. Each column shows which system supplies it."
+        />
       )}
-      <div className="mb-4 flex flex-wrap gap-3" data-tour="intake-summary">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-wrap gap-2" data-tour="intake-summary">
         {tile('all', 'Total parts', scoped.length)}
         {tile('SAP', 'Received from SAP', counts.SAP, 'SAP')}
         {tile('ENOVIA', 'Received from ENOVIA', counts.ENOVIA, 'ENOVIA')}
         {tile('Manual', 'Added manually (dummy)', counts.Manual, 'Manual')}
         <button type="button" onClick={() => setDeletedOnly((v) => !v)} aria-pressed={deletedOnly}
-          className={`epmp-card min-w-[150px] flex-1 px-4 py-3 text-left transition-colors ${deletedOnly ? 'ring-2 ring-red-500' : 'hover:bg-[var(--color-surface)]'}`}>
-          <div className="text-[10.5px] font-medium text-[var(--color-muted)]">Part Deleted (SAP / ENOVIA)</div>
-          <div className="mt-0.5 text-2xl font-semibold text-red-600">{deletedCount}</div>
+          className={`epmp-card min-w-[120px] px-3 py-1.5 text-left transition-colors ${deletedOnly ? 'ring-2 ring-red-500' : 'hover:bg-[var(--color-surface)]'}`}>
+          <div className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">Part Deleted (SAP / ENOVIA)</div>
+          <div className="mt-0.5 text-lg font-semibold leading-tight text-red-600">{deletedCount}</div>
         </button>
+      </div>
+      {/* On the same line as the tiles: the minimized filter icon, Download CSV and Add part manually. */}
+      <div className="ml-auto flex flex-none items-center gap-2">
+        <span id="intake-filter-slot" className="flex items-center" />
+        <Button
+          variant="secondary"
+          size="md"
+          disabled={shown.length === 0}
+          onClick={() =>
+            downloadCsv(
+              'part-intake.csv',
+              buildCsv(['Source', 'Release', ...DISPLAY_FIELDS.map((f) => f.label)], shown.map((r) => [SOURCE_LABEL[r.origin], r.release, ...DISPLAY_FIELDS.map((f) => r.values[f.key])]))
+            )
+          }
+        >
+          Download CSV ({shown.length})
+        </Button>
+        {canAdd && (
+          <Button variant="primary" size="md" onClick={() => setAddOpen(true)}>
+            + Add part manually
+          </Button>
+        )}
+      </div>
       </div>
       <CompactFilterBar partLevelOnly collapseKey="intake-filters" miniSlotId="intake-filter-slot"
         model={fModel} setModel={chooseModels} modelOptions={modelOptions}
@@ -214,23 +222,6 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         extra={fExtra} setExtra={setFExtra} extraOpts={extraOpts}
         allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
         hasFilters={hasFilters} clearFilters={clearFilters} />
-      <div className="mb-3 flex items-center justify-end gap-3">
-        <span className="mr-auto text-[10.5px] text-[var(--color-muted)]">{shown.length} of {scoped.length} part{scoped.length === 1 ? '' : 's'}</span>
-        <span id="intake-filter-slot" className="flex items-center" />
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={shown.length === 0}
-          onClick={() =>
-            downloadCsv(
-              'part-intake.csv',
-              buildCsv(['Source', 'Release', ...DISPLAY_FIELDS.map((f) => f.label)], shown.map((r) => [SOURCE_LABEL[r.origin], r.release, ...DISPLAY_FIELDS.map((f) => r.values[f.key])]))
-            )
-          }
-        >
-          Download CSV ({shown.length})
-        </Button>
-      </div>
       <Card flush>
         {shown.length === 0 ? (
           <p className="py-10 text-center text-sm text-[var(--color-muted)]">
