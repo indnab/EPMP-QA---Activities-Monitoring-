@@ -123,7 +123,7 @@ export function UsageReportPage() {
       {/* Title + period / filters */}
       <section className="mb-3 flex flex-wrap items-center gap-2">
         <div className="mr-auto">
-          <h1 className="flex items-center gap-2 text-[18px] font-bold text-[#101828]">EPMP Quality Portal <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">QUALITY ONLY</span></h1>
+          <h1 className="flex items-center gap-2 text-[18px] font-bold text-[#101828]">EPMP Quality Portal</h1>
           <p className="text-[11.5px] text-[#475467]">User adoption and vendor engagement · {fmtDate(from)} – {fmtDate(to)}</p>
         </div>
         <select value={period} onChange={(e) => setPeriod(e.target.value as PeriodId)} aria-label="Period" className={sel}>
