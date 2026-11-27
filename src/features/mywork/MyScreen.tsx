@@ -16,6 +16,7 @@ import { useQAStore } from '../../store/qaStore'
 import { DEMO_TODAY, fmtDate } from '../scope'
 import { trialLabelOf } from '../trialLabel'
 import { ActivityUpdatePanel } from '../activityupdate/ActivityUpdatePage'
+import { ColumnFilter } from '../ColumnFilter'
 import { mineBucket, useModelStages } from './OverviewTab'
 import { isReturnedToPicBySic, isReturnedToVendor } from './workQueue'
 import { usePersonaStore } from '../../store/personaStore'
@@ -452,11 +453,11 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   // Sort by a column header (click: ascending, again: descending, again: back to the default order) and filter each
   // column with its box. Both are remembered per kind of list.
   const [sortBy, setSortBy] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null)
-  const [colFilter, setColFilter] = useState<Record<string, string>>({})
+  const [colFilter, setColFilter] = useState<Record<string, string[]>>({})
   const cid = (c: number) => `${kind}:${c}`
   const listed = useMemo(() => {
-    const active = head.map((_, c) => [c, (colFilter[cid(c)] ?? '').trim().toLowerCase()] as const).filter(([, q]) => q)
-    let out = active.length ? rows.filter((r) => active.every(([c, q]) => String(r.vals[c] ?? '').toLowerCase() === q)) : rows
+    const active = head.map((_, c) => [c, colFilter[cid(c)] ?? []] as const).filter(([, vs]) => vs.length)
+    let out = active.length ? rows.filter((r) => active.every(([c, vs]) => vs.includes(String(r.vals[c] ?? '')))) : rows
     const c = sortBy && sortBy.col.startsWith(`${kind}:`) ? Number(sortBy.col.split(':')[1]) : -1
     if (c >= 0 && sortBy) {
       const dir = sortBy.dir === 'asc' ? 1 : -1
@@ -469,7 +470,7 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, head, colFilter, sortBy, kind])
   const clickSort = (c: number) => setSortBy((cur) => (!cur || cur.col !== cid(c) ? { col: cid(c), dir: 'asc' } : cur.dir === 'asc' ? { col: cid(c), dir: 'desc' } : null))
-  const hasColFilter = head.some((_, c) => (colFilter[cid(c)] ?? '').trim())
+  const hasColFilter = head.some((_, c) => (colFilter[cid(c)] ?? []).length > 0)
   // The values each column holds, for its drop-down filter (dates show as dd Mon yyyy).
   const optionsOf = (c: number) => [...new Set(rows.map((r) => String(r.vals[c] ?? '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   const optLabel = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? fmtDate(v) : v)
@@ -539,11 +540,8 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
                 <th className="px-2.5 pb-1.5">{hasColFilter && <button type="button" onClick={() => setColFilter({})} title="Clear the column filters" className="text-[10px] font-semibold text-[var(--color-accent)] hover:underline">Clear</button>}</th>
                 {head.map((h, c) => (
                   <th key={h} className="px-2.5 pb-1.5 font-normal">
-                    <select value={colFilter[cid(c)] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [cid(c)]: e.target.value }))} aria-label={`Filter ${h}`}
-                      className="h-6 w-full min-w-[64px] max-w-[200px] rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal">
-                      <option value="">All</option>
-                      {optionsOf(c).map((o) => <option key={o} value={o}>{optLabel(o)}</option>)}
-                    </select>
+                    <ColumnFilter label={h} options={optionsOf(c)} selected={colFilter[cid(c)] ?? []} format={optLabel} minWidth={64}
+                      onChange={(next) => setColFilter((f) => ({ ...f, [cid(c)]: next }))} />
                   </th>
                 ))}
               </tr></thead>

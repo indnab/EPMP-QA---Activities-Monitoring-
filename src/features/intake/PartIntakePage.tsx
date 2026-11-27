@@ -7,6 +7,7 @@ import { usePersonaStore } from '../../store/personaStore'
 import { buildCsv, downloadCsv } from '../mywork/csv'
 import { partInScope, fmtDate } from '../scope'
 import type { IntakeSource } from '../../mock/partIntakeFields'
+import { ColumnFilter } from '../ColumnFilter'
 import { CompactFilterBar } from '../mywork/FilterBar'
 import type { LabeledOption } from '../mywork/FilterBar'
 import { PicViewProvider, usePicViewMatch } from '../mywork/picView'
@@ -117,13 +118,13 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
   )
   // Column sort (click a header: ascending, descending, back to the part-number order) and a filter box per column.
   const [sortBy, setSortBy] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null)
-  const [colFilter, setColFilter] = useState<Record<string, string>>({})
+  const [colFilter, setColFilter] = useState<Record<string, string[]>>({})
   type Row = (typeof rows)[number]
   const cellText = (r: Row, col: string): string =>
     col === '_origin' ? SOURCE_LABEL[r.origin] : col === '_release' ? (r.part.sourceDeleted ? `Deleted in ${r.part.sourceDeleted.system}` : RELEASE_LABEL[r.release]) : (r.values[col] ?? '')
   const shown = useMemo(() => {
-    const active = Object.entries(colFilter).map(([c, q]) => [c, q.trim().toLowerCase()] as const).filter(([, q]) => q)
-    let out = active.length ? rowsBase.filter((r) => active.every(([c, q]) => cellText(r, c).toLowerCase() === q)) : rowsBase
+    const active = Object.entries(colFilter).filter(([, vs]) => vs.length)
+    let out = active.length ? rowsBase.filter((r) => active.every(([c, vs]) => vs.includes(cellText(r, c)))) : rowsBase
     if (sortBy) {
       const dir = sortBy.dir === 'asc' ? 1 : -1
       out = [...out].sort((a, b) => cellText(a, sortBy.col).localeCompare(cellText(b, sortBy.col), undefined, { numeric: true }) * dir)
@@ -131,7 +132,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
     return out
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowsBase, colFilter, sortBy])
-  const anyColFilter = Object.values(colFilter).some((v) => v.trim())
+  const anyColFilter = Object.values(colFilter).some((v) => v.length > 0)
   // The values each column holds (its drop-down filter lists them).
   const colOptions = useMemo(() => {
     const out: Record<string, string[]> = {}
@@ -309,11 +310,8 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
                         {cols.map((c) => (
                           <th key={c.key} className={`${base} border-b border-[var(--color-border)] pb-1.5 pt-0.5 font-normal ${c.first ? 'sticky left-0 z-30 border-r' : ''}`}>
                             {c.noSort ? (anyColFilter ? <button type="button" onClick={() => setColFilter({})} className="text-[10px] font-semibold text-[var(--color-accent)] hover:underline">Clear</button> : null) : (
-                              <select value={colFilter[c.key] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [c.key]: e.target.value }))} aria-label={`Filter ${c.label}`}
-                                className="h-6 w-full min-w-[90px] max-w-[220px] rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal">
-                                <option value="">All</option>
-                                {(colOptions[c.key] ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                              </select>
+                              <ColumnFilter label={c.label} options={colOptions[c.key] ?? []} selected={colFilter[c.key] ?? []} minWidth={90}
+                                onChange={(next) => setColFilter((f) => ({ ...f, [c.key]: next }))} />
                             )}
                           </th>
                         ))}

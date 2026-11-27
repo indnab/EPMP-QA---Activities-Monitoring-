@@ -12,6 +12,7 @@ import { buildUsage } from '../../mock/usage'
 import { useQAStore } from '../../store/qaStore'
 import { buildCsv, downloadCsv } from '../mywork/csv'
 import { DEMO_TODAY, fmtDate } from '../scope'
+import { ColumnFilter } from '../ColumnFilter'
 import { BANDS, INACTIVE_DAYS, addDays, daysIn, trend, userStats, vendorStats } from './usageStats'
 import type { Grain, UserStat, VendorStat } from './usageStats'
 
@@ -308,13 +309,10 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
 }) {
   const [all, setAll] = useState(false)
   const [sortBy, setSortBy] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(null)
-  const [filters, setFilters] = useState<Record<number, string>>({})
+  const [filters, setFilters] = useState<Record<number, string[]>>({})
   const listed = useMemo(() => {
-    const active = columns.map((c, i) => [c, i, (filters[i] ?? '').trim().toLowerCase()] as const).filter(([, , q]) => q)
-    let out = active.length ? rows.filter((r) => active.every(([c, , q]) => {
-      const t = String((c.text ?? c.val)(r)).toLowerCase()
-      return t === q
-    })) : rows
+    const active = columns.map((c, i) => [c, filters[i] ?? []] as const).filter(([, vs]) => vs.length)
+    let out = active.length ? rows.filter((r) => active.every(([c, vs]) => vs.includes(String((c.text ?? c.val)(r))))) : rows
     if (sortBy) {
       const c = columns[sortBy.col], dir = sortBy.dir === 'asc' ? 1 : -1
       out = [...out].sort((a, b) => {
@@ -328,7 +326,7 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
   const shown = limit && !all ? listed.slice(0, limit) : listed
   /** The values a column holds (its drop-down lists them). */
   const valuesOf = (c: Col<T>) => [...new Set(rows.map((r) => String((c.text ?? c.val)(r))).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-  const anyFilter = Object.values(filters).some((v) => v.trim())
+  const anyFilter = Object.values(filters).some((v) => v.length > 0)
   const clickSort = (i: number) => setSortBy((cur) => (!cur || cur.col !== i ? { col: i, dir: 'asc' } : cur.dir === 'asc' ? { col: i, dir: 'desc' } : null))
   return (
     <section id={id} className="epmp-card scroll-mt-3 overflow-hidden">
@@ -360,11 +358,8 @@ function UsageTable<T>({ id, title, color, note, onClearNote, rows, columns, row
             <tr className="text-left">
               {columns.map((c, i) => (
                 <th key={c.label} className="px-2.5 pb-1.5 font-normal">
-                  <select value={filters[i] ?? ''} onChange={(e) => setFilters((f) => ({ ...f, [i]: e.target.value }))} aria-label={`Filter ${c.label}`}
-                    className="h-6 w-full min-w-[64px] max-w-[190px] rounded border border-[var(--color-border)] bg-white px-1 text-[10px] font-normal">
-                    <option value="">All</option>
-                    {(c.options ?? valuesOf(c)).map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <ColumnFilter label={c.label} options={c.options ?? valuesOf(c)} selected={filters[i] ?? []} minWidth={64}
+                    onChange={(next) => setFilters((f) => ({ ...f, [i]: next }))} />
                 </th>
               ))}
             </tr>
