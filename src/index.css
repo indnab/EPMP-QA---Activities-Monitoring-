@@ -330,3 +330,23 @@ h1, h2, h3, h4 { text-wrap: balance; }
 /* A full-screen section hides the floating AI assistant. */
 body.epmp-max-open [data-ai-button],
 body.epmp-max-open [data-ai-panel] { display: none !important; }
+
+/* Raised (3D) blue button with smooth, rounded edges: light top edge, darker bottom, soft drop shadow; presses in when on. */
+.epmp-3d-btn {
+  background: linear-gradient(180deg, #4f8cff 0%, #2563eb 55%, #1d4ed8 100%);
+  border: 1px solid #1e40af;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.18), 0 2px 0 #1e3a8a, 0 4px 8px rgba(37,99,235,.35);
+  text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+}
+.epmp-3d-btn:hover { filter: brightness(1.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.18), 0 2px 0 #1e3a8a, 0 0 0 3px rgba(96,165,250,.45), 0 0 14px 4px rgba(59,130,246,.65); }
+.epmp-3d-btn:active, .epmp-3d-btn.is-on {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 60%, #1e40af 100%);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.28), inset 0 -1px 0 rgba(255,255,255,.12), 0 1px 0 #1e3a8a, 0 2px 4px rgba(37,99,235,.25);
+}
+.epmp-3d-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+/* Touch (tap) and press: the button glows while touched, and stays lit briefly after. */
+.epmp-3d-btn:active { box-shadow: inset 0 2px 4px rgba(0,0,0,.28), 0 0 0 3px rgba(147,197,253,.6), 0 0 18px 6px rgba(59,130,246,.75) !important; }
+.epmp-3d-btn { -webkit-tap-highlight-color: transparent; }
+@media (hover: none) { .epmp-3d-btn:focus { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 3px rgba(147,197,253,.55), 0 0 16px 5px rgba(59,130,246,.7); } }

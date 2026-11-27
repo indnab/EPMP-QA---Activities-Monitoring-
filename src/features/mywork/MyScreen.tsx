@@ -490,15 +490,15 @@ function TileDetails({ kind, items, color, onPick, onOpen, trials }: {
   return (
     <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-white" data-tile-details={kind}>
       <div className="flex items-center gap-1 pr-2" style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
-        <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} pl-3`}>
+        <button type="button" role="tab" aria-selected={tab === 'details'} onClick={() => { setTab('details'); setOpen(true) }} className={`${tabCls(tab === 'details')} flex-none whitespace-nowrap pl-3`}>
           {kind[0].toUpperCase() + kind.slice(1)} <span className="ml-1 rounded-full px-1.5 text-[10.5px] font-bold tabular-nums" style={{ color, background: `${color}14` }}>{listed.length}</span>
         </button>
-        {/* Activity Update stands out as a button: blue with white text (darker and ringed while open). */}
+        {/* Activity Update stands out as a raised blue button with white text (pressed in while open); fixed size, never wraps. */}
         <button type="button" role="tab" aria-selected={tab === 'update'} onClick={() => { setTab('update'); setOpen(true) }} data-update-tab
-          className={`my-1 ml-1 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-white shadow-sm transition-colors ${tab === 'update' ? 'bg-[#1d4ed8] ring-2 ring-[#93c5fd]' : 'bg-[#2563eb] hover:bg-[#1d4ed8]'}`}>
+          className={`epmp-3d-btn my-1 ml-1 inline-flex h-7 flex-none items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[10.5px] font-semibold uppercase tracking-wide text-white ${tab === 'update' ? 'is-on' : ''}`}>
           Activity Update <span className="rounded-full bg-white/25 px-1.5 text-[10.5px] font-bold tabular-nums text-white">{chosen.length}</span>
         </button>
-        <span className="ml-auto hidden text-[9.5px] text-[var(--color-muted)] sm:inline">
+        <span className="ml-auto hidden min-w-0 truncate text-[9.5px] text-[var(--color-muted)] sm:inline">
           {tab === 'update' ? (tickedRows.length ? `for the ${tickedRows.length} ticked ${plural(tickedRows.length)}` : 'for everything listed (tick rows to choose)') : kind === 'activities' ? 'tick rows to update them, or click a row to open it' : 'tick rows to update them, click a name to drill in, a number to list it'}
         </span>
         {tab === 'update' && open && (
