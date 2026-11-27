@@ -1,8 +1,8 @@
 /**
  * Vendor Planning → "MSIL timeline" view. At the top, every MSIL timeline (the trial MRDs PP, MPP, Pilot, SOP and their
  * MRD sub-types) sits on one straight line per model, with dashed guides running down through the activities. Under it,
- * each vendor activity shows its planned dates (the vendor's plan, else the system window) against what actually
- * happened: from the first work recorded on it to its approval, or to today while it is still open.
+ * each vendor activity shows, on one line, its planned dates as a box (the vendor's plan, else the system window) and
+ * what actually happened as a strip through it: from the first work recorded on it to its approval, or to today while it is still open.
  */
 import { Fragment, useMemo, useState } from 'react'
 import type { ActivityEntry } from '../../domain'
@@ -97,11 +97,11 @@ export function PlanVsActual({ rows, models, msOrder }: { rows: PvaRow[]; models
         </div>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rotate-45 bg-indigo-600" />Trial MRD</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-sky-500" />MRD sub-type</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-6 rounded-sm bg-blue-500" />Planned</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-6 rounded-sm border border-dashed border-blue-400 bg-blue-50" />Planned (system window, no vendor plan)</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-6 rounded-sm bg-emerald-500" />Actual · done</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-6 rounded-sm bg-amber-400" />Actual · open</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-6 rounded-sm bg-red-500" />Actual past the plan</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3.5 w-7 rounded border border-blue-400 bg-blue-100" />Planned (box)</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3.5 w-7 rounded border border-dashed border-blue-400 bg-blue-50" />Planned · system window (no vendor plan)</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-7 rounded-full bg-emerald-500" />Actual strip · done</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-7 rounded-full bg-amber-400" />Actual · open</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-7 rounded-full bg-red-500" />Actual past the plan</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-px bg-red-500" />Today</span>
         <span className="ml-auto text-[var(--color-muted)]">{items.length} activities · {counts.done} done · {counts.late} past the plan · {counts.notStarted} not started</span>
       </div>
@@ -170,15 +170,16 @@ export function PlanVsActual({ rows, models, msOrder }: { rows: PvaRow[]; models
                   <div className="relative" style={{ width }} title={tip}>
                     {months.map((m) => <div key={m.left} className="absolute inset-y-0 border-l border-[#eef2f7]" style={{ left: m.left }} />)}
                     {guides.map((g) => <div key={`${g.date}|${g.label}`} className="absolute inset-y-0 border-l border-dashed border-indigo-300" style={{ left: x(g.date) + Math.round(px / 2) }} />)}
-                    {/* planned (upper) */}
+                    {/* One line: the planned dates as a box (band), the actual as a strip through it. */}
                     {r.plan ? (
-                      <div className={`absolute rounded-sm ${r.plan.source === 'vendor' ? 'bg-blue-500' : 'border border-dashed border-blue-400 bg-blue-50'}`}
-                        style={{ left: x(r.plan.start), width: w(r.plan.start, r.plan.end), top: 6, height: 9 }} data-pva-plan />
-                    ) : <span className="absolute left-2 top-1 text-[9.5px] italic text-[var(--color-muted)]">Not planned</span>}
-                    {/* actual (lower) */}
+                      <div className={`absolute rounded-md border ${r.plan.source === 'vendor' ? 'border-blue-400 bg-blue-100' : 'border-dashed border-blue-400 bg-blue-50/70'}`}
+                        style={{ left: x(r.plan.start), width: w(r.plan.start, r.plan.end), top: 5, height: 24 }} data-pva-plan />
+                    ) : null}
                     {r.act ? (
-                      <div className={`absolute rounded-sm ${actCls} ${r.act.done ? '' : 'opacity-90'}`} style={{ left: x(r.act.start), width: w(r.act.start, r.act.end), top: 19, height: 9 }} data-pva-actual={r.act.done ? 'done' : 'open'} />
-                    ) : <span className="absolute text-[9.5px] italic text-[var(--color-muted)]" style={{ left: r.plan ? x(r.plan.start) : 8, top: 18 }}>Not started</span>}
+                      <div className={`absolute rounded-full shadow-sm ring-1 ring-white ${actCls}`} style={{ left: x(r.act.start), width: w(r.act.start, r.act.end), top: 14, height: 6 }} data-pva-actual={r.act.done ? 'done' : 'open'} />
+                    ) : null}
+                    {!r.plan && !r.act && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9.5px] italic text-[var(--color-muted)]">Not planned · not started</span>}
+                    {r.plan && !r.act && <span className="absolute whitespace-nowrap text-[9.5px] italic text-[var(--color-muted)]" style={{ left: x(r.plan.start) + w(r.plan.start, r.plan.end) + 6, top: 10 }}>not started</span>}
                   </div>
                 </div>
               </Fragment>
