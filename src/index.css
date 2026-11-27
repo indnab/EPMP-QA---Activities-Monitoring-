@@ -119,7 +119,24 @@ table thead th {
   color: var(--color-ink-muted);
   font-weight: 500;
 }
-table tbody td { border-color: #f1f2f6; }
+/* Solid black grid on every table, header included: each cell draws its right and bottom edge, the table its outer
+   frame. (Right/bottom only, so lines stay single both with border-collapse and with border-spacing-0 sticky tables.)
+   Unlayered, so it wins over the Tailwind border utilities on the cells. */
+table { border: 1px solid #000; }
+table th, table td {
+  border-style: solid;
+  border-color: #000;
+  border-width: 0 1px 1px 0;
+}
+table tr > :last-child { border-right-width: 0; }
+table tbody tr:last-child > td, table tfoot tr:last-child > td { border-bottom-width: 0; }
+/* Header cells: the lines are drawn inside the cell (box-shadow), so they stay visible on sticky headers while the table
+   scrolls (cell borders of a sticky header are left behind by the browser). */
+table thead th {
+  border-width: 0;
+  box-shadow: inset -1px 0 0 #000, inset 0 -1px 0 #000;
+}
+table thead tr > th:last-child { box-shadow: inset 0 -1px 0 #000; }
 table tbody tr:hover td { background: var(--color-surface); }
 
 /* ── Manual vs system fields ──────────────────────────────────────
