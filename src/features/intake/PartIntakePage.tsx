@@ -1,5 +1,5 @@
 import { RELEASE_LABEL } from '../mywork/ReleasePanel'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Button } from '../../components'
 import { useQAStore } from '../../store/qaStore'
@@ -61,6 +61,24 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
   const [fMarket, setFMarket] = useState<string[]>(ALL_MARKETS)
   const [fExtra, setFExtra] = useState<ExtraSel>(EMPTY_EXTRA)
   const inView = usePicViewMatch()
+  // The table runs down to the bottom of the page: its height is what is left below its top edge (re-measured when the
+  // window or the filter bar above changes size).
+  const rootRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [tableH, setTableH] = useState<number | null>(null)
+  useEffect(() => {
+    const measure = () => {
+      const el = tableRef.current
+      if (!el) return
+      const h = Math.max(240, Math.floor(window.innerHeight - el.getBoundingClientRect().top - 16))
+      setTableH((prev) => (prev !== null && Math.abs(prev - h) < 2 ? prev : h))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    const ro = new ResizeObserver(measure)
+    if (rootRef.current) ro.observe(rootRef.current)
+    return () => { window.removeEventListener('resize', measure); ro.disconnect() }
+  })
   // "Deleted in SAP / ENOVIA" tile: show only those parts.
   const [deletedOnly, setDeletedOnly] = useState(false)
 
@@ -85,7 +103,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
   const showActions = !!actions && (actions.canRelease || actions.canEcn)
   const pass = (sel: string[], v: string) => sel.length === 0 || sel.includes(v)
   const picOf = (p: PartRecord) => getPicOn(p, picAssignments, DEMO_TODAY).name
-  const shown = useMemo(
+  const rowsBase = useMemo(
     () =>
       rows
         .filter((r) => origins.length === 0 || origins.includes(r.origin))
@@ -97,6 +115,24 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, origins, deletedOnly, inView, fModel, fDept, fVendorCode, fPic, fPartNo, fAttrs, fMarket, fExtra, models, picAssignments]
   )
+  // Column sort (click a header: ascending, descending, back to the part-number order) and a filter box per column.
+  const [sortBy, setSortBy] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null)
+  const [colFilter, setColFilter] = useState<Record<string, string>>({})
+  type Row = (typeof rows)[number]
+  const cellText = (r: Row, col: string): string =>
+    col === '_origin' ? SOURCE_LABEL[r.origin] : col === '_release' ? (r.part.sourceDeleted ? `Deleted in ${r.part.sourceDeleted.system}` : RELEASE_LABEL[r.release]) : (r.values[col] ?? '')
+  const shown = useMemo(() => {
+    const active = Object.entries(colFilter).map(([c, q]) => [c, q.trim().toLowerCase()] as const).filter(([, q]) => q)
+    let out = active.length ? rowsBase.filter((r) => active.every(([c, q]) => cellText(r, c).toLowerCase().includes(q))) : rowsBase
+    if (sortBy) {
+      const dir = sortBy.dir === 'asc' ? 1 : -1
+      out = [...out].sort((a, b) => cellText(a, sortBy.col).localeCompare(cellText(b, sortBy.col), undefined, { numeric: true }) * dir)
+    }
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsBase, colFilter, sortBy])
+  const anyColFilter = Object.values(colFilter).some((v) => v.trim())
+  const clickSort = (col: string) => setSortBy((cur) => (!cur || cur.col !== col ? { col, dir: 'asc' } : cur.dir === 'asc' ? { col, dir: 'desc' } : null))
   // Option lists for the filter bar (over the parts in scope).
   const uniq = <T,>(xs: T[], key: (x: T) => string) => { const m = new Map<string, T>(); for (const x of xs) { const k = key(x); if (k && !m.has(k)) m.set(k, x) } return [...m.values()] }
   const modelOptions = useMemo(() => [...new Set(scoped.map((p) => p.model))].sort(), [scoped])
@@ -166,7 +202,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
   }
 
   return (
-    <div>
+    <div ref={rootRef}>
       {!embedded && (
         <PageHeader
           title="Part Intake"
@@ -182,7 +218,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         {tile('Manual', 'Manual', counts.Manual, 'Manual')}
         <button type="button" onClick={() => setDeletedOnly((v) => !v)} aria-pressed={deletedOnly}
           className={`epmp-card min-w-[120px] px-3 py-1.5 text-left transition-colors ${deletedOnly ? 'ring-2 ring-red-500' : 'hover:bg-[var(--color-surface)]'}`}>
-          <div className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">Part Deleted (SAP / ENOVIA)</div>
+          <div className="whitespace-nowrap text-[10.5px] font-medium text-[var(--color-muted)]">Deleted</div>
           <div className="mt-0.5 text-lg font-semibold leading-tight text-red-600">{deletedCount}</div>
         </button>
       </div>
@@ -223,35 +259,59 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         allPartOptions={allPartOptions} onSearchApply={applySearch} onSearchRemove={removeSearch}
         hasFilters={hasFilters} clearFilters={clearFilters} />
       <Card flush>
-        {shown.length === 0 ? (
+        {rowsBase.length === 0 ? (
           <p className="py-10 text-center text-sm text-[var(--color-muted)]">
             {scoped.length === 0 ? 'No parts yet. Parts arrive from SAP and ENOVIA, or can be added manually.' : 'No parts match the filters.'}
           </p>
         ) : (
-          <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+          <div ref={tableRef} className="overflow-auto" style={{ height: tableH ?? undefined, maxHeight: tableH ?? 'calc(100vh - 380px)' }}>
             <table className="border-separate border-spacing-0 text-[10.5px]">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 top-0 z-30 min-w-[130px] border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-                    Received from
-                  </th>
-                  <th className="sticky top-0 z-20 min-w-[130px] whitespace-nowrap border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-                    Release
-                  </th>
-                  {showActions && (
-                    <th className="sticky top-0 z-20 min-w-[150px] whitespace-nowrap border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-                      Actions
-                    </th>
-                  )}
-                  {DISPLAY_FIELDS.map((f) => (
-                    <th key={f.key} className="sticky top-0 z-20 min-w-[120px] whitespace-nowrap border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-left align-bottom">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">{f.label}</div>
-                      <span className={`mt-0.5 inline-block rounded px-1.5 py-px text-[9px] font-medium ${SOURCE_TAG[f.source]}`}>{f.source}</span>
-                    </th>
-                  ))}
-                </tr>
+              <thead className="sticky top-0 z-30">
+                {(() => {
+                  const cols: { key: string; label: string; source?: IntakeSource; right?: boolean; noSort?: boolean; first?: boolean }[] = [
+                    { key: '_origin', label: 'Received from', first: true },
+                    { key: '_release', label: 'Release' },
+                    ...(showActions ? [{ key: '_actions', label: 'Actions', right: true, noSort: true }] : []),
+                    ...DISPLAY_FIELDS.map((f) => ({ key: f.key, label: f.label, source: f.source })),
+                  ]
+                  const base = 'whitespace-nowrap bg-[var(--color-surface)] px-3 text-left'
+                  return (
+                    <>
+                      <tr>
+                        {cols.map((c) => {
+                          const on = sortBy?.col === c.key
+                          return (
+                            <th key={c.key} aria-sort={on ? (sortBy!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                              className={`${base} pb-0.5 pt-2 align-bottom ${c.first ? 'sticky left-0 z-30 min-w-[130px] border-r border-[var(--color-border)]' : 'min-w-[120px]'} ${c.right ? 'text-right' : ''}`}>
+                              {c.noSort ? (
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">{c.label}</div>
+                              ) : (
+                                <button type="button" onClick={() => clickSort(c.key)} title={`Sort by ${c.label}`}
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)] hover:text-[var(--color-primary)]">
+                                  {c.label}<span className={on ? 'text-[var(--color-primary)]' : 'text-[#98a2b3]'} aria-hidden="true">{on ? (sortBy!.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                </button>
+                              )}
+                              {c.source && <div><span className={`mt-0.5 inline-block rounded px-1.5 py-px text-[9px] font-medium ${SOURCE_TAG[c.source]}`}>{c.source}</span></div>}
+                            </th>
+                          )
+                        })}
+                      </tr>
+                      <tr>
+                        {cols.map((c) => (
+                          <th key={c.key} className={`${base} border-b border-[var(--color-border)] pb-1.5 pt-0.5 font-normal ${c.first ? 'sticky left-0 z-30 border-r' : ''}`}>
+                            {c.noSort ? (anyColFilter ? <button type="button" onClick={() => setColFilter({})} className="text-[10px] font-semibold text-[var(--color-accent)] hover:underline">Clear</button> : null) : (
+                              <input value={colFilter[c.key] ?? ''} onChange={(e) => setColFilter((f) => ({ ...f, [c.key]: e.target.value }))} aria-label={`Filter ${c.label}`} placeholder="Filter"
+                                className="h-6 w-full min-w-[70px] rounded border border-[var(--color-border)] bg-white px-1.5 text-[10px] font-normal" />
+                            )}
+                          </th>
+                        ))}
+                      </tr>
+                    </>
+                  )
+                })()}
               </thead>
               <tbody>
+                {shown.length === 0 && <tr><td colSpan={40} className="px-4 py-8 text-center text-[var(--color-muted)]">No parts match the column filters.</td></tr>}
                 {shown.map(({ part, origin, release, returnedReason, values }) => {
                   const withVendor = release === 'Released' || release === 'Acknowledged'
                   return (
