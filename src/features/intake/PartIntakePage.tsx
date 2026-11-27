@@ -201,7 +201,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
           <div className="mt-0.5 text-2xl font-semibold text-red-600">{deletedCount}</div>
         </button>
       </div>
-      <CompactFilterBar partLevelOnly collapseKey="intake-filters"
+      <CompactFilterBar partLevelOnly collapseKey="intake-filters" miniSlotId="intake-filter-slot"
         model={fModel} setModel={chooseModels} modelOptions={modelOptions}
         dept={fDept} setDept={setFDept} deptOptions={deptOptions}
         vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
@@ -216,6 +216,7 @@ function PartIntakeInner({ embedded = false, actions }: { embedded?: boolean; ac
         hasFilters={hasFilters} clearFilters={clearFilters} />
       <div className="mb-3 flex items-center justify-end gap-3">
         <span className="mr-auto text-[10.5px] text-[var(--color-muted)]">{shown.length} of {scoped.length} part{scoped.length === 1 ? '' : 's'}</span>
+        <span id="intake-filter-slot" className="flex items-center" />
         <Button
           variant="secondary"
           size="sm"

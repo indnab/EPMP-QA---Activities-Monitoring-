@@ -2,7 +2,8 @@
  * The filter bar shared by the Workspace pages and Part Intake: master search, quick range and PIC view, the primary
  * filters, a "More filters" window, and the minimize-to-an-icon switch.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon as FbIcon } from '../../components/Icon'
 import { trialLabelOf } from '../trialLabel'
 import { useCollapsed } from '../collapse'
@@ -44,6 +45,8 @@ export interface FilterBarProps {
   extra: ExtraSel; setExtra: (v: ExtraSel) => void; extraOpts: Record<string, { value: string }[]>
   /** Part Allocation: only part-level filters (no Status, Trial, Activity or date range). */
   partLevelOnly?: boolean
+  /** When minimized, the filter icon is placed in the element with this id (e.g. the page's top row) instead of a row of its own. */
+  miniSlotId?: string
   /** Where the minimized state is remembered (default: shared by the Workspace pages). */
   collapseKey?: string
   allPartOptions: LabeledOption[]
@@ -61,6 +64,8 @@ export function CompactFilterBar(f: FilterBarProps) {
   const partLevel = !!f.partLevelOnly
   // Minimize: only the search box and a summary stay; remembered in this browser.
   const [mini, toggleMini] = useCollapsed(f.collapseKey ?? 'mw-filters')
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => { setSlot(f.miniSlotId ? document.getElementById(f.miniSlotId) : null) }, [f.miniSlotId, mini])
   const active = [f.status, f.model, f.milestone, f.partNo, f.dept, f.vendorCode, f.activity, f.pic].filter((v) => v.length > 0).length
     + Object.values(f.attrs).filter((v) => v.length > 0).length + (isAllMarkets(f.market) ? 0 : 1) + extraCount(f.extra)
   const plain = (opts: string[]) => opts.map((o) => ({ value: o }))
@@ -82,15 +87,15 @@ export function CompactFilterBar(f: FilterBarProps) {
   const moreCount = extraCount(f.extra) + (partLevel || f.activity.length === 0 ? 0 : 1) + (f.showPic && f.pic.length > 0 ? 1 : 0)
   // Minimized: just a small filter icon at the top right (with the number of filters in force).
   if (mini) {
-    return (
-      <div className="pointer-events-none flex justify-end">
+    const icon = (
         <button type="button" onClick={toggleMini} aria-expanded="false" aria-label={`Show filters${active ? ` (${active} applied)` : ''}`} title="Show the filters"
-          className="pointer-events-auto relative -mb-1 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[#344054] shadow-md hover:bg-[var(--color-surface)]">
+          className="pointer-events-auto relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[#344054] shadow-md hover:bg-[var(--color-surface)]">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" /></svg>
           {active > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[9.5px] font-bold text-white">{active}</span>}
         </button>
-      </div>
     )
+    // In the page's top row when it has a slot for it (no row of its own); otherwise on a row of its own.
+    return slot ? createPortal(icon, slot) : <div className="pointer-events-none flex justify-end">{icon}</div>
   }
   return (
     <section className="epmp-card mb-3 px-3 py-2">

@@ -460,6 +460,7 @@ function MyWorkPageInner() {
   }, [storeParts, projects])
   const inView = usePicViewMatch()
   const { currentPersona } = usePersonaStore()
+  const [filtersMini] = useCollapsed('mw-filters')
 
   // Four-tab information architecture: Overview (KPIs), My Actions (release/returns/delay), Worklist (all
   // assigned activities), Insights (performance charts). ?view= opens a specific tab (worklist/approvals legacy).
@@ -936,14 +937,15 @@ function MyWorkPageInner() {
         />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <span id="mw-filter-slot" className="flex items-center" />
           <DownloadMenu title={`Workspace – ${{ overview: 'My Work', actions: 'Part Allocation', worklist: 'My Approvals', insights: 'My Work', calendar: 'My Calendar', myscreen: 'My Parts' }[effectiveView]}`} />
         </div>
       </div>
 
       {/* Filters — shown on Insights (charts); the Worklist renders its own sticky filter bar */}
       {effectiveView === 'myscreen' && (
-      <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
-        <CompactFilterBar
+      <div className={filtersMini ? 'hidden' : 'epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5'}>
+        <CompactFilterBar miniSlotId="mw-filter-slot"
           model={fModel} setModel={chooseModels} modelOptions={modelOptions}
           dept={fDept} setDept={setFDept} deptOptions={deptOptions}
           vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
@@ -963,7 +965,7 @@ function MyWorkPageInner() {
           filters={{ model: fModel, dept: fDept, milestone: fMilestone, pic: fPic, partNo: fPartNo, vendorCode: fVendorCode, activity: fActivity, attrs: fAttrs, market: fMarket, partOk: approvalPartOk }}
           inRange={approvalInRange}
           filterBar={
-            <CompactFilterBar
+            <CompactFilterBar miniSlotId="mw-filter-slot"
               model={fModel} setModel={chooseModels} modelOptions={modelOptions}
               dept={fDept} setDept={setFDept} deptOptions={deptOptions}
               vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
@@ -990,8 +992,8 @@ function MyWorkPageInner() {
       ) : effectiveView === 'actions' ? (
         <>
           {/* Release handshake (delay reasons are reviewed in My Approvals and Exception Management) */}
-          <div className="epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5">
-            <CompactFilterBar partLevelOnly
+          <div className={filtersMini ? 'hidden' : 'epmp-sticky-pane sticky top-0 z-20 -mx-4 -mt-1 px-4 pt-2 pb-1 lg:-mx-5 lg:px-5'}>
+            <CompactFilterBar partLevelOnly miniSlotId="mw-filter-slot"
               model={fModel} setModel={chooseModels} modelOptions={modelOptions}
               dept={fDept} setDept={setFDept} deptOptions={deptOptions}
               vendorCode={fVendorCode} setVendorCode={setFVendorCode} vendorOptions={vendorOptions}
